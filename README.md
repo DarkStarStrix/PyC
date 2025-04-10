@@ -1,67 +1,82 @@
 # PyC - A Python Compiler (Work in Progress)
 
-**PyC** is an experimental compiler project aimed at compiling Python-like code into executable machine code using LLVM as the backend. Written primarily in C with some C++ and CUDA components, this project explores the full compilation pipeline: frontend parsing, intermediate representation (IR) generation, optimization, and backend code generation. It is currently under active development and not yet fully functional.
-
-## About
-
-Developed by [DarkStarStrix](https://github.com/DarkStarStrix), PyC is both a learning exercise and a foundation for a lightweight compiler targeting a subset of Python syntax. It leverages LLVM for IR generation and supports features like JIT compilation, multi-threaded object file generation, and basic optimization passes. The project is incomplete, with several components (e.g., full Python syntax support, robust error handling) still in progress.
+**PyC** is an experimental compiler project designed to compile Python-like code into executable machine code using the LLVM infrastructure as its backend. Written primarily in C, with some C++ and CUDA components, PyC explores the full compilation pipeline: frontend parsing, intermediate representation (IR) generation, optimization, and backend code generation. This project is under active development by [DarkStarStrix](https://github.com/DarkStarStrix) and serves as both a learning exercise and a foundation for a lightweight compiler targeting a subset of Python syntax. It is not yet fully functional, with several features still in development.
 
 ## Features
 
-- **Frontend**: Loads source code, tokenizes, and parses into an Abstract Syntax Tree (AST).
-- **IR Generation**: Converts AST into LLVM IR with basic arithmetic operation support.
-- **Backend**: Supports JIT compilation and object file generation using LLVM, with multi-threaded compilation capabilities.
-- **Optimization**: Basic LLVM optimization passes (e.g., instruction combining, GVN).
-- **Cross-Platform**: Designed with portability in mind (currently tested on Windows).
-- **Testing**: Includes a basic parser test suite.
+PyC currently supports the following features:
+
+- **Frontend**: Loads source code, tokenizes it, and parses it into an Abstract Syntax Tree (AST).
+  - Supports basic expressions (e.g., numbers, identifiers, binary operations like `+`, `-`, `*`, `/`).
+- **IR Generation**: Converts the AST into LLVM Intermediate Representation (IR) for simple arithmetic operations.
+- **Backend**: 
+  - JIT (Just-In-Time) compilation for immediate execution.
+  - Object file generation with multi-threaded compilation capabilities using available CPU cores.
+- **Optimization**: Applies basic LLVM optimization passes, such as instruction combining and Global Value Numbering (GVN).
+- **Cross-Platform**: Designed with portability in mind, though currently tested only on Windows.
+- **Testing**: Includes a basic test suite for the parser, covering numbers, identifiers, and binary operations.
+- **CUDA Integration**: Experimental (and currently undeveloped) CUDA-based tokenization in `kernel.cu`.
 
 ### Current Limitations
-- Limited language support (only basic expressions like numbers, identifiers, and binary operations).
-- Incomplete symbol table and variable handling.
-- No full Python indentation preprocessing.
-- CUDA integration (parser.cu) is experimental and undeveloped.
+
+- **Limited Language Support**: Only basic expressions (numbers, identifiers, and binary operations) are supported. Full Python syntax (e.g., loops, conditionals, functions) is not yet implemented.
+- **Incomplete Symbol Table**: Variable tracking and scoping are not fully functional.
+- **No Indentation Preprocessing**: Python’s indentation-based block structure is not yet processed.
+- **Experimental CUDA**: The CUDA parser (`parser.cu`) is a placeholder and not operational.
+- **Error Handling**: Lacks robust syntax and semantic error reporting.
 
 ## Directory Structure
 
+The project is organized as follows:
+
 ```
 darkstarstrix-pyc/
-├── README.md           # Project documentation
+├── README.md           # Project documentation (this file)
 ├── CMakeLists.txt      # CMake build configuration
-├── Hello.py            # Sample Python file for testing
+├── Hello.py            # Sample Python file for testing ("Hello, World!")
 ├── hello.spec          # PyInstaller spec file for Hello.py
+├── kernel.cu           # CUDA kernel for tokenization (experimental)
 ├── C_Files/            # Core C source files
 │   ├── backend.c       # Backend logic (JIT, object file generation)
-│   ├── codegen.c       # LLVM code generation from AST
+│   ├── codegen.c       # LLVM IR generation from AST
 │   ├── Core.cpp        # AST node management (C++)
+│   ├── error_handler.c # Basic error handling system
 │   ├── frontend.c      # Source code loading and preprocessing
 │   ├── IR.c            # Intermediate Representation utilities
-│   ├── ir_generator.c  # LLVM IR generation from AST
+│   ├── ir_generator.c  # LLVM IR generation logic
 │   ├── main.c          # Compiler entry point
-│   ├── parser.cu       # CUDA-based parser (placeholder)
-│   ├── parser.cuh      # Parser header with AST construction
-│   ├── stack.c         # Stack implementation
+│   ├── parser.cu       # CUDA-based parser (experimental)
+│   ├── parser.cuh      # CUDA parser header with AST construction
+│   ├── stack.c         # Stack implementation for parsing
+│   ├── symbol_table.c  # Symbol table management (incomplete)
 │   └── test_parser.c   # Parser unit tests
 ├── Header_Files/       # Header files
 │   ├── backend.h       # Backend function declarations
 │   ├── Core.h          # AST node definitions
+│   ├── error_handler.h # Error handling declarations
 │   ├── frontend.h      # Frontend function declarations
 │   ├── lexer.h         # Lexer interface (assumed external)
 │   ├── parser.h        # Parser and AST definitions
-│   └── stack.h         # Stack interface
+│   ├── stack.h         # Stack interface
+│   └── symbol_table.h  # Symbol table interface
 └── hello/              # PyInstaller output for Hello.py
-    ├── *.toc, *.pyz, etc. # Build artifacts
+    ├── *.toc, *.pyz, etc. # Build artifacts from PyInstaller
 ```
 
 ## Installation
 
 ### Prerequisites
-- **CMake** (3.29.6 or later)
-- **LLVM** (installed and configured; see `CMakeLists.txt` for path)
-- **C/C++ Compiler** (e.g., MSVC, GCC)
-- **Python 3.x** (for testing and PyInstaller)
-- **CUDA Toolkit** (optional, for `parser.cu`)
+
+To build and use PyC, you’ll need the following:
+
+- **CMake**: Version 3.29.6 or later.
+- **LLVM**: Installed and configured (update `CMakeLists.txt` with the correct path if needed).
+- **C/C++ Compiler**: Compatible with C11 and C++14 (e.g., MSVC, GCC).
+- **Python 3.x**: Required for testing and running PyInstaller.
+- **CUDA Toolkit**: Optional, only needed for experimental CUDA features (`parser.cu`).
 
 ### Build Steps
+
 1. **Clone the Repository**:
    ```bash
    git clone https://github.com/DarkStarStrix/PyC.git
@@ -69,69 +84,107 @@ darkstarstrix-pyc/
    ```
 
 2. **Configure with CMake**:
-   Update `CMakeLists.txt` with your LLVM installation path if necessary (default: `C:/Users/kunya/CLionProjects/PyC/llvm-project/build/lib/cmake/llvm`).
-   ```bash
-   mkdir build
-   cd build
-   cmake ..
-   ```
+   - Edit `CMakeLists.txt` to set the `LLVM_DIR` variable to your LLVM installation path (default: `C:/Users/kunya/CLionProjects/PyC/llvm-project/build/lib/cmake/llvm`).
+   - Run the following commands:
+     ```bash
+     mkdir build
+     cd build
+     cmake ..
+     ```
 
 3. **Build the Project**:
    ```bash
    cmake --build . --config Release  # or Debug
    ```
-   The executable `MyCompiler` will be generated in `build/bin/`.
+   - The executable `MyCompiler` will be generated in `build/bin/`.
 
 ## Usage
 
-Run the compiler with:
+Run the compiler using the following command:
+
 ```bash
 ./build/bin/MyCompiler [options] input_file
 ```
 
-### Options
-- `-o <file>`: Set output file name (default: `a.out`).
-- `-O`: Enable optimizations.
-- `-jit`: Use JIT compilation only (no object file).
-- `-v`: Enable verbose output.
-- `-h, --help`: Show help message.
+### Command-Line Options
+
+- `-o <file>`: Specify the output file name (default: `a.out`).
+- `-O`: Enable LLVM optimization passes.
+- `-jit`: Perform JIT compilation and execute immediately (no object file generated).
+- `-v`: Enable verbose output for debugging.
+- `-h, --help`: Display the help message.
 
 ### Example
+
+To compile a simple input file with verbose output and optimizations:
+
 ```bash
 ./build/bin/MyCompiler -v -O test_input.pc -o test_output
 ```
-*Note*: `test_input.pc` must contain a supported expression (e.g., `x + 42`). Full Python syntax is not yet supported.
 
-## Progress
+- **Note**: The input file (`test_input.pc`) must contain supported expressions (e.g., `x + 42`). Full Python syntax, such as the `print("Hello, World!")` in `Hello.py`, is not yet supported. The `Hello.py` file is included as a sample for future development.
 
-- [x] **Lexer**: Basic tokenization (via `lexer.h`, assumed external).
-- [x] **Parser**: Parses numbers, identifiers, and binary operations into an AST.
-- [x] **IR Generation**: Generates LLVM IR for simple expressions.
-- [x] **Backend**: JIT compilation and multi-threaded object file generation.
-- [x] **Full Python Support**: Indentation preprocessing and complex statements.
-- [x] **Symbol Table**: Variable tracking and scoping.
-- [x] **Error Handling**: Robust syntax and semantic error reporting.
-- [x] **CUDA Integration**: Functional CUDA-based parsing.
+### Sample Input File (`test_input.pc`)
 
-See the [Issues](https://github.com/DarkStarStrix/PyC/issues) tab for detailed tasks.
+```
+x + 42
+```
+
+This will generate LLVM IR, apply optimizations (if `-O` is used), and either execute it via JIT (with `-jit`) or produce an object file.
+
+## Current Progress
+
+### Implemented Features
+- **Lexer**: Basic tokenization of numbers, identifiers, and operators (via `lexer.h`, assumed external).
+- **Parser**: Constructs an AST from basic expressions (numbers, identifiers, binary operations).
+- **IR Generation**: Produces LLVM IR for simple arithmetic expressions.
+- **Backend**: Supports JIT compilation and multi-threaded object file generation.
+
+### Planned Features
+- **Full Python Support**: Process indentation and handle complex statements (e.g., loops, functions).
+- **Symbol Table**: Implement variable tracking and scoping.
+- **Error Handling**: Add robust syntax and semantic error reporting.
+- **CUDA Integration**: Develop a functional CUDA-based parser.
+
+For detailed tasks and updates, see the [Issues](https://github.com/DarkStarStrix/PyC/issues) tab on GitHub.
+
+## Testing
+
+Run the parser tests with:
+
+```bash
+./build/bin/MyCompiler
+```
+
+- **Note**: This assumes `test_parser.c` is linked into the executable. The current test suite verifies parsing of numbers, identifiers, and binary operations.
+
+## Organizational Notes
+
+- **Code Standards**: Follow C11 and C++14 standards. Include comments for clarity.
+- **Modularity**: The project separates concerns into frontend (`frontend.c`), IR generation (`ir_generator.c`, `codegen.c`), and backend (`backend.c`) components.
+- **Future Plans**: Expand language support, improve error handling, and integrate CUDA for parallel parsing.
 
 ## Contributing
 
 Contributions are welcome! To contribute:
-1. Fork the repository.
-2. Create a branch for your feature or fix.
-3. Submit a pull request with a clear description.
 
-Please follow C11/C++14 standards and include comments. Use the "Provide feedback" link on GitHub for suggestions.
+1. Fork the repository on GitHub.
+2. Create a branch for your feature or bug fix:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. Commit your changes with clear messages:
+   ```bash
+   git commit -m "Add feature X"
+   ```
+4. Push your branch and submit a pull request:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
 
-## Testing
-
-Run the parser tests:
-```bash
-./build/bin/MyCompiler  # Assumes test_parser.c is linked
-```
-Current tests cover parsing numbers, identifiers, and binary operations.
+- **Guidelines**: Adhere to C11/C++14 standards, add comments, and provide a clear pull request description.
+- **Feedback**: Use the "Provide feedback" link on GitHub for suggestions or questions.
 
 ## License
 
-No official license yet. All rights are reserved by [DarkStarStrix](https://github.com/DarkStarStrix) 
+No official license has been established yet. All rights are reserved by [DarkStarStrix](https://github.com/DarkStarStrix).
