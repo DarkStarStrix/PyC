@@ -111,7 +111,7 @@ Run the compiler with:
 - [x] **Full Python Support**: Indentation preprocessing and complex statements.
 - [x] **Symbol Table**: Variable tracking and scoping.
 - [x] **Error Handling**: Robust syntax and semantic error reporting.
-- [ ] **CUDA Integration**: Functional CUDA-based parsing.
+- [x] **CUDA Integration**: Functional CUDA-based parsing.
 
 See the [Issues](https://github.com/DarkStarStrix/PyC/issues) tab for detailed tasks.
 
