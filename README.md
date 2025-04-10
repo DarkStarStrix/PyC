@@ -108,9 +108,9 @@ Run the compiler with:
 - [x] **Parser**: Parses numbers, identifiers, and binary operations into an AST.
 - [x] **IR Generation**: Generates LLVM IR for simple expressions.
 - [x] **Backend**: JIT compilation and multi-threaded object file generation.
-- [ ] **Full Python Support**: Indentation preprocessing and complex statements.
-- [ ] **Symbol Table**: Variable tracking and scoping.
-- [ ] **Error Handling**: Robust syntax and semantic error reporting.
+- [x] **Full Python Support**: Indentation preprocessing and complex statements.
+- [x] **Symbol Table**: Variable tracking and scoping.
+- [x] **Error Handling**: Robust syntax and semantic error reporting.
 - [ ] **CUDA Integration**: Functional CUDA-based parsing.
 
 See the [Issues](https://github.com/DarkStarStrix/PyC/issues) tab for detailed tasks.
