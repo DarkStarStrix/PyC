@@ -57,16 +57,27 @@ static ASTNode* parseBinaryOpRHS(int exprPrec, ASTNode* lhs) {
     }
 }
 
-ASTNode* parseExpression() {
-    ASTNode* lhs = parsePrimary();
-    return parseBinaryOpRHS(0, lhs);
+ASTNode* parse_if_statement() {
+    expect_token(TOKEN_IF);
+    ASTNode* condition = parse_expression();
+    expect_token(TOKEN_COLON);
+    ASTNode* then_block = parse_block();
+    ASTNode* else_block = NULL;
+    if (current_token.type == TOKEN_ELSE) {
+        expect_token(TOKEN_ELSE);
+        expect_token(TOKEN_COLON);
+        else_block = parse_block();
+    }
+    return create_if_node(condition, then_block, else_block);
 }
 
-void freeAST(ASTNode* node) {
-    if (!node) return;
-    if (node->type == AST_NODE_BINARY_OP) {
-        freeAST(node->data.binary_op.left);
-        freeAST(node->data.binary_op.right);
+ASTNode* parse_block() {
+    expect_token(TOKEN_INDENT);
+    ASTNode* block = create_block_node();
+    while (current_token.type != TOKEN_DEDENT) {
+        ASTNode* stmt = parse_statement();
+        add_to_block(block, stmt);
     }
-    free(node);
+    expect_token(TOKEN_DEDENT);
+    return block;
 }
