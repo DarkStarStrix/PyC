@@ -1,4 +1,4 @@
-# PyC - A Python Compiler (Work in Progress)
+# PyC A AI compiler Toolchain
 
 **PyC** is an experimental compiler project designed to compile Python-like code into executable machine code using the LLVM infrastructure as its backend. Written primarily in C, with some C++ and CUDA components, PyC explores the full compilation pipeline: frontend parsing, intermediate representation (IR) generation, optimization, and backend code generation. This project is under active development by [DarkStarStrix](https://github.com/DarkStarStrix) and serves as both a learning exercise and a foundation for a lightweight compiler targeting a subset of Python syntax. It is not yet fully functional, with several features still in development.
 
@@ -11,7 +11,7 @@ PyC currently supports the following features:
 - **IR Generation**: Converts the AST into LLVM Intermediate Representation (IR) for simple arithmetic operations.
 - **Backend**: 
   - JIT (Just-In-Time) compilation for immediate execution.
-  - Object file generation with multi-threaded compilation capabilities using available CPU cores.
+  - Object file generation with multithreaded compilation capabilities using available CPU cores.
 - **Optimization**: Applies basic LLVM optimization passes, such as instruction combining and Global Value Numbering (GVN).
 - **Cross-Platform**: Designed with portability in mind, though currently tested only on Windows.
 - **Testing**: Includes a basic test suite for the parser, covering numbers, identifiers, and binary operations.
