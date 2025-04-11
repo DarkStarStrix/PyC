@@ -106,19 +106,19 @@ void report_error(int line, int column, const char* format, ...) {
     va_list args;
     va_start(args, format);
     
-    fprintf(error_log, "\033[1;31mError\033[0m at %s:%d:%d: ", current_filename, line, column);
+    fprintf(error_log, "Error at %s:%d:%d: ", current_filename, line, column);
     vfprintf(error_log, format, args);
     fprintf(error_log, "\n");
     
-    // Show the line with the error
     if (source_lines && line > 0 && line <= line_count) {
-        fprintf(error_log, "  %s\n", source_lines[line-1]);
-        fprintf(error_log, "  ");
-        for (int i = 0; i < column - 1; i++) {
-            fprintf(error_log, " ");
-        }
-        fprintf(error_log, "\033[1;31m^\033[0m\n");
+        fprintf(error_log, "  %s\n", source_lines[line - 1]);
+        fprintf(error_log, "  %*s^\n", column - 1, "");
     }
+    
+    va_end(args);
+    error_state.has_error = 1;
+    error_state.error_count++;
+}
     
     va_end(args);
     
