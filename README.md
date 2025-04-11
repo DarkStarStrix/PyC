@@ -184,7 +184,4 @@ Contributions are welcome! To contribute:
 
 - **Guidelines**: Adhere to C11/C++14 standards, add comments, and provide a clear pull request description.
 - **Feedback**: Use the "Provide feedback" link on GitHub for suggestions or questions.
-
-## License
-
-No official license has been established yet. All rights are reserved by [DarkStarStrix](https://github.com/DarkStarStrix).
+  
