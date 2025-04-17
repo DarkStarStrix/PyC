@@ -1,25 +1,43 @@
+#ifndef CORE_H
+#define CORE_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <windows.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <corecrt.h>
-#include "lexer.h"
+typedef enum {
+    NODE_EXPRESSION,
+    NODE_ASSIGNMENT,
+    NODE_IF_STATEMENT,
+    NODE_BLOCK
+} NodeType;
 
-#ifndef UNTITLED_CORE_H
-#define UNTITLED_CORE_H
+typedef enum {
+    EXPR_NUMBER,
+    EXPR_VARIABLE,
+    EXPR_BINARY_OP
+} ExprType;
 
-typedef struct Node {
-    __attribute__((unused)) const char* type;
-    __attribute__((unused)) const char* value;
-    struct Node* children;
-    __attribute__((unused)) size_t children_count;
-} Node;
+typedef struct ASTNode {
+    NodeType type;
+    union {
+        struct {
+            ExprType type;
+            char value[256];
+            struct ASTNode* left;
+            struct ASTNode* right;
+            int op; // TOKEN_PLUS, TOKEN_MINUS, etc.
+        } expr;
+        struct {
+            char name[256];
+            struct ASTNode* value;
+        } assign;
+        struct {
+            struct ASTNode* condition;
+            struct ASTNode* body;
+            struct ASTNode* else_body;
+        } if_stmt;
+        struct {
+            struct ASTNode** statements;
+            int num_statements;
+        } block;
+    };
+} ASTNode;
 
-__attribute__((unused)) __attribute__((unused)) Node *parse();
-
-
-#endif //UNTITLED_CORE_H
+#endif
