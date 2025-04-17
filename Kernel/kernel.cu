@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm> // For std::sort
+#include <cuda_fp16.h> // For FP16 support
+#include <cuda_runtime.h>
 
 // CUDA kernel for tokenizing input in parallel
 __global__ void tokenize_kernel(const char* input, size_t input_length, TokenGPU* tokens, int* token_count) {
@@ -141,4 +143,25 @@ ASTNode* cuda_parse(const char* source_code) {
     
     // Return the root of the AST
     return ast;
+}
+
+// CUDA kernel for FP16 matrix multiplication (simple inference kernel)
+__global__ void matmul_fp16(__half* A, __half* B, __half* C, int M, int N, int K) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < M && col < N) {
+        __half sum = __float2half(0.0f);
+        for (int k = 0; k < K; k++) {
+            sum = __hadd(sum, __hmul(A[row * K + k], B[k * N + col]));
+        }
+        C[row * N + col] = sum;
+    }
+}
+
+// Host function to launch FP16 matrix multiplication kernel
+void launch_matmul_fp16(__half* A, __half* B, __half* C, int M, int N, int K) {
+    dim3 block(16, 16);
+    dim3 grid((N + 15) / 16, (M + 15) / 16);
+    matmul_fp16<<<grid, block>>>(A, B, C, M, N, K);
+    cudaDeviceSynchronize();
 }
