@@ -1,187 +1,204 @@
-# PyC A AI compiler Toolchain
+# PyC: A Python-like Compiler Toolchain
 
-**PyC** is an experimental compiler project designed to compile Python-like code into executable machine code using the LLVM infrastructure as its backend. Written primarily in C, with some C++ and CUDA components, PyC explores the full compilation pipeline: frontend parsing, intermediate representation (IR) generation, optimization, and backend code generation. This project is under active development by [DarkStarStrix](https://github.com/DarkStarStrix) and serves as both a learning exercise and a foundation for a lightweight compiler targeting a subset of Python syntax. It is not yet fully functional, with several features still in development.
+This project is still under dev so some feature might not work 100% but If you want to contribute check doc.md and get an understanding then make a feature branch then make a pull request I'll chek it out 
+PyC is an experimental compiler that transforms a subset of Python-like syntax into executable machine code using the LLVM infrastructure. Developed by DarkStarStrix, it serves as a learning tool and a foundation for a lightweight compiler targeting Python-like code. Written primarily in C, with C++ and CUDA components, PyC is under active development and currently supports basic expressions, assignments, and if statements.
+Features
 
-## Features
+## Frontend:
+Lexer: Tokenizes input with Python-style indentation (INDENT, DEDENT) and supports keywords (if, else).
+Parser: Builds an AST for expressions (e.g., x + 42), assignments (e.g., x = 5), and if statements with blocks.
 
-PyC currently supports the following features:
 
-- **Frontend**: Loads source code, tokenizes it, and parses it into an Abstract Syntax Tree (AST).
-  - Supports basic expressions (e.g., numbers, identifiers, binary operations like `+`, `-`, `*`, `/`).
-- **IR Generation**: Converts the AST into LLVM Intermediate Representation (IR) for simple arithmetic operations.
-- **Backend**: 
-  - JIT (Just-In-Time) compilation for immediate execution.
-  - Object file generation with multithreaded compilation capabilities using available CPU cores.
-- **Optimization**: Applies basic LLVM optimization passes, such as instruction combining and Global Value Numbering (GVN).
-- **Cross-Platform**: Designed with portability in mind, though currently tested only on Windows.
-- **Testing**: Includes a basic test suite for the parser, covering numbers, identifiers, and binary operations.
-- **CUDA Integration**: Experimental (and currently undeveloped) CUDA-based tokenization in `kernel.cu`.
+## Symbol Table: 
+Tracks variables across scopes, integrated with LLVM IR generation.
 
-### Current Limitations
+## IR Generation: 
+Produces LLVM IR for expressions, assignments, and conditionals.
 
-- **Limited Language Support**: Only basic expressions (numbers, identifiers, and binary operations) are supported. Full Python syntax (e.g., loops, conditionals, functions) is not yet implemented.
-- **Incomplete Symbol Table**: Variable tracking and scoping are not fully functional.
-- **No Indentation Preprocessing**: Python’s indentation-based block structure is not yet processed.
-- **Experimental CUDA**: The CUDA parser (`parser.cu`) is a placeholder and not operational.
-- **Error Handling**: Lacks robust syntax and semantic error reporting.
+## Backend:
+JIT compilation for immediate execution.
+Object file generation with multithreaded compilation.
 
-## Directory Structure
 
-The project is organized as follows:
+Error Handling: Detailed error and warning reports with source context, logged to compiler_errors.log.
+Optimization: Applies LLVM passes (e.g., instruction combining, GVN).
+CUDA Integration: Experimental tokenization kernel (not yet functional).
+Testing: Parser test suite (test_parser.c) for basic constructs.
+Cross-Platform: Primarily tested on Windows, designed for portability.
+
+# Current Limitations
+
+Syntax Support: Limited to expressions, assignments, and if statements; lacks loops, functions, and full Python syntax.
+Symbol Table: Supports variables but not functions or complex types.
+Error Handling: Basic semantic checks; needs richer diagnostics.
+CUDA: Experimental and non-operational.
 
 ```
+Project Structure
 darkstarstrix-pyc/
-├── README.md           # Project documentation (this file)
-├── CMakeLists.txt      # CMake build configuration
-├── Hello.py            # Sample Python file for testing ("Hello, World!")
-├── hello.spec          # PyInstaller spec file for Hello.py
-├── kernel.cu           # CUDA kernel for tokenization (experimental)
-├── C_Files/            # Core C source files
-│   ├── backend.c       # Backend logic (JIT, object file generation)
-│   ├── codegen.c       # LLVM IR generation from AST
-│   ├── Core.cpp        # AST node management (C++)
-│   ├── error_handler.c # Basic error handling system
-│   ├── frontend.c      # Source code loading and preprocessing
-│   ├── IR.c            # Intermediate Representation utilities
-│   ├── ir_generator.c  # LLVM IR generation logic
-│   ├── main.c          # Compiler entry point
-│   ├── parser.cu       # CUDA-based parser (experimental)
-│   ├── parser.cuh      # CUDA parser header with AST construction
-│   ├── stack.c         # Stack implementation for parsing
-│   ├── symbol_table.c  # Symbol table management (incomplete)
-│   └── test_parser.c   # Parser unit tests
-├── Header_Files/       # Header files
-│   ├── backend.h       # Backend function declarations
-│   ├── Core.h          # AST node definitions
-│   ├── error_handler.h # Error handling declarations
-│   ├── frontend.h      # Frontend function declarations
-│   ├── lexer.h         # Lexer interface (assumed external)
-│   ├── parser.h        # Parser and AST definitions
-│   ├── stack.h         # Stack interface
-│   └── symbol_table.h  # Symbol table interface
-└── hello/              # PyInstaller output for Hello.py
-    ├── *.toc, *.pyz, etc. # Build artifacts from PyInstaller
+├── README.md               # Project overview
+├── CODE_OF_CONDUCT.md      # Community guidelines
+├── CONTRIBUTING.md         # Contribution instructions
+├── Doc.md                  # Technical documentation
+├── Hello.py                # Sample Python script
+├── hello.spec              # PyInstaller spec file
+├── LICENSE                 # Apache License 2.0
+├── AI/
+│   └── graph_compiler.c    # Computational graph compiler
+├── Core/
+│   ├── C_Files/
+│   │   ├── backend.c       # JIT and object file generation
+│   │   ├── codegen.c       # Additional codegen utilities
+│   │   ├── Core.cpp        # AST management
+│   │   ├── error_handler.c # Error reporting system
+│   │   ├── frontend.c      # Source code loading
+│   │   ├── IR.c            # IR utilities
+│   │   ├── ir_generator.c  # LLVM IR generation
+│   │   ├── lexer.c         # Tokenization with indentation
+│   │   ├── main.c          # Compiler entry point
+│   │   ├── parser.c        # AST construction
+│   │   ├── stack.c         # Stack for parsing
+│   │   ├── symbol_table.c  # Variable scoping
+│   │   └── test_parser.c   # Parser unit tests
+│   └── Header_Files/
+│       ├── backend.h
+│       ├── Core.h          # AST definitions
+│       ├── error_handler.h
+│       ├── frontend.h
+│       ├── lexer.h
+│       ├── parser.h        # Token and AST structures
+│       ├── stack.h
+│       └── symbol_table.h
+├── Examples/
+│   ├── matrix_mult.py      # Matrix multiplication example
+│   └── simple_graph.py     # Computational graph example
+├── hello/
+│   ├── Analysis-00.toc     # PyInstaller artifacts
+│   ├── base_library.zip
+│   ├── EXE-00.toc
+│   ├── hello.pkg
+│   ├── PKG-00.toc
+│   ├── PYZ-00.pyz
+│   ├── PYZ-00.toc
+│   ├── warn-hello.txt
+│   ├── xref-hello.html
+│   └── localpycs/
+└── Kernel/
+    ├── kernel.cu           # CUDA tokenization kernel
+    └── matrix_mult.cu      # CUDA matrix multiplication
 ```
 
-## Installation
+# Installation
+Prerequisites
 
-### Prerequisites
+CMake: 3.29.6 or later
+LLVM: Configured with path set in CMakeLists.txt
+C/C++ Compiler: C11 and C++14 compatible (e.g., GCC, MSVC)
+Python 3.x: For testing and PyInstaller
+CUDA Toolkit: Optional for experimental CUDA features
 
-To build and use PyC, you’ll need the following:
+# Build Steps
 
-- **CMake**: Version 3.29.6 or later.
-- **LLVM**: Installed and configured (update `CMakeLists.txt` with the correct path if needed).
-- **C/C++ Compiler**: Compatible with C11 and C++14 (e.g., MSVC, GCC).
-- **Python 3.x**: Required for testing and running PyInstaller.
-- **CUDA Toolkit**: Optional, only needed for experimental CUDA features (`parser.cu`).
-
-### Build Steps
-
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/DarkStarStrix/PyC.git
-   cd PyC
-   ```
-
-2. **Configure with CMake**:
-   - Edit `CMakeLists.txt` to set the `LLVM_DIR` variable to your LLVM installation path (default: `C:/Users/kunya/CLionProjects/PyC/llvm-project/build/lib/cmake/llvm`).
-   - Run the following commands:
-     ```bash
-     mkdir build
-     cd build
-     cmake ..
-     ```
-
-3. **Build the Project**:
-   ```bash
-   cmake --build . --config Release  # or Debug
-   ```
-   - The executable `MyCompiler` will be generated in `build/bin/`.
-
-## Usage
-
-Run the compiler using the following command:
-
-```bash
-./build/bin/MyCompiler [options] input_file
+Clone the repository:
+```
+git clone https://github.com/DarkStarStrix/PyC.git
+cd PyC
 ```
 
-### Command-Line Options
-
-- `-o <file>`: Specify the output file name (default: `a.out`).
-- `-O`: Enable LLVM optimization passes.
-- `-jit`: Perform JIT compilation and execute immediately (no object file generated).
-- `-v`: Enable verbose output for debugging.
-- `-h, --help`: Display the help message.
-
-### Example
-
-To compile a simple input file with verbose output and optimizations:
-
-```bash
-./build/bin/MyCompiler -v -O test_input.pc -o test_output
+Configure with CMake:
+```
+mkdir build
+cd build
+cmake ..
 ```
 
-- **Note**: The input file (`test_input.pc`) must contain supported expressions (e.g., `x + 42`). Full Python syntax, such as the `print("Hello, World!")` in `Hello.py`, is not yet supported. The `Hello.py` file is included as a sample for future development.
-
-### Sample Input File (`test_input.pc`)
-
+Build the project:
 ```
-x + 42
+cmake --build . --config Release
 ```
 
-This will generate LLVM IR, apply optimizations (if `-O` is used), and either execute it via JIT (with `-jit`) or produce an object file.
 
-## Current Progress
-
-### Implemented Features
-- **Lexer**: Basic tokenization of numbers, identifiers, and operators (via `lexer.h`, assumed external).
-- **Parser**: Constructs an AST from basic expressions (numbers, identifiers, binary operations).
-- **IR Generation**: Produces LLVM IR for simple arithmetic expressions.
-- **Backend**: Supports JIT compilation and multi-threaded object file generation.
-
-### Planned Features
-- **Full Python Support**: Process indentation and handle complex statements (e.g., loops, functions).
-- **Symbol Table**: Implement variable tracking and scoping.
-- **Error Handling**: Add robust syntax and semantic error reporting.
-- **CUDA Integration**: Develop a functional CUDA-based parser.
-
-For detailed tasks and updates, see the [Issues](https://github.com/DarkStarStrix/PyC/issues) tab on GitHub.
-
-## Testing
-
-Run the parser tests with:
-
-```bash
-./build/bin/MyCompiler
+The executable MyCompiler will be in build/bin/.
+Usage
+Run the compiler:
+```
+./build/bin/MyCompiler [options] input_file.pc
 ```
 
-- **Note**: This assumes `test_parser.c` is linked into the executable. The current test suite verifies parsing of numbers, identifiers, and binary operations.
+# Command-Line Options
 
-## Organizational Notes
+-o <file>: Output file (default: a.out)
+-O: Enable LLVM optimizations
+-jit: JIT compile and execute
+-v: Verbose output
+-h, --help: Show help
 
-- **Code Standards**: Follow C11 and C++14 standards. Include comments for clarity.
-- **Modularity**: The project separates concerns into frontend (`frontend.c`), IR generation (`ir_generator.c`, `codegen.c`), and backend (`backend.c`) components.
-- **Future Plans**: Expand language support, improve error handling, and integrate CUDA for parallel parsing.
+Example
+Compile a file with an if statement:
+```
+./build/bin/MyCompiler -v -O test.pc -o test
+```
+
+test.pc
+```
+x = 5
+if x:
+    y = x + 3
+```
+This generates LLVM IR, applies optimizations (if -O is used), and produces an executable or executes via JIT.
+How It Works
+
+Frontend (lexer.c, parser.c, frontend.c):
+Reads input, tokenizes it with indentation support, and builds an AST.
+Handles expressions, assignments, and if statements.
+
+
+Symbol Table (symbol_table.c):
+Tracks variables across scopes, storing LLVM values for IR generation.
+
+
+IR Generation (ir_generator.c, codegen.c, IR.c):
+Converts the AST to LLVM IR, supporting assignments and conditionals.
+
+
+Backend (backend.c):
+Compiles IR to machine code via JIT or object files, with multithreading.
+
+
+Error Handling (error_handler.c):
+Logs errors and warnings with source context to compiler_errors.log.
+
+
+CUDA (kernel.cu):
+Experimental tokenization kernel (not yet functional).
+
+
+# Current Progress
+## Implemented
+Lexer: Supports indentation, keywords, and basic tokens.
+Parser: Handles expressions, assignments, and if statements.
+Symbol Table: Manages variable scopes with LLVM integration.
+IR Generation: Generates IR for basic constructs.
+Error Handling: Detailed diagnostics with line/column info.
+
+## Planned
+
+Full Python syntax (loops, functions).
+Enhanced symbol table for functions and types.
+Functional CUDA integration.
+Advanced optimizations.
 
 ## Contributing
+Contributions are welcome! See CONTRIBUTING.md for guidelines:
 
-Contributions are welcome! To contribute:
+## Fork the repository.
+Create a feature branch: git checkout -b feature/your-feature.
+Commit changes: git commit -m "Add feature".
+Push and open a pull request.
 
-1. Fork the repository on GitHub.
-2. Create a branch for your feature or bug fix:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. Commit your changes with clear messages:
-   ```bash
-   git commit -m "Add feature X"
-   ```
-4. Push your branch and submit a pull request:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
+Adhere to C11/C++14 standards and include comments.
+License
+Licensed under the Apache License 2.0. See LICENSE for details.
+Acknowledgments
+Developed by DarkStarStrix. Feedback is welcome via GitHub Issues.
 
-- **Guidelines**: Adhere to C11/C++14 standards, add comments, and provide a clear pull request description.
-- **Feedback**: Use the "Provide feedback" link on GitHub for suggestions or questions.
-  
