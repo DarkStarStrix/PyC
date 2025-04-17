@@ -1,88 +1,67 @@
-# PyC Compiler Toolchain Documentation
+# PyC Compiler: High-Level Overview
 
-This document dives into the technical details of the PyC compiler toolchain, explaining its architecture, file roles, features, and potential use cases. PyC aims to compile Python adults-like code into machine code using LLVM, with experimental CUDA integration for GPU acceleration.
+What is PyC?
+PyC is an experimental compiler designed to translate a subset of Python-like code into executable machine code. It leverages the LLVM infrastructure for code generation and optimization, aiming to provide a lightweight and educational tool for understanding compiler design. Additionally, PyC explores CUDA integration for GPU acceleration, targeting AI and scientific computing workloads.
 
-## Compiler Stages
+## How It Works
+PyC follows a traditional compiler pipeline, broken into several stages:
 
-### 1. Frontend
-The frontend converts Python-like source code into a structured format for compilation.
+# Frontend:
+Lexer: Converts the input source code into tokens, handling Python-style indentation and keywords.
+Parser: Analyzes the tokens to build an Abstract Syntax Tree (AST), representing the program's structure.
 
-- **Lexer**: Tokenizes source code into numbers, identifiers, and operators. It’s extensible but currently basic (assumed in `lexer.h`).
-- **Parser**: Constructs an Abstract Syntax Tree (AST) from tokens, handling simple expressions (`parser.c`, `Core.cpp`).
-- **Indentation Preprocessing**: Planned but unimplemented, this will process Python’s indentation-based blocks (`frontend.c`).
 
-### 2. Intermediate Representation (IR) Generation
-This stage transforms the AST into LLVM IR, a portable low-level format.
+# Symbol Table:
+Manages variable scopes and tracks their usage throughout the code, preparing for IR generation.
 
-- **Code Generation**: Converts AST nodes into LLVM IR instructions, supporting basic arithmetic (`codegen.c`, `ir_generator.c`).
-- **Symbol Table**: Tracks variables and scopes, though currently incomplete (`symbol_table.c`).
 
-### 3. Backend
-The backend processes LLVM IR into executable machine code.
+# IR Generation:
+Transforms the AST into LLVM Intermediate Representation (IR), a low-level, platform-agnostic format.
 
-- **Optimization**: Applies LLVM passes like instruction combining and GVN (`backend.c`, `codegen.c`).
-- **JIT Compilation**: Executes code immediately for testing (`backend.c`).
-- **Object File Generation**: Produces executables with multi-threaded compilation (`backend.c`).
 
-## Experimental Features
+# Optimization:
+Applies various LLVM optimization passes to improve the efficiency of the generated code.
 
-### CUDA Integration
-PyC experiments with CUDA for parallel tokenization:
-- **CUDA Kernel**: `kernel.cu` defines a GPU-based tokenizer, splitting source code into tokens concurrently.
-- **Goal**: Combine GPU tokens with CPU parsing to accelerate the frontend, though it’s currently non-functional.
 
-## Error Handling
-A basic system (`error_handler.c`) reports errors with line and column numbers. Future improvements will add detailed diagnostics and source code snippets.
+# Backend:
+Compiles the optimized IR into machine code, either through Just-In-Time (JIT) compilation for immediate execution or by generating object files for later use.
 
-## Testing
-A test suite (`test_parser.c`) validates the parser for basic expressions. It will expand as PyC develops.
 
-## File Roles
+# Error Handling:
+Provides detailed error and warning messages, helping developers identify and fix issues in their code.
 
-- **`/AI/graph_compiler.c`**: Compiles computational graphs into LLVM IR, with potential GPU offloading.
-- **`/Core/C_Files/`**:
-  - `backend.c`: Manages JIT compilation, optimization, and multi-threaded object file generation.
-  - `codegen.c`: Generates LLVM IR from the AST.
-  - `Core.cpp`: Defines and manages AST nodes.
-  - `error_handler.c`: Implements error reporting.
-  - `frontend.c`: Loads source code and preprocesses indentation (planned).
-  - `IR.c`: Provides IR utilities and basic LLVM IR generation.
-  - `ir_generator.c`: Additional IR generation logic.
-  - `main.c`: Compiler entry point.
-  - `parser.c`: Parses tokens into an AST.
-  - `stack.c`: Stack implementation for parsing.
-  - `symbol_table.c`: Manages variables (incomplete).
-  - `test_parser.c`: Parser unit tests.
-- **`/Examples/`**: Sample scripts (`matrix_mult.py`, `simple_graph.py`) for testing.
-- **`/Kernel/`**:
-  - `kernel.cu`: Experimental CUDA tokenization kernel.
-  - `matrix_mult.cu`: CUDA kernel for matrix multiplication, showcasing GPU capabilities.
 
-## Technical Direction
+# CUDA Integration (Experimental):
+Aims to accelerate certain compiler tasks, like tokenization, using GPU parallelism.
 
-### Future Goals
-- **Full Python Support**: Parse complex constructs like loops and functions.
-- **Complete Symbol Table**: Enable full variable management.
-- **Enhanced Error Handling**: Provide detailed error messages.
-- **Functional CUDA**: Complete GPU-based tokenization.
 
-### Current Challenges
-- Limited syntax support restricts functionality.
-- Indentation and symbol table development are pending.
-- CUDA integration requires optimization and testing.
+# Key Components
+- Lexer and Parser: Handle the syntax of the Python-like language, including indentation-based blocks.
+- Symbol Table: Ensures variables are correctly scoped and accessible during compilation.
+- IR Generation: Bridges the gap between high-level code and machine instructions.
+- Backend: Manages code generation and execution, with support for multithreading.
+- Error Handling: Enhances the development experience with informative diagnostics.
+- CUDA Kernels: Explore the potential of GPU acceleration in compiler tasks.
 
-## Features in Detail
+# Current Capabilities
+- PyC can currently compile basic Python-like code, including:
 
-- **Frontend Parsing**: Tokenizes and builds an AST for basic expressions, laying the groundwork for Python syntax.
-- **IR Generation**: Produces LLVM IR, enabling optimization and portability.
-- **Backend Optimization**: Leverages LLVM passes for efficient code.
-- **Multi-threaded Compilation**: Uses CPU cores to speed up object file generation.
-- **CUDA Experimentation**: Aims to accelerate tokenization with GPU parallelism.
+Variable assignments (e.g., x = 5)
+Expressions (e.g., x + 42)
+If statements with indentation-based blocks
 
-## Use Cases
+It also provides:
 
-- **Educational Tool**: Ideal for learning compiler design, from lexing to code generation.
-- **Lightweight Compiler**: Once mature, it can compile small Python-like scripts into efficient binaries.
-- **AI and Scientific Computing**: With CUDA and graph compilation, PyC could target high-performance AI models or scientific computations.
+Detailed error reporting
+Basic optimizations
+Experimental GPU tokenization
 
-PyC’s modular design and ambitious goals make it a promising project for both learning and practical application, despite its current early stage.
+Future Directions
+The project aims to expand its capabilities to support:
+
+Full Python syntax, including loops and functions
+Advanced optimizations for performance
+Functional CUDA integration for accelerated compilation
+Enhanced symbol table for complex types and functions
+
+PyC is not just a compiler but a platform for learning and experimentation in compiler design, optimization, and GPU computing.
