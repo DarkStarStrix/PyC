@@ -8,15 +8,15 @@ PyC's architecture is designed to be modular and extensible, following a classic
 
 ## Core Components
 
-| Component          | Purpose                                                                 |
-|--------------------|-------------------------------------------------------------------------|
-| **Frontend**       | Tokenizes and parses Python-like source code into Abstract Syntax Trees (ASTs). |
-| **IR System**      | Generates optimized Intermediate Representation (IR) from the AST.       |
-| **Backend**        | Generates machine code or accelerated bytecode from IR, with support for CPU and GPU. |
-| **AI Graph Compiler** | Optimizes computational graphs for tensor workflows.                    |
-| **Memory Planner** | Dynamically allocates and minimizes tensor memory footprints.            |
-| **Custom Kernel Loader** | Integrates user-written `.cu` or `.cl` files into compiled pipelines.    |
-| **CLI Driver**     | Exposes compilation commands to users (`pyc build`, `pyc optimize`, etc.). |
+| Component                | Purpose                                                                               |
+|--------------------------|---------------------------------------------------------------------------------------|
+| **Frontend**             | Tokenizes and parses Python-like source code into Abstract Syntax Trees (ASTs).       |
+| **IR System**            | Generates optimized Intermediate Representation (IR) from the AST.                    |
+| **Backend**              | Generates machine code or accelerated bytecode from IR, with support for CPU and GPU. |
+| **AI Graph Compiler**    | Optimizes computational graphs for tensor workflows.                                  |
+| **Memory Planner**       | Dynamically allocates and minimizes tensor memory footprints.                         |
+| **Custom Kernel Loader** | Integrates user-written `.cu` or `.cl` files into compiled pipelines.                 |
+| **CLI Driver**           | Exposes compilation commands to users (`pyc build`, `pyc optimize`, etc.).            |
 
 ## Component Breakdown
 
@@ -61,7 +61,7 @@ PyC's architecture is designed to be modular and extensible, following a classic
 ## Engineering and Feature Set
 
 - **Modularity**: Independent components allow for easy extension and experimentation.  
-- **LLVM Integration**: Ensures portability and optimized code generation.  
+- **LLVM Integration** Ensures portability and optimized code generation.  
 - **Multithreading**: Accelerates backend compilation using multiple CPU cores.  
 - **GPU Acceleration**: Experimental use of CUDA for compiler tasks like tokenization.  
 - **AI Focus**: Specialized modules for optimizing AI workflows, including graph compilation and memory planning.  
@@ -74,9 +74,10 @@ PyC's architecture is designed to be modular and extensible, following a classic
 3. **Symbol Resolution**: Symbol table manages variable scopes for IR generation.  
 4. **IR Generation**: AST is converted to LLVM IR, incorporating optimizations.  
 5. **Optimization**: LLVM passes enhance IR efficiency.  
-6. **Code Generation**: Backend compiles IR to machine code or accelerated bytecode.  
+6. **Code Generation**: Backend compiles IR to machine code or faster bytecode.  
 7. **AI Workflow**: AI modules optimize computational graphs and manage tensor memory.  
 8. **Custom Kernels**: Users can integrate custom CUDA/OpenCL kernels for acceleration.  
 9. **CLI Commands**: Users interact with the compiler through a simple CLI interface.
 
-This architecture ensures PyC is functional, extensible, and aligned with its mission to accelerate AI workflows through optimized compilation and GPU integration.
+This architecture ensures PyC is functional, extensible,
+and aligned with its mission to speed up AI workflows through optimized compilation and GPU integration.

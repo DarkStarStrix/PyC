@@ -1,55 +1,57 @@
 # PyC: A Python-like Compiler Toolchain
 
-PyC is an experimental compiler that transforms a subset of Python-like syntax into executable machine code using the LLVM infrastructure. Developed by DarkStarStrix, it serves as a learning tool and a foundation for a lightweight compiler targeting Python-like code. Written primarily in C, with C++ and CUDA components, PyC is under active development and currently supports basic expressions, assignments, and if statements.
-Note: This project is still under development, so some features might not work 100%. If you want to contribute, check Doc.md for an understanding, then make a feature branch and open a pull request. I'll check it out.
+**Project CodeName:** `darkstarstrix-pyc`
 
-# Features
-## Frontend
-- Lexer: Tokenizes input with Python-style indentation (INDENT, DEDENT) and supports keywords (if, else).
-- Parser: Builds an Abstract Syntax Tree (AST) for expressions (e.g., x + 42), assignments (e.g., x = 5), and if statements with blocks.
+**Mission Statement:**  
+> Build a lightweight, high-performance Python compiler and optimization toolchain that speeds up AI workflows through graph optimizations, efficient tensor memory planning, and seamless custom kernel APIs — unified into a CLI-first architecture.
 
-# Symbol Table
-- Tracks variables across scopes, integrated with LLVM IR generation.
+PyC is an experimental compiler
+that transforms a subset of Python-like syntax into executable machine code using the LLVM infrastructure.
+It serves as both an educational tool and a foundation for a lightweight compiler targeting Python-like code,
+with a focus on AI and scientific computing workloads.
 
-# IR Generation
-- Produces LLVM IR for expressions, assignments, and conditionals.
+**Note:** This project is under active development. Some features, like the CLI interface, are now implemented, while others (e.g., full Python syntax, functional CUDA) are planned. Contributions are welcome—check `Doc.md` for an understanding of the project, then create a feature branch and open a pull request.
 
-# Backend
-- JIT compilation for immediate execution.
-- Object file generation with multithreaded compilation.
+## Features
 
-# Error Handling
-- Detailed error and warning reports with source context, logged to compiler_errors.log.
-
-# Optimization
-- Applies LLVM passes (e.g., instruction combining, GVN).
-
-# CUDA Integration
-- Experimental tokenization kernel (not yet functional).
-
-# Testing
-- Parser test suite (test_parser.c) for basic constructs.
-
-# Cross-Platform
-- Primarily tested on Windows, designed for portability.
-
-# Current Limitations
-
-Syntax Support: Limited to expressions, assignments, and if statements; lacks loops, functions, and full Python syntax.
-- Symbol Table: Supports variables but not functions or complex types.
-- Error Handling: Basic semantic checks; needs richer diagnostics.
-- CUDA: Experimental and non-operational.
+- **Frontend**:  
+  - Lexer and parser for Python-like syntax with indentation support.  
+  - Abstract Syntax Tree (AST) construction for expressions, assignments, and if statements.  
+- **Symbol Table**:  
+  - Manages variable scopes and integrates with LLVM IR generation (supports variables but not functions or complex types).  
+- **IR Generation**:  
+  - Converts AST to LLVM IR for expressions, assignments, and conditionals.  
+- **Backend**:  
+  - JIT compilation for immediate execution.  
+  - Object file generation with multithreaded compilation.  
+- **Optimization**:  
+  - Applies LLVM passes (e.g., instruction combining, GVN).  
+- **AI-Specific Modules**:  
+  - Graph compiler for tensor operations.  
+  - Memory planner for dynamic tensor memory allocation.  
+  - Optimizer for AI model runtime strategies.  
+  - Visualizer for computational graphs.  
+- **CUDA Integration**:  
+  - Experimental tokenization and matrix multiplication kernels (non-operational).  
+- **CLI Interface**:  
+  - Commands for building, optimizing, visualizing, and running Python-like scripts.  
+- **Cross-Platform**:  
+  - Primarily tested on Windows, designed for portability.
 
 ## Project Structure
-```
+
+```plaintext
 darkstarstrix-pyc/
 ├── README.md
+├── Architecture.md
 ├── CODE_OF_CONDUCT.md
 ├── CONTRIBUTING.md
 ├── Doc.md
 ├── Hello.py
 ├── hello.spec
 ├── LICENSE
+├── Result.md
+├── third_party/                # External libraries (e.g., CLI11.hpp)
 ├── AI/
 │   ├── graph_compiler.c
 │   ├── memory_planner.c
@@ -65,7 +67,7 @@ darkstarstrix-pyc/
 │   │   ├── IR.c
 │   │   ├── ir_generator.c
 │   │   ├── lexer.c
-│   │   ├── main.c
+│   │   ├── main.cpp           # Updated to C++ for CLI11 integration
 │   │   ├── parser.c
 │   │   ├── stack.c
 │   │   ├── symbol_table.c
@@ -102,120 +104,239 @@ darkstarstrix-pyc/
 ```
 
 ## Installation
-Prerequisites
 
-- CMake: 3.29.6 or later
-- LLVM: Configured with path set in CMakeLists.txt
-- C/C++ Compiler: C11 and C++14 compatible (e.g., GCC, MSVC)
-- Python 3.x: For testing and PyInstaller
-- CUDA Toolkit: Optional for experimental CUDA features
+### Prerequisites
 
-## Build Steps
+- **CMake**: 3.29.6 or later  
+- **LLVM**: Configured with a path set in `CMakeLists.txt`  
+- **C/C++ Compiler**: C11 and C++14 compatible (e.g., GCC, MSVC)  
+- **Python 3.x**: For testing and PyInstaller  
+- **CUDA Toolkit**: Optional for experimental CUDA features  
+- **CLI11**: Download `CLI11.hpp` from [GitHub](https://github.com/CLIUtils/CLI11) and place it in `third_party/`.
 
-1. Clone the repository:
-```
-git clone https://github.com/DarkStarStrix/PyC.git
-cd PyC
-```
+### Build Steps
 
-2. Configure with CMake:
-```
-mkdir build
-cd build
-cmake ..
-```
+1. Clone the repository:  
+   ```bash
+   git clone https://github.com/DarkStarStrix/PyC.git
+   cd PyC
+   ```
 
-3. Build the project:
-```
-cmake --build . --config Release
-```
+2. Configure with CMake:  
+   ```bash
+   mkdir build
+   cd build
+   cmake ..
+   ```
 
+3. Build the project:  
+   ```bash
+   cmake --build . --config Release
+   ```
 
-The executable MyCompiler will be in build/bin/.
+The executable `MyCompiler` will be in `build/bin/`.
 
-# Usage
-Run the compiler:
-```
-./build/bin/MyCompiler [options] input_file.pc
-```
+## Usage
 
-Command-Line Options
-
--o <file>: Output file (default: a.out)
--O: Enable LLVM optimizations
--jit: JIT compile and execute
--v: Verbose output
--h, --help: Show help
-
-# Example
-Compile a file with an if statement:
-```
-./build/bin/MyCompiler -v -O test.pc -o test
+Run the compiler using the CLI interface:  
+```bash
+./build/bin/MyCompiler [command] [options] input_file.pc
 ```
 
-test.pc
+### CLI Commands
+
+- `build file.pc`: Compiles and optimizes the Python-like script.  
+- `optimize file.pc --graph`: Applies graph/tensor optimizations.  
+- `visualize file.pc`: Outputs a visual computational graph diagram.  
+- `run file.pc`: Executes the optimized pipeline.  
+- `kernel register kernel.cu`: Registers a custom CUDA kernel into the runtime.
+
+### Example
+
+Compile a file with an if statement:  
+```bash
+./build/bin/MyCompiler build test.pc -o test
 ```
+
+**test.pc**  
+```python
 x = 5
 if x:
     y = x + 3
 ```
 
-This generates LLVM IR, applies optimizations (if -O is used), and produces an executable or executes via JIT.
+This generates LLVM IR, applies optimizations, and produces an executable.
 
-# How It Works
+### How it works
+```markdown
+## How It Works
 
-- Frontend (lexer.c, parser.c, frontend.c):
- - Reads input, tokenizes it with indentation support, and builds an AST.
- - Handles expressions, assignments, and if statements.
+PyC transforms Python code into optimized machine code through several stages:
+
+### 1. Compilation Pipeline
+
+```plaintext
+Python Code → IR → Computational Graph → Optimized CUDA/Machine Code
+     ↓            ↓           ↓                    ↓
+   Parser     LLVM IR    Graph Decomp      Memory Planning
+```
+
+### 2. Key Components
+
+#### Frontend Processing
+- Parses Python syntax into an Abstract Syntax Tree (AST)
+- Performs type inference and validation
+- Generates intermediate representation (IR)
+
+#### Graph Compilation
+```plaintext
+Input → Graph Construction → Decomposition → Optimization
+  ↓            ↓                 ↓              ↓
+Code     Tensor Operations    Sub-graphs     Memory Layout
+```
+
+#### Memory Management
+- Dynamic tensor allocation
+- Memory pool management
+- Smart buffer reuse
+- Cache-friendly data layouts
+
+#### CUDA Integration
+```plaintext
+Python Code → Optimized Graph → CUDA Kernels → Execution
+                    ↑                ↑
+            Custom Kernels ──────────┘
+```
+
+### 3. Usage Workflow
+
+1. **Installation**:
+   ```bash
+   # Install via package manager
+   pip install pyc-compiler
+   
+   # Or build from source
+   cmake --build .
+   ```
+
+2. **Write Python Code**:
+   ```python
+   # model.py
+   def matrix_multiply(a, b):
+       return a @ b
+   
+   def neural_network(x):
+       return matrix_multiply(x, weights)
+   ```
+
+3. **Compile & Optimize**:
+   ```bash
+   # Basic compilation
+   pyc build model.py
+   
+   # With graph optimization
+   pyc optimize model.py --graph
+   
+   # Register custom CUDA kernel
+   pyc kernel register custom_matmul.cu
+   ```
+
+4. **Execution**:
+   ```bash
+   # Run optimized code
+   pyc run model.py
+   ```
+
+### 4. Optimization Techniques
+
+#### Graph Level
+- Operation fusion
+- Dead code elimination
+- Memory access pattern optimization
+- Kernel fusion
+- Layout transformations
+
+#### Memory Level
+- Buffer reuse
+- Smart allocation
+- Minimal data movement
+- Cache optimization
+
+#### CUDA Integration
+- Custom kernel support
+- Automatic kernel selection
+- Memory transfer optimization
+- Stream management
+
+### 5. Performance Benefits
+
+- **Reduced Memory Usage**: Smart tensor management
+- **Faster Execution**: Optimized computational graphs
+- **GPU Acceleration**: Efficient CUDA kernels
+- **Lower Latency**: Minimized data transfers
+- **Better Cache Usage**: Optimized memory patterns
+
+### 6. Monitoring & Debug
+
+```bash
+# Generate optimization visualization
+pyc visualize model.py
+
+# View memory allocation patterns
+pyc analyze model.py --memory
+
+# Profile execution
+pyc profile model.py
+```
+
+### 7. API Integration
+
+```python
+from pyc import Compiler, Optimizer
+
+# Programmatic usage
+compiler = Compiler()
+optimizer = Optimizer(enable_cuda=True)
+
+# Compile and optimize
+graph = compiler.compile("model.py")
+optimized = optimizer.optimize(graph)
+
+# Execute
+result = optimized.run()
+```
+
+This architecture provides a seamless workflow from Python code to optimized execution, with full visibility into the optimization process and easy integration of custom components.
+```
+
+This section explains:
+1. The overall pipeline architecture
+2. How each component works together
+3. The user workflow from installation to execution
+4. Key optimization techniques
+5. Performance benefits
+6. Debugging capabilities
+7. API integration options
+
+The visual diagrams help users understand the flow of data and transformations through the system.
+```
 
 
-- Symbol Table (symbol_table.c):
- - Tracks variables across scopes, storing LLVM values for IR generation.
+## Contributing
 
+Contributions are welcome! See `CONTRIBUTING.md` for guidelines:  
 
-- IR Generation (ir_generator.c, codegen.c, IR.c):
- - Converts the AST to LLVM IR, supporting assignments and conditionals.
-
-
-- Backend (backend.c):
- - Compiles IR to machine code via JIT or object files, with multithreading.
-
-
-- Error Handling (error_handler.c):
- - Logs errors and warnings with source context to compiler_errors.log.
-
-
-- CUDA (kernel.cu):
- - Experimental tokenization kernel (not yet functional).
-
-
-# Current Progress
-## Implemented
-
-- Lexer: Supports indentation, keywords, and basic tokens.
-- Parser: Handles expressions, assignments, and if statements.
-- Symbol Table: Manages variable scopes with LLVM integration.
-- IR Generation: Generates IR for basic constructs.
-- Error Handling: Detailed diagnostics with line/column info.
-
-# Planned
-- Full Python syntax (loops, functions).
-- Enhanced symbol table for functions and types.
-- Functional CUDA integration.
-- Advanced optimizations.
-
-# Contributing
-Contributions are welcome! See CONTRIBUTING.md for guidelines:
-
-# Fork the repository.
-Create a feature branch: git checkout -b feature/your-feature.
-Commit changes: git commit -m "Add feature".
-Push and open a pull request.
+1. Fork the repository.  
+2. Create a feature branch: `git checkout -b feature/your-feature`.  
+3. Commit changes: `git commit -m "Add feature"`.  
+4. Push and open a pull request.  
 
 Adhere to C11/C++14 standards and include comments.
 
-# License
-Licensed under the Apache License 2.0. See LICENSE for details.
-Acknowledgments
-Developed by DarkStarStrix. Feedback is welcome via GitHub Issues.
+## License
 
+Licensed under the Apache License 2.0. See `LICENSE` for details.
+
+## Acknowledgments
+
+Developed by DarkStarStrix. Feedback is welcome via GitHub Issues.

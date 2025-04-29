@@ -1,38 +1,36 @@
-// Core/Header_Files/symbol_table.h - Symbol table for PyC compiler
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
-#include <llvm-c/Core.h>
 
-typedef enum {
-    SYMBOL_VARIABLE,
-    SYMBOL_FUNCTION,
-    SYMBOL_CLASS,
-    SYMBOL_MODULE,
-    SYMBOL_IMPORT
-} SymbolType;
+#define MAX_SYMBOLS 256
+#define MAX_NAME 64
 
-typedef struct SymbolNode {
-    char* name;
-    SymbolType type;
-    void* data;          // Type info or metadata
-    LLVMValueRef llvm_value; // LLVM IR value for variables
-    int scope_id;
-    struct SymbolNode* next;
-} SymbolNode;
+typedef struct {
+    char name[MAX_NAME];
+    char return_type[MAX_NAME];
+    char** param_types;
+    int num_params;
+} FunctionSymbol;
 
-typedef struct ScopeNode {
-    int scope_id;
-    SymbolNode* symbols;
-    struct ScopeNode* next;
-} ScopeNode;
+typedef struct {
+    char name[MAX_NAME];
+    char type[MAX_NAME]; // e.g., "list", "tensor"
+    char element_type[MAX_NAME];
+    int dimensions;
+} ComplexType;
 
-void init_symbol_table();
-void enter_scope();
-void exit_scope();
-void add_symbol(const char* name, SymbolType type, void* data, LLVMValueRef llvm_value);
-SymbolNode* lookup_symbol_current_scope(const char* name);
-SymbolNode* lookup_symbol(const char* name);
-void print_symbol_table();
-void cleanup_symbol_table();
+typedef struct {
+    char name[MAX_NAME];
+    char type[MAX_NAME];
+    void* llvm_value; // For LLVM IR integration
+} VariableSymbol;
+
+void symbol_table_init(void);
+void add_variable(const char* name, const char* type, void* llvm_value);
+VariableSymbol* lookup_variable(const char* name);
+void add_function(const char* name, const char* return_type, char** param_types, int num_params);
+FunctionSymbol* lookup_function(const char* name);
+void add_complex_type(const char* name, const char* type, const char* element_type, int dimensions);
+ComplexType* lookup_complex_type(const char* name);
+void symbol_table_free(void);
 
 #endif
