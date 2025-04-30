@@ -168,8 +168,6 @@ if x:
 This generates LLVM IR, applies optimizations, and produces an executable.
 
 ### How it works
-```markdown
-## How It Works
 
 PyC transforms Python code into optimized machine code through several stages:
 
