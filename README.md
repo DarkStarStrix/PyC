@@ -305,19 +305,6 @@ result = optimized.run()
 ```
 
 This architecture provides a seamless workflow from Python code to optimized execution, with full visibility into the optimization process and easy integration of custom components.
-```
-
-This section explains:
-1. The overall pipeline architecture
-2. How each component works together
-3. The user workflow from installation to execution
-4. Key optimization techniques
-5. Performance benefits
-6. Debugging capabilities
-7. API integration options
-
-The visual diagrams help users understand the flow of data and transformations through the system.
-```
 
 
 ## Contributing
