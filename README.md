@@ -10,7 +10,7 @@ that transforms a subset of Python-like syntax into executable machine code usin
 It serves as both an educational tool and a foundation for a lightweight compiler targeting Python-like code,
 with a focus on AI and scientific computing workloads.
 
-**Note:** This project is under active development. Some features, like the CLI interface, are now implemented, while others (e.g., full Python syntax, functional CUDA) are planned. Contributions are welcome—check `Doc.md` for an understanding of the project, then create a feature branch and open a pull request.
+**Note:** This project is under active development. Some features, like the CLI interface, are now implemented, while others (e.g., full Python syntax, functional CUDA) are planned. Contributions are welcome—check `Doc.md` for an understanding of the project, then create a feature branch and open a pull request
 
 ## Features
 
