@@ -162,3 +162,10 @@ Token get_next_token(void) {
         }
     }
 }
+
+Token lexer_peek_token(void) {
+    Lexer saved = lexer;
+    Token token = get_next_token();
+    lexer = saved;
+    return token;
+}

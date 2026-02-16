@@ -1,6 +1,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "Core.h"
+
 typedef enum {
     TOKEN_NUMBER,
     TOKEN_IDENTIFIER,
@@ -26,4 +28,4 @@ typedef struct {
 
 ASTNode* parse(void);
 
-#endif
+#endif // PARSER_H

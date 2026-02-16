@@ -175,3 +175,11 @@ void cleanup_ir_generator(void) {
     ir_state.len = 0;
     symbol_table_free();
 }
+
+void generate_ir(ASTNode* ast_root) {
+    ir_generator_generate(ast_root);
+}
+
+void cleanup_ir_generator(void) {
+    ir_generator_cleanup();
+}
