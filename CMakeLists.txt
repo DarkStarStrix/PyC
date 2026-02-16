@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
-project(PyC_Core C CXX)
+project(PyC_Core C)
+
+option(ENABLE_OPTIMIZE "Enable optimize command contract" OFF)
+option(ENABLE_VISUALIZE "Enable visualize command contract" OFF)
+option(ENABLE_KERNEL "Enable kernel command contract" OFF)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)

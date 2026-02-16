@@ -1,32 +1,28 @@
-#ifndef PARSER_H
-#define PARSER_H
+#ifndef PYC_PARSER_H
+#define PYC_PARSER_H
+
+#include <stddef.h>
+#include "lexer.h"
 
 typedef enum {
-    TOKEN_NUMBER,
-    TOKEN_IDENTIFIER,
-    TOKEN_PLUS,
-    TOKEN_MINUS,
-    TOKEN_MULTIPLY,
-    TOKEN_DIVIDE,
-    TOKEN_ASSIGN,
-    TOKEN_COLON,
-    TOKEN_IF,
-    TOKEN_ELSE,
-    TOKEN_WHILE,
-    TOKEN_DEF,
-    TOKEN_INDENT,
-    TOKEN_DEDENT,
-    TOKEN_NEWLINE,
-    TOKEN_EOF
-} TokenType;
+    AST_NUMBER,
+    AST_IDENTIFIER,
+    AST_BINARY_ADD,
+    AST_ASSIGNMENT,
+    AST_PROGRAM
+} ASTNodeType;
 
-typedef struct {
-    TokenType type;
-    char value[256];
-} Token;
+typedef struct ASTNode {
+    ASTNodeType type;
+    char* value;
+    struct ASTNode* left;
+    struct ASTNode* right;
+    struct ASTNode** statements;
+    size_t statement_count;
+    int line;
+} ASTNode;
 
-typedef struct ASTNode ASTNode;
+ASTNode* parse_tokens(TokenArray tokens);
+void free_ast(ASTNode* node);
 
-ASTNode* parse();
-
-#endif
+#endif // PARSER_H
