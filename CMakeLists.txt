@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(PyC_Core C CXX)
+project(PyC_Core C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -21,6 +21,7 @@ target_include_directories(pyc_foundation PUBLIC ${HEADER_DIR})
 add_executable(pyc
     Core/C_Files/ci_main.c
 )
+target_link_libraries(pyc PRIVATE pyc_core)
 
 target_link_libraries(pyc PRIVATE pyc_foundation)
 
