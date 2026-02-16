@@ -1,145 +1,177 @@
-// Core/C_Files/ir_generator.c - LLVM IR generation for PyC compiler
 #include "Core.h"
 #include "symbol_table.h"
-#include "error_handler.h"
-#include <llvm-c/Core.h>
-#include <llvm-c/Target.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
-LLVMContextRef context;
-LLVMModuleRef module;
-LLVMBuilderRef builder;
+typedef struct {
+    char* data;
+    size_t len;
+    size_t cap;
+    int temp_id;
+    int label_id;
+} IRState;
 
-void init_ir_generator() {
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
-    context = LLVMContextCreate();
-    module = LLVMModuleCreateWithNameInContext("pyc_module", context);
-    builder = LLVMCreateBuilderInContext(context);
-}
+static IRState ir_state;
 
-LLVMValueRef ast_to_llvm_ir(ASTNode* node) {
-    if (!node) return NULL;
-
-    switch (node->type) {
-        case NODE_EXPRESSION:
-            switch (node->expr.type) {
-                case EXPR_NUMBER:
-                    return LLVMConstInt(LLVMInt32TypeInContext(context), atoi(node->expr.value), 0);
-                case EXPR_VARIABLE: {
-                    SymbolNode* symbol = lookup_symbol(node->expr.value);
-                    if (!symbol || !symbol->llvm_value) {
-                        report_error(0, 0, "Undefined variable '%s'", node->expr.value);
-                        return NULL;
-                    }
-                    return LLVMBuildLoad(builder, symbol->llvm_value, node->expr.value);
-                }
-                case EXPR_BINARY_OP: {
-                    LLVMValueRef left = ast_to_llvm_ir(node->expr.left);
-                    LLVMValueRef right = ast_to_llvm_ir(node->expr.right);
-                    if (!left || !right) return NULL;
-                    switch (node->expr.op) {
-                        case TOKEN_PLUS: return LLVMBuildAdd(builder, left, right, "addtmp");
-                        case TOKEN_MINUS: return LLVMBuildSub(builder, left, right, "subtmp");
-                        case TOKEN_MULTIPLY: return LLVMBuildMul(builder, left, right, "multmp");
-                        case TOKEN_DIVIDE: return LLVMBuildSDiv(builder, left, right, "divtmp");
-                        default:
-                            report_error(0, 0, "Unknown operator");
-                            return NULL;
-                    }
-                }
-            }
-            break;
-
-        case NODE_ASSIGNMENT: {
-            LLVMValueRef value = ast_to_llvm_ir(node->assign.value);
-            if (!value) return NULL;
-            SymbolNode* symbol = lookup_symbol_current_scope(node->assign.name);
-            if (!symbol) {
-                LLVMValueRef var = LLVMBuildAlloca(builder, LLVMInt32TypeInContext(context), node->assign.name);
-                add_symbol(node->assign.name, SYMBOL_VARIABLE, NULL, var);
-                symbol = lookup_symbol(node->assign.name);
-            }
-            LLVMBuildStore(builder, value, symbol->llvm_value);
-            return value;
-        }
-
-        case NODE_IF_STATEMENT: {
-            LLVMValueRef condition = ast_to_llvm_ir(node->if_stmt.condition);
-            if (!condition) return NULL;
-
-            LLVMBasicBlockRef then_block = LLVMAppendBasicBlock(LLVMGetInsertBlock(builder)->parent, "then");
-            LLVMBasicBlockRef else_block = node->if_stmt.else_body ? 
-                LLVMAppendBasicBlock(LLVMGetInsertBlock(builder)->parent, "else") : NULL;
-            LLVMBasicBlockRef end_block = LLVMAppendBasicBlock(LLVMGetInsertBlock(builder)->parent, "end");
-
-            LLVMBuildCondBr(builder, condition, then_block, else_block ? else_block : end_block);
-
-            LLVMPositionBuilderAtEnd(builder, then_block);
-            enter_scope();
-            ast_to_llvm_ir(node->if_stmt.body);
-            exit_scope();
-            LLVMBuildBr(builder, end_block);
-
-            if (else_block) {
-                LLVMPositionBuilderAtEnd(builder, else_block);
-                enter_scope();
-                ast_to_llvm_ir(node->if_stmt.else_body);
-                exit_scope();
-                LLVMBuildBr(builder, end_block);
-            }
-
-            LLVMPositionBuilderAtEnd(builder, end_block);
-            return NULL;
-        }
-
-        case NODE_BLOCK:
-            for (int i = 0; i < node->block.num_statements; i++) {
-                ast_to_llvm_ir(node->block.statements[i]);
-            }
-            return NULL;
-
-        default:
-            report_error(0, 0, "Unsupported AST node type %d", node->type);
-            return NULL;
+static char* ir_strdup(const char* src) {
+    size_t n = strlen(src) + 1;
+    char* out = (char*)malloc(n);
+    if (!out) {
+        fprintf(stderr, "Out of memory while generating IR\n");
+        exit(1);
     }
-    return NULL;
+    memcpy(out, src, n);
+    return out;
 }
 
-LLVMValueRef generate_main_function(ASTNode* ast_root) {
-    LLVMTypeRef return_type = LLVMInt32TypeInContext(context);
-    LLVMTypeRef func_type = LLVMFunctionType(return_type, NULL, 0, 0);
-    LLVMValueRef main_func = LLVMAddFunction(module, "main", func_type);
 
-    LLVMBasicBlockRef entry = LLVMAppendBasicBlock(main_func, "entry");
-    LLVMPositionBuilderAtEnd(builder, entry);
+static void ensure_capacity(size_t extra) {
+    size_t needed = ir_state.len + extra + 1;
+    if (needed <= ir_state.cap) return;
+    size_t new_cap = ir_state.cap == 0 ? 512 : ir_state.cap;
+    while (new_cap < needed) new_cap *= 2;
+    char* resized = (char*)realloc(ir_state.data, new_cap);
+    if (!resized) {
+        fprintf(stderr, "Out of memory while generating IR\n");
+        exit(1);
+    }
+    ir_state.data = resized;
+    ir_state.cap = new_cap;
+}
 
-    ast_to_llvm_ir(ast_root);
-    LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+static void emit(const char* text) {
+    size_t n = strlen(text);
+    ensure_capacity(n);
+    memcpy(ir_state.data + ir_state.len, text, n);
+    ir_state.len += n;
+    ir_state.data[ir_state.len] = '\0';
+}
 
-    return main_func;
+static void emitf(const char* fmt, ...) {
+    char buffer[512];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+    emit(buffer);
+}
+
+static char* next_temp(void) {
+    char name[32];
+    snprintf(name, sizeof(name), "t%d", ir_state.temp_id++);
+    return ir_strdup(name);
+}
+
+static char* next_label(const char* prefix) {
+    char name[32];
+    snprintf(name, sizeof(name), "%s_%d", prefix, ir_state.label_id++);
+    return ir_strdup(name);
+}
+
+static char* generate_expr(ASTNode* node) {
+    if (node->type == AST_INTEGER_LITERAL) {
+        char lit[32];
+        snprintf(lit, sizeof(lit), "%d", node->as.integer_literal.value);
+        return ir_strdup(lit);
+    }
+
+    if (node->type == AST_IDENTIFIER) {
+        if (!lookup_variable(node->as.identifier.name)) {
+            fprintf(stderr, "Undefined identifier in IR generation: %s\n", node->as.identifier.name);
+            exit(1);
+        }
+        return ir_strdup(node->as.identifier.name);
+    }
+
+    if (node->type == AST_BINARY_EXPRESSION) {
+        char* left = generate_expr(node->as.binary_expression.left);
+        char* right = generate_expr(node->as.binary_expression.right);
+        char* out = next_temp();
+
+        const char* op = "add";
+        switch (node->as.binary_expression.op) {
+            case AST_OP_ADD: op = "add"; break;
+            case AST_OP_SUB: op = "sub"; break;
+            case AST_OP_MUL: op = "mul"; break;
+            case AST_OP_DIV: op = "div"; break;
+        }
+        emitf("%s = %s %s, %s\n", out, op, left, right);
+
+        free(left);
+        free(right);
+        return out;
+    }
+
+    fprintf(stderr, "Unsupported expression node in IR generation\n");
+    exit(1);
+}
+
+static void generate_statement(ASTNode* node) {
+    if (node->type == AST_ASSIGNMENT) {
+        char* value = generate_expr(node->as.assignment.value);
+        if (!lookup_variable(node->as.assignment.name)) {
+            add_variable(node->as.assignment.name, "int", NULL);
+        }
+        emitf("store %s, %s\n", value, node->as.assignment.name);
+        free(value);
+        return;
+    }
+
+    if (node->type == AST_IF_STATEMENT) {
+        char* condition = generate_expr(node->as.if_statement.condition);
+        char* then_label = next_label("if_then");
+        char* end_label = next_label("if_end");
+
+        emitf("br %s, %s, %s\n", condition, then_label, end_label);
+        emitf("%s:\n", then_label);
+
+        for (size_t i = 0; i < node->as.if_statement.body_count; ++i) {
+            generate_statement(node->as.if_statement.body_statements[i]);
+        }
+
+        emitf("jmp %s\n", end_label);
+        emitf("%s:\n", end_label);
+
+        free(condition);
+        free(then_label);
+        free(end_label);
+        return;
+    }
+
+    fprintf(stderr, "Unsupported statement node in IR generation\n");
+    exit(1);
+}
+
+const char* generate_ir_string(ASTNode* ast_root) {
+    if (!ast_root || ast_root->type != AST_PROGRAM) {
+        fprintf(stderr, "AST root must be AST_PROGRAM\n");
+        exit(1);
+    }
+
+    symbol_table_init();
+    ir_state.len = 0;
+    ir_state.temp_id = 0;
+    ir_state.label_id = 0;
+    emit("");
+
+    for (size_t i = 0; i < ast_root->as.program.statement_count; ++i) {
+        generate_statement(ast_root->as.program.statements[i]);
+    }
+
+    return ir_state.data;
 }
 
 void generate_ir(ASTNode* ast_root) {
-    init_ir_generator();
-    init_symbol_table();
-    generate_main_function(ast_root);
-
-    char* error = NULL;
-    LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
-    if (error) {
-        report_error(0, 0, "Module verification failed: %s", error);
-        LLVMDisposeMessage(error);
-    }
-
-    LLVMDumpModule(module);
+    const char* ir = generate_ir_string(ast_root);
+    printf("%s", ir);
 }
 
-void cleanup_ir_generator() {
-    cleanup_symbol_table();
-    LLVMDisposeBuilder(builder);
-    LLVMDisposeModule(module);
-    LLVMContextDispose(context);
+void cleanup_ir_generator(void) {
+    free(ir_state.data);
+    ir_state.data = NULL;
+    ir_state.cap = 0;
+    ir_state.len = 0;
+    symbol_table_free();
 }
