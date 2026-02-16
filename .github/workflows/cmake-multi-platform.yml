@@ -28,8 +28,8 @@ jobs:
       - name: Configure
         run: cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF
 
-      - name: Build stable targets
-        run: cmake --build build --config Release --parallel --target pyc pyc_core pyc_foundation
+      - name: Build
+        run: cmake --build build --config Release --parallel
 
       - name: Run tests (if present)
         run: ctest --test-dir build -C Release --output-on-failure

@@ -15,19 +15,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure (CMake)
-        run: cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF
-
-      - name: Build stable targets
-        run: cmake --build build --config Release --parallel --target pyc pyc_core pyc_foundation
-
-      - name: Run CI driver
-        run: ./build/pyc
-
-      - name: List built artifacts
-        run: |
-          echo "Built files:"
-          find build -maxdepth 3 -type f | sort
+    - uses: actions/checkout@v4
+    - name: configure
+      run: ./configure
+    - name: lint C signatures
+      run: cc -std=c11 -Wall -Wextra -Werror=implicit-function-declaration -Werror=incompatible-pointer-types -Werror=int-conversion -ICore/Header_Files -fsyntax-only Core/C_Files/lexer.c Core/C_Files/parser.c Core/C_Files/symbol_table.c Core/C_Files/error_handler.c Core/C_Files/frontend.c
+    - name: make
+      run: make
+    - name: make check
+      run: make check
+    - name: make distcheck
+      run: make distcheck

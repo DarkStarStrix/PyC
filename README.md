@@ -51,7 +51,8 @@ darkstarstrix-pyc/
 ├── hello.spec
 ├── LICENSE
 ├── Result.md
-├── third_party/                # External libraries (e.g., CLI11.hpp)
+├── third_party/
+│   └── main.cpp
 ├── AI/
 │   ├── graph_compiler.c
 │   ├── memory_planner.c
@@ -67,7 +68,7 @@ darkstarstrix-pyc/
 │   │   ├── IR.c
 │   │   ├── ir_generator.c
 │   │   ├── lexer.c
-│   │   ├── main.cpp           # Updated to C++ for CLI11 integration
+│   │   ├── main.c
 │   │   ├── parser.c
 │   │   ├── stack.c
 │   │   ├── symbol_table.c
@@ -77,6 +78,7 @@ darkstarstrix-pyc/
 │       ├── Core.h
 │       ├── error_handler.h
 │       ├── frontend.h
+│       ├── graph_compiler.h
 │       ├── graph.h
 │       ├── ir_generator.h
 │       ├── lexer.h
@@ -107,12 +109,12 @@ darkstarstrix-pyc/
 
 ### Prerequisites
 
-- **CMake**: 3.29.6 or later  
+- **CMake**: 3.10 or later  
 - **LLVM**: Configured with a path set in `CMakeLists.txt`  
 - **C/C++ Compiler**: C11 and C++14 compatible (e.g., GCC, MSVC)  
 - **Python 3.x**: For testing and PyInstaller  
 - **CUDA Toolkit**: Optional for experimental CUDA features  
-- **CLI11**: Download `CLI11.hpp` from [GitHub](https://github.com/CLIUtils/CLI11) and place it in `third_party/`.
+- **CLI11**: Download `CLI11.hpp` from [GitHub](https://github.com/CLIUtils/CLI11) and place it at `third_party/CLI11.hpp`.
 
 ### Build Steps
 
@@ -134,13 +136,13 @@ darkstarstrix-pyc/
    cmake --build . --config Release
    ```
 
-The executable `MyCompiler` will be in `build/bin/`.
+The executable `PyC_Core` will be generated in the build output directory for your CMake generator (for example, `build/` or `build/Release/`).
 
 ## Usage
 
 Run the compiler using the CLI interface:  
 ```bash
-./build/bin/MyCompiler [command] [options] input_file.pc
+./build/PyC_Core [command] [options] input_file.pc
 ```
 
 ### CLI Commands
@@ -155,7 +157,7 @@ Run the compiler using the CLI interface:
 
 Compile a file with an if statement:  
 ```bash
-./build/bin/MyCompiler build test.pc -o test
+./build/PyC_Core build test.pc -o test
 ```
 
 **test.pc**  

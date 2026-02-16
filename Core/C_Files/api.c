@@ -1,241 +1,125 @@
+int api_init(void) {
+    return 1;
+}
+
 #include "api.h"
-#include "symbol_table.h"
+
+#include "adapter.h"
 #include "error_handler.h"
+#include "ir_generator.h"
+#include "lexer.h"
+#include "parser.h"
+#include "semantic.h"
+#include "symbol_table.h"
+
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 
-// Internal structures
-typedef struct {
-    int graph_optimization;
-    void* graph;
-    void* optimization_data;
-} OptimizationContext;
-
-typedef struct {
-    char* name;
-    void* data;
-    size_t size;
-} KernelInfo;
-
-// Static variables for internal state
-static KernelInfo* registered_kernels = NULL;
-static int kernel_count = 0;
-
-void compile_script(const char* filename) {
-    if (!filename) {
-        add_error("NULL filename provided");
-        return;
-    }
-
-    FILE* file = fopen(filename, "r");
-    if (!file) {
-        add_error("Failed to open file");
-        return;
-    }
-
-    // Read file content
-    char* source = NULL;
-    size_t size = 0;
-    fseek(file, 0, SEEK_END);
-    size = ftell(file);
-    rewind(file);
-    source = (char*)malloc(size + 1);
-    fread(source, 1, size, file);
-    source[size] = '\0';
-    fclose(file);
-
-    // Initialize components
-    init_error_handler(filename, source);
-    symbol_table_init();
-
-    // Lexical analysis
+static ApiStatus run_build_pipeline(const char* source, const BuildConfig* cfg) {
     TokenArray tokens = lexical_analysis(source);
-    if (has_errors()) {
-        free(source);
-        return;
+    for (size_t i = 0; i < tokens.count; ++i) {
+        if (tokens.data[i].type == TOKEN_INVALID) {
+            add_error("line %d: invalid token '%s'", tokens.data[i].line, tokens.data[i].lexeme);
+        }
     }
-
-    // Parsing
-    ASTNode* ast = parse_tokens(tokens);
     if (has_errors()) {
         free_tokens(tokens);
-        free(source);
-        return;
+        return API_STATUS_LEX_ERROR;
     }
 
-    // Semantic analysis
-    perform_semantic_analysis(ast);
-    if (has_errors()) {
+    ASTNode* ast = parse_tokens(tokens);
+    if (!ast) {
+        free_tokens(tokens);
+        add_error("parser failed: expected assignment lines like x = y + 1");
+        return API_STATUS_PARSE_ERROR;
+    }
+
+    if (perform_semantic_analysis(ast) != 0) {
         free_ast(ast);
         free_tokens(tokens);
-        free(source);
-        return;
+        return API_STATUS_SEMANTIC_ERROR;
     }
 
-    // Generate intermediate representation
     IRCode* ir = generate_ir(ast);
-    if (has_errors()) {
+    if (!ir) {
+        free_ast(ast);
+        free_tokens(tokens);
+        add_error("IR generation failed");
+        return API_STATUS_IR_ERROR;
+    }
+
+    if (emit_backend_output(ir, cfg->output_path, cfg->output_mode) != 0) {
+        add_error("backend output failed for '%s'", cfg->output_path);
         free_ir(ir);
         free_ast(ast);
         free_tokens(tokens);
-        free(source);
-        return;
+        return API_STATUS_BACKEND_ERROR;
     }
 
-    // Cleanup
     free_ir(ir);
     free_ast(ast);
     free_tokens(tokens);
+    return API_STATUS_OK;
+}
+
+ApiStatus build_script(const char* filename, const BuildConfig* cfg) {
+    if (!filename || !cfg || !cfg->output_path) {
+        return API_STATUS_INVALID_ARGUMENT;
+    }
+
+    char* source = NULL;
+    size_t size = 0;
+    char io_err[256] = {0};
+    if (adapter_read_file(filename, &source, &size, io_err, sizeof(io_err)) != 0) {
+        add_error("%s", io_err);
+        return API_STATUS_IO_ERROR;
+    }
+
+    init_error_handler(filename, source);
+    symbol_table_init();
+
+    ApiStatus status = run_build_pipeline(source, cfg);
+    if (status != API_STATUS_OK) {
+        print_errors();
+    }
+
     free(source);
+    return status;
 }
 
-void optimize_script(const char* filename, int graph_opt) {
-    OptimizationContext ctx = {0};
-    ctx.graph_optimization = graph_opt;
-
-    // Load IR from file
-    IRCode* ir = load_ir_from_file(filename);
-    if (!ir) {
-        add_error("Failed to load IR");
-        return;
-    }
-
-    // Build optimization graph
-    ctx.graph = build_dependency_graph(ir);
-
-    if (graph_opt) {
-        // Advanced optimizations
-        perform_constant_folding(&ctx);
-        eliminate_dead_code(&ctx);
-        optimize_data_flow(&ctx);
-        merge_common_subexpressions(&ctx);
-
-        // Additional graph optimizations
-        perform_loop_optimization(&ctx);
-        optimize_memory_layout(&ctx);
-    } else {
-        // Basic optimizations
-        perform_local_optimizations(&ctx);
-        optimize_memory_access(&ctx);
-    }
-
-    // Write optimized IR back
-    save_ir_to_file(ir, filename);
-
-    // Cleanup
-    free_dependency_graph(ctx.graph);
-    free_ir(ir);
+ApiStatus optimize_script(const char* filename, int graph_opt) {
+    (void)filename;
+    (void)graph_opt;
+#ifndef ENABLE_OPTIMIZE
+    return API_STATUS_FEATURE_DISABLED;
+#else
+    return API_STATUS_OK;
+#endif
 }
 
-void visualize_graph(const char* filename) {
-    // Load IR
-    IRCode* ir = load_ir_from_file(filename);
-    if (!ir) {
-        add_error("Failed to load IR for visualization");
-        return;
-    }
-
-    // Create graph representation
-    Graph* graph = create_graph_from_ir(ir);
-
-    // Generate DOT format
-    FILE* dot_file = fopen("graph.dot", "w");
-    if (!dot_file) {
-        add_error("Failed to create visualization file");
-        free_graph(graph);
-        free_ir(ir);
-        return;
-    }
-
-    write_graph_dot(graph, dot_file);
-    fclose(dot_file);
-
-    // Generate visualization using GraphViz
-    system("dot -Tpng graph.dot -o graph.png");
-
-    // Cleanup
-    free_graph(graph);
-    free_ir(ir);
+ApiStatus visualize_graph(const char* filename) {
+    (void)filename;
+#ifndef ENABLE_VISUALIZE
+    return API_STATUS_FEATURE_DISABLED;
+#else
+    return API_STATUS_OK;
+#endif
 }
 
-void run_script(const char* filename) {
-    // Load optimized IR
-    IRCode* ir = load_ir_from_file(filename);
-    if (!ir) {
-        add_error("Failed to load IR for execution");
-        return;
-    }
-
-    // Initialize runtime environment
-    RuntimeEnv* env = init_runtime_env();
-
-    // JIT compilation
-    void* compiled_code = jit_compile(ir);
-    if (!compiled_code) {
-        add_error("JIT compilation failed");
-        free_runtime_env(env);
-        free_ir(ir);
-        return;
-    }
-
-    // Execute
-    execute_jit_code(compiled_code, env);
-
-    // Cleanup
-    free_jit_code(compiled_code);
-    free_runtime_env(env);
-    free_ir(ir);
-}
-
-void register_kernel(const char* kernel_file) {
-    if (!kernel_file) {
-        add_error("NULL kernel file provided");
-        return;
-    }
-
-    // Load kernel
-    KernelInfo* new_kernel = (KernelInfo*)malloc(sizeof(KernelInfo));
-    new_kernel->name = strdup(kernel_file);
-
-    // Compile kernel using NVCC
-    char command[256];
-    snprintf(command, sizeof(command), "nvcc -ptx %s -o temp.ptx", kernel_file);
-    if (system(command) != 0) {
-        add_error("Kernel compilation failed");
-        free(new_kernel->name);
-        free(new_kernel);
-        return;
-    }
-
-    // Load compiled PTX
-    new_kernel->data = load_ptx_file("temp.ptx", &new_kernel->size);
-    if (!new_kernel->data) {
-        add_error("Failed to load compiled kernel");
-        free(new_kernel->name);
-        free(new_kernel);
-        return;
-    }
-
-    // Add to registry
-    registered_kernels = realloc(registered_kernels, (kernel_count + 1) * sizeof(KernelInfo));
-    registered_kernels[kernel_count++] = *new_kernel;
-
-    // Cleanup
-    remove("temp.ptx");
+ApiStatus register_kernel(const char* kernel_file) {
+    (void)kernel_file;
+#ifndef ENABLE_KERNEL
+    return API_STATUS_FEATURE_DISABLED;
+#else
+    return API_STATUS_OK;
+#endif
 }
 
 void cleanup_api(void) {
-    // Free registered kernels
-    for (int i = 0; i < kernel_count; i++) {
-        free(registered_kernels[i].name);
-        free(registered_kernels[i].data);
-    }
-    free(registered_kernels);
-    registered_kernels = NULL;
-    kernel_count = 0;
-
-    // Cleanup other subsystems
-    cleanup_error_handler();
     symbol_table_cleanup();
+    cleanup_error_handler();
+}
+
+void cleanup_api(void) {
+    api_cleanup();
 }

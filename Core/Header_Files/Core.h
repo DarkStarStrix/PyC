@@ -1,43 +1,58 @@
 #ifndef CORE_H
 #define CORE_H
 
-typedef enum {
-    NODE_EXPRESSION,
-    NODE_ASSIGNMENT,
-    NODE_IF_STATEMENT,
-    NODE_BLOCK
-} NodeType;
+#include <stddef.h>
 
 typedef enum {
-    EXPR_NUMBER,
-    EXPR_VARIABLE,
-    EXPR_BINARY_OP
-} ExprType;
+    AST_PROGRAM,
+    AST_ASSIGNMENT,
+    AST_IF_STATEMENT,
+    AST_INTEGER_LITERAL,
+    AST_IDENTIFIER,
+    AST_BINARY_EXPRESSION
+} ASTNodeType;
 
-typedef struct ASTNode {
-    NodeType type;
+typedef enum {
+    AST_OP_ADD,
+    AST_OP_SUB,
+    AST_OP_MUL,
+    AST_OP_DIV
+} ASTBinaryOperator;
+
+typedef struct ASTNode ASTNode;
+
+struct ASTNode {
+    ASTNodeType type;
     union {
         struct {
-            ExprType type;
-            char value[256];
-            struct ASTNode* left;
-            struct ASTNode* right;
-            int op; // TOKEN_PLUS, TOKEN_MINUS, etc.
-        } expr;
+            ASTNode** statements;
+            size_t statement_count;
+            size_t statement_capacity;
+        } program;
         struct {
             char name[256];
-            struct ASTNode* value;
-        } assign;
+            ASTNode* value;
+        } assignment;
         struct {
-            struct ASTNode* condition;
-            struct ASTNode* body;
-            struct ASTNode* else_body;
-        } if_stmt;
+            ASTNode* condition;
+            ASTNode** body_statements;
+            size_t body_count;
+            size_t body_capacity;
+        } if_statement;
         struct {
-            struct ASTNode** statements;
-            int num_statements;
-        } block;
-    };
-} ASTNode;
+            int value;
+        } integer_literal;
+        struct {
+            char name[256];
+        } identifier;
+        struct {
+            ASTBinaryOperator op;
+            ASTNode* left;
+            ASTNode* right;
+        } binary_expression;
+    } as;
+};
+
+void ast_free(ASTNode* node);
 
 #endif
