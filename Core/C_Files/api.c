@@ -1,3 +1,7 @@
+int api_init(void) {
+    return 1;
+}
+
 #include "api.h"
 #include "symbol_table.h"
 #include "error_handler.h"
@@ -46,7 +50,7 @@ void compile_script(const char* filename) {
     fclose(file);
 
     // Initialize components
-    init_error_handler(filename, source);
+    error_handler_init(filename, source);
     symbol_table_init();
 
     // Lexical analysis
@@ -225,7 +229,7 @@ void register_kernel(const char* kernel_file) {
     remove("temp.ptx");
 }
 
-void cleanup_api(void) {
+void api_cleanup(void) {
     // Free registered kernels
     for (int i = 0; i < kernel_count; i++) {
         free(registered_kernels[i].name);
@@ -236,6 +240,10 @@ void cleanup_api(void) {
     kernel_count = 0;
 
     // Cleanup other subsystems
-    cleanup_error_handler();
+    error_handler_cleanup();
     symbol_table_cleanup();
+}
+
+void cleanup_api(void) {
+    api_cleanup();
 }

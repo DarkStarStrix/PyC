@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 
 // External LLVM module from IR generator
 extern LLVMModuleRef module;
@@ -21,18 +22,30 @@ typedef struct {
     const char* output_filename;
 } CompileThreadData;
 
-// Initialize backend
-void initialize_backend() {
+
+
+
+static unsigned int backend_detect_cores(void) {
+#ifdef _SC_NPROCESSORS_ONLN
+    long cores = sysconf(_SC_NPROCESSORS_ONLN);
+    return cores > 0 ? (unsigned int)cores : 1U;
+#else
+    return 1U;
+#endif
+}
+
+int backend_init(void) {
     // Initialize LLVM targets
     LLVMInitializeAllTargetInfos();
     LLVMInitializeAllTargets();
     LLVMInitializeAllTargetMCs();
     LLVMInitializeAllAsmParsers();
     LLVMInitializeAllAsmPrinters();
+    return 1;
 }
 
 // JIT compile and execute
-int jit_compile_and_execute() {
+int backend_jit_compile_and_execute(void) {
     char* error = NULL;
     LLVMExecutionEngineRef engine;
     
@@ -77,7 +90,7 @@ void* compile_thread_function(void* arg) {
 }
 
 // Optimize the module
-void optimize_module() {
+void backend_optimize_module(void) {
     LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
     
     // Add optimization passes
@@ -95,7 +108,7 @@ void optimize_module() {
 }
 
 // Compile to object file
-int compile_to_object(const char* output_filename) {
+int backend_compile_to_object(const char* output_filename) {
     char* error = NULL;
     
     // Get host triple
@@ -154,10 +167,10 @@ int compile_to_object(const char* output_filename) {
 }
 
 // Parallel compilation using multiple cores
-void parallel_compile(const char* output_base_filename, int num_cores) {
+void backend_parallel_compile(const char* output_base_filename, int num_cores) {
     if (num_cores <= 1) {
         // If only one core, just compile normally
-        compile_to_object(output_base_filename);
+        backend_compile_to_object(output_base_filename);
         return;
     }
     
@@ -196,25 +209,28 @@ void parallel_compile(const char* output_base_filename, int num_cores) {
 }
 
 // Main backend function
-void backend(const char* output_filename, int optimize) {
-    initialize_backend();
+void backend_run(const char* output_filename, int optimize) {
+    backend_init();
     
     // Optimize if requested
     if (optimize) {
         printf("Optimizing code...\n");
-        optimize_module();
+        backend_optimize_module();
     }
     
     // Get number of CPU cores
-    unsigned int cores = checkCores();
+    unsigned int cores = backend_detect_cores();
     printf("Detected %u CPU cores\n", cores);
     
     // JIT compile and execute
-    int result = jit_compile_and_execute();
+    int result = backend_jit_compile_and_execute();
     printf("Execution result: %d\n", result);
     
     // Compile to object file with parallel processing
-    parallel_compile(output_filename, cores);
+    backend_parallel_compile(output_filename, (int)cores);
     
     printf("Compilation complete!\n");
+}
+
+void backend_cleanup(void) {
 }

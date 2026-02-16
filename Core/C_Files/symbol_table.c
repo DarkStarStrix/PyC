@@ -58,6 +58,15 @@ typedef struct {
 static OverloadedFunction overloaded_functions[MAX_SYMBOLS];
 static int overload_count = 0;
 
+static char* symbol_strdup(const char* s) {
+    size_t len = strlen(s) + 1;
+    char* out = malloc(len);
+    if (out) {
+        memcpy(out, s, len);
+    }
+    return out;
+}
+
 // Initialize the symbol table
 void symbol_table_init(void) {
     var_count = 0;
@@ -100,7 +109,7 @@ void add_function(const char* name, const char* return_type, char** param_types,
     fs->param_types = malloc(num_params * sizeof(char*));
     fs->num_params = num_params;
     for (int i = 0; i < num_params; i++) {
-        fs->param_types[i] = strdup(param_types[i]);
+        fs->param_types[i] = symbol_strdup(param_types[i]);
     }
     func_count++;
 }
@@ -207,7 +216,7 @@ void add_function_overload(const char* name, FunctionSymbol new_overload) {
 }
 
 // Free the memory allocated for the symbol table
-void symbol_table_free(void) {
+void symbol_table_cleanup(void) {
     for (int i = 0; i < func_count; i++) {
         for (int j = 0; j < functions[i].num_params; j++) {
             free(functions[i].param_types[j]);

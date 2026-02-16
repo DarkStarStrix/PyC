@@ -1,21 +1,14 @@
 #ifndef IR_GENERATOR_H
 #define IR_GENERATOR_H
 
-typedef struct IRNode {
-    char* op;              // Operation (e.g., "add", "conv2d")
-    int* inputs;           // Indices of input tensors
-    int num_inputs;        // Number of inputs
-    char* output_tensor;   // Name of output tensor
-    int start_time;        // Execution start time
-    int end_time;          // Execution end time
-    size_t mem_offset;     // Memory offset for output tensor
-    size_t mem_size;       // Memory size for output tensor
-    struct IRNode* next;   // Next IR instruction
-} IRNode;
+#include "Core.h"
 
-extern IRNode* ir; // Global IR linked list
+void ir_generator_init(void);
+void ir_generator_generate(ASTNode* ast_root);
+void ir_generator_cleanup(void);
 
-// Function to generate IR from computational graph and memory planner
-void generate_ir();
+/* Backward-compat wrappers */
+void generate_ir(ASTNode* ast_root);
+void cleanup_ir_generator(void);
 
 #endif // IR_GENERATOR_H

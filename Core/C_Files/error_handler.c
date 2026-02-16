@@ -6,6 +6,17 @@
 #include <string.h>
 
 // Global error state
+static void parse_source_lines(const char* source);
+
+static char* error_strdup(const char* s) {
+    size_t len = strlen(s) + 1;
+    char* out = (char*)malloc(len);
+    if (out) {
+        memcpy(out, s, len);
+    }
+    return out;
+}
+
 static ErrorState error_state = {
     .has_error = 0,
     .error_count = 0,
@@ -22,14 +33,14 @@ static int line_count = 0;
 static FILE* error_log = NULL;
 
 // Initialize the error handler
-void init_error_handler(const char* filename, const char* source) {
-    cleanup_error_handler();
+void error_handler_init(const char* filename, const char* source) {
+    error_handler_cleanup();
 
     error_state.has_error = 0;
     error_state.error_count = 0;
     error_state.warning_count = 0;
-    error_state.filename = strdup(filename ? filename : "unknown");
-    error_state.source_code = strdup(source ? source : "");
+    error_state.filename = error_strdup(filename ? filename : "unknown");
+    error_state.source_code = error_strdup(source ? source : "");
 
     error_log = fopen("compiler_errors.log", "w");
     if (!error_log) {
@@ -160,7 +171,7 @@ void print_error_summary() {
 }
 
 // Cleanup resources
-void cleanup_error_handler() {
+void error_handler_cleanup(void) {
     if (source_lines) {
         for (int i = 0; i < line_count; i++) {
             free(source_lines[i]);
@@ -180,4 +191,12 @@ void cleanup_error_handler() {
     }
 
     line_count = 0;
+}
+
+void init_error_handler(const char* filename, const char* source) {
+    error_handler_init(filename, source);
+}
+
+void cleanup_error_handler(void) {
+    error_handler_cleanup();
 }

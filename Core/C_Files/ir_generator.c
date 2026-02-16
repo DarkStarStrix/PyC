@@ -12,7 +12,7 @@ LLVMContextRef context;
 LLVMModuleRef module;
 LLVMBuilderRef builder;
 
-void init_ir_generator() {
+void ir_generator_init(void) {
     LLVMInitializeNativeTarget();
     LLVMInitializeNativeAsmPrinter();
     context = LLVMContextCreate();
@@ -122,9 +122,9 @@ LLVMValueRef generate_main_function(ASTNode* ast_root) {
     return main_func;
 }
 
-void generate_ir(ASTNode* ast_root) {
-    init_ir_generator();
-    init_symbol_table();
+void ir_generator_generate(ASTNode* ast_root) {
+    ir_generator_init();
+    symbol_table_init();
     generate_main_function(ast_root);
 
     char* error = NULL;
@@ -137,9 +137,17 @@ void generate_ir(ASTNode* ast_root) {
     LLVMDumpModule(module);
 }
 
-void cleanup_ir_generator() {
-    cleanup_symbol_table();
+void ir_generator_cleanup(void) {
+    symbol_table_cleanup();
     LLVMDisposeBuilder(builder);
     LLVMDisposeModule(module);
     LLVMContextDispose(context);
+}
+
+void generate_ir(ASTNode* ast_root) {
+    ir_generator_generate(ast_root);
+}
+
+void cleanup_ir_generator(void) {
+    ir_generator_cleanup();
 }

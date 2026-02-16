@@ -10,7 +10,6 @@
 // Global variables
 char* source_code = NULL;
 char* processed_code = NULL;
-extern const char* input; // From lexer.h
 
 // Load source code from file
 char* load_source(const char* filename) {
@@ -169,15 +168,15 @@ void process_complex_statements(char** code) {
 }
 
 // Main frontend function
-void frontend(const char* filename, ASTNode** ast_root) {
+int frontend_process_file(const char* filename, ASTNode** ast_root) {
     // Load source code
     source_code = load_source(filename);
     if (!source_code) {
-        return;
+        return 0;
     }
     
     // Initialize symbol table
-    init_symbol_table();
+    symbol_table_init();
     
     // Preprocess indentation
     preprocess_indentation(&source_code);
@@ -185,24 +184,39 @@ void frontend(const char* filename, ASTNode** ast_root) {
     // Process complex statements
     process_complex_statements(&source_code);
     
-    // Set up lexer
-    input = source_code;
-    
     // Parse the code
-    *ast_root = parseProgram();
+    parser_init(source_code);
+    *ast_root = parser_parse();
+    parser_cleanup();
     
     // Print AST structure (for debugging)
     if (*ast_root) {
         printf("AST generated successfully\n");
     } else {
         fprintf(stderr, "Error: AST generation failed\n");
+        return 0;
     }
+
+    return 1;
 }
 
 // Helper function to detect Python file by extension
-int is_python_file(const char* filename) {
+int frontend_is_python_file(const char* filename) {
     const char* extension = strrchr(filename, '.');
     if (!extension) return 0;
     
     return strcmp(extension, ".py") == 0;
+}
+
+
+int frontend_init(void) {
+    source_code = NULL;
+    processed_code = NULL;
+    return 1;
+}
+
+void frontend_cleanup(void) {
+    free(source_code);
+    source_code = NULL;
+    processed_code = NULL;
 }

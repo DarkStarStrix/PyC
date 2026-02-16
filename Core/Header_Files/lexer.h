@@ -4,6 +4,9 @@
 #include "parser.h"
 
 void lexer_init(const char* source);
-Token get_next_token();
+void lexer_cleanup(void);
+Token get_next_token(void);
+Token lexer_peek_token(void);
+int lexer_current_line(void);
 
-#endif
+#endif // LEXER_H
