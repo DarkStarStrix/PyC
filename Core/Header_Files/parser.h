@@ -13,9 +13,6 @@ typedef enum {
     TOKEN_ASSIGN,
     TOKEN_COLON,
     TOKEN_IF,
-    TOKEN_ELSE,
-    TOKEN_WHILE,
-    TOKEN_DEF,
     TOKEN_INDENT,
     TOKEN_DEDENT,
     TOKEN_NEWLINE,
@@ -27,8 +24,8 @@ typedef struct {
     char value[256];
 } Token;
 
-void parser_init(const char* source);
-ASTNode* parser_parse(void);
-void parser_cleanup(void);
+#include "Core.h"
+
+ASTNode* parse(void);
 
 #endif // PARSER_H
