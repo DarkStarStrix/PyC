@@ -1,20 +1,22 @@
 cmake_minimum_required(VERSION 3.10)
 project(PyC_Core C CXX)
 
-# Set the source directory
+# Set source/header directories
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
-set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header")
+set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")
 
-# Gather all .c and .cpp files
+# Gather compiler sources and exclude test entrypoints
 file(GLOB SOURCES
     "${SRC_DIR}/*.c"
     "${SRC_DIR}/*.cpp"
 )
 
+list(FILTER SOURCES EXCLUDE REGEX ".*/test_.*\\.c$")
+
 # Add the executable
 add_executable(PyC_Core ${SOURCES})
 
-# Ensure the compiler can find your header files!
+# Ensure the compiler can find header files
 target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
 
 # (Optional) Set C++ standard if needed
