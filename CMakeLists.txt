@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(PyC C)
 
 option(PYC_BUILD_EXPERIMENTAL "Build experimental PyC_Core executable" OFF)
+option(PYC_BUILD_BENCHMARKS "Build benchmark targets" OFF)
 
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
 set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")
@@ -36,4 +37,13 @@ if(PYC_BUILD_EXPERIMENTAL)
   )
   target_include_directories(PyC_Core PRIVATE "${HEADER_DIR}")
   target_compile_features(PyC_Core PRIVATE c_std_11)
+endif()
+
+if(PYC_BUILD_BENCHMARKS)
+  add_executable(pyc_core_microbench
+      "${CMAKE_SOURCE_DIR}/benchmark/workloads/core_microbench.c"
+  )
+  target_include_directories(pyc_core_microbench PRIVATE "${HEADER_DIR}")
+  target_compile_features(pyc_core_microbench PRIVATE c_std_11)
+  target_link_libraries(pyc_core_microbench PRIVATE pyc_core)
 endif()
