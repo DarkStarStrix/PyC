@@ -24,12 +24,24 @@ add_executable(PyC_Core ${SOURCES})
 target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
 target_compile_features(PyC_Core PRIVATE c_std_11)
 
-if(ENABLE_OPTIMIZE)
-    target_compile_definitions(PyC_Core PRIVATE ENABLE_OPTIMIZE)
-endif()
-if(ENABLE_VISUALIZE)
-    target_compile_definitions(PyC_Core PRIVATE ENABLE_VISUALIZE)
-endif()
-if(ENABLE_KERNEL)
-    target_compile_definitions(PyC_Core PRIVATE ENABLE_KERNEL)
+# Authoritative runtime entrypoint.
+add_executable(pyc
+    "${CMAKE_SOURCE_DIR}/Third_Party/main.cpp"
+)
+target_include_directories(pyc
+    PRIVATE
+        "${CORE_INCLUDE_DIR}"
+        "${CMAKE_SOURCE_DIR}/Third_Party"
+)
+target_link_libraries(pyc PRIVATE pyc_core)
+
+option(BUILD_PYC_TESTS "Build optional test executables" OFF)
+if(BUILD_PYC_TESTS)
+    add_executable(test_parser
+        "${CORE_SRC_DIR}/test_parser.c"
+        "${CORE_SRC_DIR}/parser.c"
+        "${CORE_SRC_DIR}/lexer.c"
+        "${CORE_SRC_DIR}/error_handler.c"
+    )
+    target_include_directories(test_parser PRIVATE "${CORE_INCLUDE_DIR}")
 endif()
