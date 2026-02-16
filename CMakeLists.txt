@@ -1,47 +1,39 @@
 cmake_minimum_required(VERSION 3.10)
-project(PyC_Core C)
+project(PyC C)
 
-option(ENABLE_OPTIMIZE "Enable optimize command contract" OFF)
-option(ENABLE_VISUALIZE "Enable visualize command contract" OFF)
-option(ENABLE_KERNEL "Enable kernel command contract" OFF)
+option(PYC_BUILD_EXPERIMENTAL "Build experimental PyC_Core executable" OFF)
 
-# Set source/header directories
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
 set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")
 
-# Gather compiler sources and exclude test entrypoints
-file(GLOB SOURCES
-    "${SRC_DIR}/*.c"
-    "${SRC_DIR}/*.cpp"
+set(PYC_CORE_SOURCES
+    "${SRC_DIR}/adapter.c"
+    "${SRC_DIR}/semantic.c"
+    "${SRC_DIR}/stack.c"
+    "${SRC_DIR}/symbol_table.c"
 )
 
-list(FILTER SOURCES EXCLUDE REGEX ".*/test_.*\\.c$")
+add_library(pyc_core_obj OBJECT ${PYC_CORE_SOURCES})
+target_include_directories(pyc_core_obj PUBLIC "${HEADER_DIR}")
+target_compile_features(pyc_core_obj PUBLIC c_std_11)
 
-# Add the executable
-add_executable(PyC_Core ${SOURCES})
+add_library(pyc_core STATIC $<TARGET_OBJECTS:pyc_core_obj>)
+target_include_directories(pyc_core PUBLIC "${HEADER_DIR}")
+target_compile_features(pyc_core PUBLIC c_std_11)
 
-# Ensure the compiler can find header files
-target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
-target_compile_features(PyC_Core PRIVATE c_std_11)
+# Compatibility target kept for downstream consumers that still reference pyc_foundation.
+add_library(pyc_foundation STATIC $<TARGET_OBJECTS:pyc_core_obj>)
+target_include_directories(pyc_foundation PUBLIC "${HEADER_DIR}")
+target_compile_features(pyc_foundation PUBLIC c_std_11)
 
-# Authoritative runtime entrypoint.
-add_executable(pyc
-    "${CMAKE_SOURCE_DIR}/Third_Party/main.cpp"
-)
-target_include_directories(pyc
-    PRIVATE
-        "${CORE_INCLUDE_DIR}"
-        "${CMAKE_SOURCE_DIR}/Third_Party"
-)
+add_executable(pyc "${SRC_DIR}/ci_main.c")
 target_link_libraries(pyc PRIVATE pyc_core)
 
-option(BUILD_PYC_TESTS "Build optional test executables" OFF)
-if(BUILD_PYC_TESTS)
-    add_executable(test_parser
-        "${CORE_SRC_DIR}/test_parser.c"
-        "${CORE_SRC_DIR}/parser.c"
-        "${CORE_SRC_DIR}/lexer.c"
-        "${CORE_SRC_DIR}/error_handler.c"
-    )
-    target_include_directories(test_parser PRIVATE "${CORE_INCLUDE_DIR}")
+if(PYC_BUILD_EXPERIMENTAL)
+  add_executable(PyC_Core
+      "${SRC_DIR}/main.c"
+      $<TARGET_OBJECTS:pyc_core_obj>
+  )
+  target_include_directories(PyC_Core PRIVATE "${HEADER_DIR}")
+  target_compile_features(PyC_Core PRIVATE c_std_11)
 endif()
