@@ -2,22 +2,32 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["**"]
   pull_request:
-    branches: [ "main" ]
+
+concurrency:
+  group: c-cpp-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-
+  linux-build:
+    name: Configure + Build (Linux)
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure (CMake)
+        run: cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF
+
+      - name: Build stable targets
+        run: cmake --build build --config Release --parallel --target pyc pyc_core pyc_foundation
+
+      - name: Run CI driver
+        run: ./build/pyc
+
+      - name: List built artifacts
+        run: |
+          echo "Built files:"
+          find build -maxdepth 3 -type f | sort
