@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
-project(PyC_Core C CXX)
+project(PyC_Core C)
+
+option(ENABLE_OPTIMIZE "Enable optimize command contract" OFF)
+option(ENABLE_VISUALIZE "Enable visualize command contract" OFF)
+option(ENABLE_KERNEL "Enable kernel command contract" OFF)
 
 # Set source/header directories
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
@@ -18,12 +22,14 @@ add_executable(PyC_Core ${SOURCES})
 
 # Ensure the compiler can find header files
 target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
+target_compile_features(PyC_Core PRIVATE c_std_11)
 
-# (Optional) Set C++ standard if needed
-set_target_properties(PyC_Core PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-)
-
-# (Optional) Link libraries here, e.g.:
-# target_link_libraries(PyC_Core PRIVATE <library_name>)
+if(ENABLE_OPTIMIZE)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_OPTIMIZE)
+endif()
+if(ENABLE_VISUALIZE)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_VISUALIZE)
+endif()
+if(ENABLE_KERNEL)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_KERNEL)
+endif()

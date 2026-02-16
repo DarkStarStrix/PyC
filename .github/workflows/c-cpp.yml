@@ -2,19 +2,24 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["**"]
   pull_request:
-    branches: [ "main" ]
+
+concurrency:
+  group: c-cpp-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-
+  linux-build:
+    name: Configure + Build (Linux)
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
     - name: configure
       run: ./configure
+    - name: lint C signatures
+      run: cc -std=c11 -Wall -Wextra -Werror=implicit-function-declaration -Werror=incompatible-pointer-types -Werror=int-conversion -ICore/Header_Files -fsyntax-only Core/C_Files/lexer.c Core/C_Files/parser.c Core/C_Files/symbol_table.c Core/C_Files/error_handler.c Core/C_Files/frontend.c
     - name: make
       run: make
     - name: make check
