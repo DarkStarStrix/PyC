@@ -1,12 +1,30 @@
-#ifndef LEXER_H
-#define LEXER_H
+#ifndef PYC_LEXER_H
+#define PYC_LEXER_H
 
-#include "parser.h"
+#include <stddef.h>
 
-void lexer_init(const char* source);
-void lexer_cleanup(void);
-Token get_next_token(void);
-Token lexer_peek_token(void);
-int lexer_current_line(void);
+typedef enum {
+    TOKEN_IDENTIFIER,
+    TOKEN_NUMBER,
+    TOKEN_ASSIGN,
+    TOKEN_PLUS,
+    TOKEN_NEWLINE,
+    TOKEN_EOF,
+    TOKEN_INVALID
+} TokenType;
+
+typedef struct {
+    TokenType type;
+    char* lexeme;
+    int line;
+} Token;
+
+typedef struct {
+    Token* data;
+    size_t count;
+} TokenArray;
+
+TokenArray lexical_analysis(const char* source);
+void free_tokens(TokenArray tokens);
 
 #endif // LEXER_H

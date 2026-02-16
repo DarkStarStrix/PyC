@@ -1,40 +1,36 @@
 cmake_minimum_required(VERSION 3.10)
-project(PyC_Core C CXX)
+project(PyC_Core C)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(ENABLE_OPTIMIZE "Enable optimize command contract" OFF)
+option(ENABLE_VISUALIZE "Enable visualize command contract" OFF)
+option(ENABLE_KERNEL "Enable kernel command contract" OFF)
 
+set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
 set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")
-include_directories(${HEADER_DIR})
 
-# Build a stable core library that is currently portable and compiles in CI.
-add_library(pyc_foundation STATIC
-    Core/C_Files/stack.c
-    Core/C_Files/symbol_table.c
+set(SOURCES
+    ${SRC_DIR}/main.c
+    ${SRC_DIR}/api.c
+    ${SRC_DIR}/adapter.c
+    ${SRC_DIR}/lexer.c
+    ${SRC_DIR}/parser.c
+    ${SRC_DIR}/semantic.c
+    ${SRC_DIR}/ir_generator.c
+    ${SRC_DIR}/backend.c
+    ${SRC_DIR}/error_handler.c
+    ${SRC_DIR}/symbol_table.c
 )
 
-target_include_directories(pyc_foundation PUBLIC ${HEADER_DIR})
+add_executable(PyC_Core ${SOURCES})
+target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
+target_compile_features(PyC_Core PRIVATE c_std_11)
 
-option(PYC_BUILD_EXPERIMENTAL "Build experimental compiler sources" OFF)
-
-if(PYC_BUILD_EXPERIMENTAL)
-    message(STATUS "Building experimental PyC compiler sources")
-
-    add_executable(PyC_Core
-        Core/C_Files/Core.cpp
-        Core/C_Files/IR.c
-        Core/C_Files/api.c
-        Core/C_Files/backend.c
-        Core/C_Files/codegen.c
-        Core/C_Files/error_handler.c
-        Core/C_Files/frontend.c
-        Core/C_Files/ir_generator.c
-        Core/C_Files/lexer.c
-        Core/C_Files/main.c
-        Core/C_Files/parser.c
-    )
-
-    target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
+if(ENABLE_OPTIMIZE)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_OPTIMIZE)
+endif()
+if(ENABLE_VISUALIZE)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_VISUALIZE)
+endif()
+if(ENABLE_KERNEL)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_KERNEL)
 endif()

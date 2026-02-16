@@ -1,14 +1,13 @@
-#ifndef IR_GENERATOR_H
-#define IR_GENERATOR_H
+#ifndef PYC_IR_GENERATOR_H
+#define PYC_IR_GENERATOR_H
 
-#include "Core.h"
+#include "parser.h"
 
-void ir_generator_init(void);
-void ir_generator_generate(ASTNode* ast_root);
-void ir_generator_cleanup(void);
+typedef struct {
+    char* text;
+} IRCode;
 
-/* Backward-compat wrappers */
-void generate_ir(ASTNode* ast_root);
-void cleanup_ir_generator(void);
+IRCode* generate_ir(ASTNode* ast);
+void free_ir(IRCode* ir);
 
-#endif // IR_GENERATOR_H
+#endif
