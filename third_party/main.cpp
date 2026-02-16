@@ -1,4 +1,4 @@
-#include "third_party/CLI11.hpp"
+#include "CLI11.hpp"
 #include "api.h"
 #include "error_handler.h"
 #include "graph_compiler.h"
