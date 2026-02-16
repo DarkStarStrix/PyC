@@ -25,4 +25,4 @@ typedef struct ASTNode {
 ASTNode* parse_tokens(TokenArray tokens);
 void free_ast(ASTNode* node);
 
-#endif
+#endif // PARSER_H

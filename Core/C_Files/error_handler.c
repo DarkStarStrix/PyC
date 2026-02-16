@@ -37,7 +37,33 @@ void print_errors(void) {
     }
 }
 
+// Cleanup resources
+void error_handler_cleanup(void) {
+    if (source_lines) {
+        for (int i = 0; i < line_count; i++) {
+            free(source_lines[i]);
+        }
+        free(source_lines);
+        source_lines = NULL;
+    }
+
+    free((void*)error_state.filename);
+    free((void*)error_state.source_code);
+    error_state.filename = NULL;
+    error_state.source_code = NULL;
+
+    if (error_log && error_log != stderr) {
+        fclose(error_log);
+        error_log = NULL;
+    }
+
+    line_count = 0;
+}
+
+void init_error_handler(const char* filename, const char* source) {
+    error_handler_init(filename, source);
+}
+
 void cleanup_error_handler(void) {
-    g_error_count = 0;
-    memset(g_errors, 0, sizeof(g_errors));
+    error_handler_cleanup();
 }

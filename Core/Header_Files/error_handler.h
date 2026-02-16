@@ -7,4 +7,4 @@ int has_errors(void);
 void print_errors(void);
 void cleanup_error_handler(void);
 
-#endif
+#endif // ERROR_HANDLER_H

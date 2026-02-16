@@ -21,3 +21,6 @@ int emit_backend_output(const IRCode* ir, const char* output_path, BackendOutput
     fclose(out);
     return 0;
 }
+
+void backend_cleanup(void) {
+}

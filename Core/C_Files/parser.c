@@ -85,3 +85,36 @@ void free_ast(ASTNode* node) {
     free(node->statements);
     free(node);
 }
+
+void ast_free(ASTNode* node) {
+    if (!node) return;
+
+    size_t i;
+    switch (node->type) {
+        case AST_PROGRAM:
+            for (i = 0; i < node->as.program.statement_count; ++i) {
+                ast_free(node->as.program.statements[i]);
+            }
+            free(node->as.program.statements);
+            break;
+        case AST_ASSIGNMENT:
+            ast_free(node->as.assignment.value);
+            break;
+        case AST_IF_STATEMENT:
+            ast_free(node->as.if_statement.condition);
+            for (i = 0; i < node->as.if_statement.body_count; ++i) {
+                ast_free(node->as.if_statement.body_statements[i]);
+            }
+            free(node->as.if_statement.body_statements);
+            break;
+        case AST_BINARY_EXPRESSION:
+            ast_free(node->as.binary_expression.left);
+            ast_free(node->as.binary_expression.right);
+            break;
+        case AST_INTEGER_LITERAL:
+        case AST_IDENTIFIER:
+            break;
+    }
+
+    free(node);
+}

@@ -6,4 +6,4 @@ int symbol_exists(const char* name);
 int symbol_define(const char* name);
 void symbol_table_cleanup(void);
 
-#endif
+#endif // SYMBOL_TABLE_H

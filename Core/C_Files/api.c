@@ -1,3 +1,7 @@
+int api_init(void) {
+    return 1;
+}
+
 #include "api.h"
 
 #include "adapter.h"
@@ -114,4 +118,8 @@ ApiStatus register_kernel(const char* kernel_file) {
 void cleanup_api(void) {
     symbol_table_cleanup();
     cleanup_error_handler();
+}
+
+void cleanup_api(void) {
+    api_cleanup();
 }

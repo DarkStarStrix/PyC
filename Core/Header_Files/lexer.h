@@ -27,4 +27,4 @@ typedef struct {
 TokenArray lexical_analysis(const char* source);
 void free_tokens(TokenArray tokens);
 
-#endif
+#endif // LEXER_H

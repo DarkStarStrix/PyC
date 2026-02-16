@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "api.h"
+// Forward declarations for external functions from ir_generator.c
+extern void generate_ir(ASTNode* ast_root);
+extern void cleanup_ir_generator(void);
 
 static void usage(const char* argv0) {
     printf("Usage: %s <command> <input> [-o <output>] [--jit]\n", argv0);
