@@ -3,23 +3,29 @@
 
 #define MAX 100
 
+#if defined(__GNUC__) || defined(__clang__)
+#define PYC_UNUSED __attribute__((unused))
+#else
+#define PYC_UNUSED
+#endif
+
 typedef struct {
     int items[MAX];
     int top;
 } Stack;
 
-__attribute__((unused)) __attribute__((unused)) void initStack(Stack* stack);
+PYC_UNUSED void initStack(Stack* stack);
 
-__attribute__((unused)) int isEmpty(Stack* stack);
+PYC_UNUSED int isEmpty(Stack* stack);
 
-__attribute__((unused)) int isFull(Stack* stack);
+PYC_UNUSED int isFull(Stack* stack);
 
-__attribute__((unused)) __attribute__((unused)) void push(Stack* stack, int value);
+PYC_UNUSED void push(Stack* stack, int value);
 
-__attribute__((unused)) __attribute__((unused)) int pop(Stack* stack);
+PYC_UNUSED int pop(Stack* stack);
 
-__attribute__((unused)) __attribute__((unused)) int peek(Stack* stack);
+PYC_UNUSED int peek(Stack* stack);
 
-__attribute__((unused)) __attribute__((unused)) int size(Stack* stack);
+PYC_UNUSED int size(Stack* stack);
 
 #endif // STACK_H

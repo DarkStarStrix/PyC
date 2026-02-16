@@ -4,8 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_WIN32)
+#include <process.h>
+#else
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 int adapter_read_file(const char* path, char** out_source, size_t* out_size, char* err, size_t err_size) {
     FILE* f = fopen(path, "rb");
@@ -46,6 +50,16 @@ int adapter_write_file(const char* path, const char* contents, char* err, size_t
 
 AdapterResult adapter_run_command(const char* const argv[]) {
     AdapterResult result = {0, ""};
+#if defined(_WIN32)
+    intptr_t status = _spawnvp(_P_WAIT, argv[0], (const char* const*)argv);
+    if (status == -1) {
+        result.exit_code = -1;
+        snprintf(result.stderr_msg, sizeof(result.stderr_msg), "spawn failed: %s", strerror(errno));
+        return result;
+    }
+    result.exit_code = (int)status;
+    return result;
+#else
     pid_t pid = fork();
     if (pid < 0) {
         result.exit_code = -1;
@@ -72,4 +86,5 @@ AdapterResult adapter_run_command(const char* const argv[]) {
         snprintf(result.stderr_msg, sizeof(result.stderr_msg), "subprocess terminated unexpectedly");
     }
     return result;
+#endif
 }
