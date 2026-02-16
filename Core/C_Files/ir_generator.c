@@ -1,145 +1,58 @@
-// Core/C_Files/ir_generator.c - LLVM IR generation for PyC compiler
-#include "Core.h"
-#include "symbol_table.h"
-#include "error_handler.h"
-#include <llvm-c/Core.h>
-#include <llvm-c/Target.h>
+#include "ir_generator.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-LLVMContextRef context;
-LLVMModuleRef module;
-LLVMBuilderRef builder;
-
-void init_ir_generator() {
-    LLVMInitializeNativeTarget();
-    LLVMInitializeNativeAsmPrinter();
-    context = LLVMContextCreate();
-    module = LLVMModuleCreateWithNameInContext("pyc_module", context);
-    builder = LLVMCreateBuilderInContext(context);
+static void append(char** buf, size_t* len, const char* s) {
+    size_t n = strlen(s);
+    *buf = (char*)realloc(*buf, *len + n + 1);
+    memcpy(*buf + *len, s, n + 1);
+    *len += n;
 }
 
-LLVMValueRef ast_to_llvm_ir(ASTNode* node) {
-    if (!node) return NULL;
-
-    switch (node->type) {
-        case NODE_EXPRESSION:
-            switch (node->expr.type) {
-                case EXPR_NUMBER:
-                    return LLVMConstInt(LLVMInt32TypeInContext(context), atoi(node->expr.value), 0);
-                case EXPR_VARIABLE: {
-                    SymbolNode* symbol = lookup_symbol(node->expr.value);
-                    if (!symbol || !symbol->llvm_value) {
-                        report_error(0, 0, "Undefined variable '%s'", node->expr.value);
-                        return NULL;
-                    }
-                    return LLVMBuildLoad(builder, symbol->llvm_value, node->expr.value);
-                }
-                case EXPR_BINARY_OP: {
-                    LLVMValueRef left = ast_to_llvm_ir(node->expr.left);
-                    LLVMValueRef right = ast_to_llvm_ir(node->expr.right);
-                    if (!left || !right) return NULL;
-                    switch (node->expr.op) {
-                        case TOKEN_PLUS: return LLVMBuildAdd(builder, left, right, "addtmp");
-                        case TOKEN_MINUS: return LLVMBuildSub(builder, left, right, "subtmp");
-                        case TOKEN_MULTIPLY: return LLVMBuildMul(builder, left, right, "multmp");
-                        case TOKEN_DIVIDE: return LLVMBuildSDiv(builder, left, right, "divtmp");
-                        default:
-                            report_error(0, 0, "Unknown operator");
-                            return NULL;
-                    }
-                }
-            }
-            break;
-
-        case NODE_ASSIGNMENT: {
-            LLVMValueRef value = ast_to_llvm_ir(node->assign.value);
-            if (!value) return NULL;
-            SymbolNode* symbol = lookup_symbol_current_scope(node->assign.name);
-            if (!symbol) {
-                LLVMValueRef var = LLVMBuildAlloca(builder, LLVMInt32TypeInContext(context), node->assign.name);
-                add_symbol(node->assign.name, SYMBOL_VARIABLE, NULL, var);
-                symbol = lookup_symbol(node->assign.name);
-            }
-            LLVMBuildStore(builder, value, symbol->llvm_value);
-            return value;
-        }
-
-        case NODE_IF_STATEMENT: {
-            LLVMValueRef condition = ast_to_llvm_ir(node->if_stmt.condition);
-            if (!condition) return NULL;
-
-            LLVMBasicBlockRef then_block = LLVMAppendBasicBlock(LLVMGetInsertBlock(builder)->parent, "then");
-            LLVMBasicBlockRef else_block = node->if_stmt.else_body ? 
-                LLVMAppendBasicBlock(LLVMGetInsertBlock(builder)->parent, "else") : NULL;
-            LLVMBasicBlockRef end_block = LLVMAppendBasicBlock(LLVMGetInsertBlock(builder)->parent, "end");
-
-            LLVMBuildCondBr(builder, condition, then_block, else_block ? else_block : end_block);
-
-            LLVMPositionBuilderAtEnd(builder, then_block);
-            enter_scope();
-            ast_to_llvm_ir(node->if_stmt.body);
-            exit_scope();
-            LLVMBuildBr(builder, end_block);
-
-            if (else_block) {
-                LLVMPositionBuilderAtEnd(builder, else_block);
-                enter_scope();
-                ast_to_llvm_ir(node->if_stmt.else_body);
-                exit_scope();
-                LLVMBuildBr(builder, end_block);
-            }
-
-            LLVMPositionBuilderAtEnd(builder, end_block);
-            return NULL;
-        }
-
-        case NODE_BLOCK:
-            for (int i = 0; i < node->block.num_statements; i++) {
-                ast_to_llvm_ir(node->block.statements[i]);
-            }
-            return NULL;
-
-        default:
-            report_error(0, 0, "Unsupported AST node type %d", node->type);
-            return NULL;
+static void emit_expr(ASTNode* expr, char* out, size_t out_size) {
+    if (expr->type == AST_NUMBER || expr->type == AST_IDENTIFIER) {
+        snprintf(out, out_size, "%s", expr->value);
+        return;
     }
-    return NULL;
+    if (expr->type == AST_BINARY_ADD) {
+        char l[128], r[128];
+        emit_expr(expr->left, l, sizeof(l));
+        emit_expr(expr->right, r, sizeof(r));
+        snprintf(out, out_size, "add i64 %s, %s", l, r);
+        return;
+    }
+    snprintf(out, out_size, "0");
 }
 
-LLVMValueRef generate_main_function(ASTNode* ast_root) {
-    LLVMTypeRef return_type = LLVMInt32TypeInContext(context);
-    LLVMTypeRef func_type = LLVMFunctionType(return_type, NULL, 0, 0);
-    LLVMValueRef main_func = LLVMAddFunction(module, "main", func_type);
-
-    LLVMBasicBlockRef entry = LLVMAppendBasicBlock(main_func, "entry");
-    LLVMPositionBuilderAtEnd(builder, entry);
-
-    ast_to_llvm_ir(ast_root);
-    LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
-
-    return main_func;
-}
-
-void generate_ir(ASTNode* ast_root) {
-    init_ir_generator();
-    init_symbol_table();
-    generate_main_function(ast_root);
-
-    char* error = NULL;
-    LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
-    if (error) {
-        report_error(0, 0, "Module verification failed: %s", error);
-        LLVMDisposeMessage(error);
+IRCode* generate_ir(ASTNode* ast) {
+    if (!ast || ast->type != AST_PROGRAM) {
+        return NULL;
     }
 
-    LLVMDumpModule(module);
+    IRCode* ir = (IRCode*)calloc(1, sizeof(IRCode));
+    if (!ir) return NULL;
+
+    size_t len = 0;
+    append(&ir->text, &len, "; ModuleID = 'pyc'\n");
+    append(&ir->text, &len, "define i64 @main() {\nentry:\n");
+
+    for (size_t i = 0; i < ast->statement_count; ++i) {
+        ASTNode* stmt = ast->statements[i];
+        char expr[256];
+        emit_expr(stmt->right, expr, sizeof(expr));
+        char line[320];
+        snprintf(line, sizeof(line), "  ; %s = %s\n", stmt->value, expr);
+        append(&ir->text, &len, line);
+    }
+
+    append(&ir->text, &len, "  ret i64 0\n}\n");
+    return ir;
 }
 
-void cleanup_ir_generator() {
-    cleanup_symbol_table();
-    LLVMDisposeBuilder(builder);
-    LLVMDisposeModule(module);
-    LLVMContextDispose(context);
+void free_ir(IRCode* ir) {
+    if (!ir) return;
+    free(ir->text);
+    free(ir);
 }

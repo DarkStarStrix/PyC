@@ -1,27 +1,36 @@
 cmake_minimum_required(VERSION 3.10)
-project(PyC_Core C CXX)
+project(PyC_Core C)
 
-# Set the source directory
+option(ENABLE_OPTIMIZE "Enable optimize command contract" OFF)
+option(ENABLE_VISUALIZE "Enable visualize command contract" OFF)
+option(ENABLE_KERNEL "Enable kernel command contract" OFF)
+
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
-set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header")
+set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")
 
-# Gather all .c and .cpp files
-file(GLOB SOURCES
-    "${SRC_DIR}/*.c"
-    "${SRC_DIR}/*.cpp"
+set(SOURCES
+    ${SRC_DIR}/main.c
+    ${SRC_DIR}/api.c
+    ${SRC_DIR}/adapter.c
+    ${SRC_DIR}/lexer.c
+    ${SRC_DIR}/parser.c
+    ${SRC_DIR}/semantic.c
+    ${SRC_DIR}/ir_generator.c
+    ${SRC_DIR}/backend.c
+    ${SRC_DIR}/error_handler.c
+    ${SRC_DIR}/symbol_table.c
 )
 
-# Add the executable
 add_executable(PyC_Core ${SOURCES})
-
-# Ensure the compiler can find your header files!
 target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
+target_compile_features(PyC_Core PRIVATE c_std_11)
 
-# (Optional) Set C++ standard if needed
-set_target_properties(PyC_Core PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-)
-
-# (Optional) Link libraries here, e.g.:
-# target_link_libraries(PyC_Core PRIVATE <library_name>)
+if(ENABLE_OPTIMIZE)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_OPTIMIZE)
+endif()
+if(ENABLE_VISUALIZE)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_VISUALIZE)
+endif()
+if(ENABLE_KERNEL)
+    target_compile_definitions(PyC_Core PRIVATE ENABLE_KERNEL)
+endif()

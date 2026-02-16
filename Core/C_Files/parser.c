@@ -1,122 +1,87 @@
 #include "parser.h"
-#include "lexer.h"
-#include "Core.h"
-#include "symbol_table.h"
+
 #include <stdlib.h>
 #include <string.h>
 
-static Token current_token;
-
-static void advance() {
-    current_token = get_next_token();
-}
-
-static void expect(TokenType type) {
-    if (current_token.type != type) {
-        char msg[256];
-        sprintf(msg, "Expected token type %d, got %d", type, current_token.type);
-        report_error(lexer.line, msg);
-        exit(1);
-    }
-    advance();
-}
-
-static ASTNode* expression(); // Forward declaration
-
-static ASTNode* statement() {
-    ASTNode* node = malloc(sizeof(ASTNode));
-
-    if (current_token.type == TOKEN_IF) {
-        node->type = NODE_IF_STATEMENT;
-        advance();
-        node->if_stmt.condition = expression();
-        expect(TOKEN_COLON);
-        expect(TOKEN_NEWLINE);
-        expect(TOKEN_INDENT);
-        node->if_stmt.body = parse_block();
-        expect(TOKEN_DEDENT);
-        if (current_token.type == TOKEN_ELSE) {
-            advance();
-            expect(TOKEN_COLON);
-            expect(TOKEN_NEWLINE);
-            expect(TOKEN_INDENT);
-            node->if_stmt.else_body = parse_block();
-            expect(TOKEN_DEDENT);
-        } else {
-            node->if_stmt.else_body = NULL;
-        }
-    } else if (current_token.type == TOKEN_IDENTIFIER && 
-               get_next_token().type == TOKEN_ASSIGN) {
-        node->type = NODE_ASSIGNMENT;
-        strcpy(node->assign.name, current_token.value);
-        advance();
-        advance(); // Skip '='
-        node->assign.value = expression();
-        expect(TOKEN_NEWLINE);
-        add_variable(node->assign.name);
-    } else {
-        node->type = NODE_EXPRESSION;
-        node->expr = expression();
-        expect(TOKEN_NEWLINE);
+static ASTNode* make_node(ASTNodeType type, const char* value, int line) {
+    ASTNode* node = (ASTNode*)calloc(1, sizeof(ASTNode));
+    if (!node) return NULL;
+    node->type = type;
+    node->line = line;
+    if (value) {
+        node->value = strdup(value);
     }
     return node;
 }
 
-static ASTNode* parse_block() {
-    ASTNode* block = malloc(sizeof(ASTNode));
-    block->type = NODE_BLOCK;
-    block->block.num_statements = 0;
-    block->block.statements = malloc(sizeof(ASTNode*) * 10); // Initial capacity
+static ASTNode* parse_expression(TokenArray tokens, size_t* i) {
+    ASTNode* lhs = NULL;
+    Token current = tokens.data[*i];
+    if (current.type == TOKEN_NUMBER) lhs = make_node(AST_NUMBER, current.lexeme, current.line);
+    if (current.type == TOKEN_IDENTIFIER) lhs = make_node(AST_IDENTIFIER, current.lexeme, current.line);
+    if (!lhs) return NULL;
+    (*i)++;
 
-    while (current_token.type != TOKEN_DEDENT && current_token.type != TOKEN_EOF) {
-        block->block.statements[block->block.num_statements++] = statement();
-    }
-    return block;
-}
-
-static ASTNode* expression() {
-    ASTNode* left = malloc(sizeof(ASTNode));
-    left->type = NODE_EXPRESSION;
-
-    if (current_token.type == TOKEN_NUMBER) {
-        left->expr.type = EXPR_NUMBER;
-        strcpy(left->expr.value, current_token.value);
-        advance();
-    } else if (current_token.type == TOKEN_IDENTIFIER) {
-        left->expr.type = EXPR_VARIABLE;
-        strcpy(left->expr.value, current_token.value);
-        if (!check_variable(left->expr.value)) {
-            report_error(lexer.line, "Undefined variable");
-            exit(1);
+    if (tokens.data[*i].type == TOKEN_PLUS) {
+        (*i)++;
+        Token rhs_tok = tokens.data[*i];
+        ASTNode* rhs = NULL;
+        if (rhs_tok.type == TOKEN_NUMBER) rhs = make_node(AST_NUMBER, rhs_tok.lexeme, rhs_tok.line);
+        if (rhs_tok.type == TOKEN_IDENTIFIER) rhs = make_node(AST_IDENTIFIER, rhs_tok.lexeme, rhs_tok.line);
+        if (!rhs) {
+            free_ast(lhs);
+            return NULL;
         }
-        advance();
+        ASTNode* add = make_node(AST_BINARY_ADD, NULL, current.line);
+        add->left = lhs;
+        add->right = rhs;
+        (*i)++;
+        return add;
     }
 
-    if (current_token.type == TOKEN_PLUS || current_token.type == TOKEN_MINUS) {
-        ASTNode* binop = malloc(sizeof(ASTNode));
-        binop->type = NODE_BINARY_OP;
-        binop->binop.left = left;
-        binop->binop.op = current_token.type;
-        advance();
-        binop->binop.right = expression();
-        return binop;
-    }
-    return left;
+    return lhs;
 }
 
-ASTNode* parse() {
-    advance();
-    ASTNode* root = malloc(sizeof(ASTNode));
-    root->type = NODE_BLOCK;
-    root->block.num_statements = 0;
-    root->block.statements = malloc(sizeof(ASTNode*) * 10);
+ASTNode* parse_tokens(TokenArray tokens) {
+    ASTNode* program = make_node(AST_PROGRAM, NULL, 1);
+    if (!program) return NULL;
 
-    while (current_token.type != TOKEN_EOF) {
-        if (current_token.type == TOKEN_NEWLINE) {
-            advance();
+    for (size_t i = 0; i < tokens.count;) {
+        Token tok = tokens.data[i];
+        if (tok.type == TOKEN_EOF) break;
+        if (tok.type == TOKEN_NEWLINE) {
+            i++;
             continue;
         }
-        root->block.statements[root->block.num_statements++] = statement();
+        if (tok.type != TOKEN_IDENTIFIER || tokens.data[i + 1].type != TOKEN_ASSIGN) {
+            free_ast(program);
+            return NULL;
+        }
+
+        ASTNode* assign = make_node(AST_ASSIGNMENT, tok.lexeme, tok.line);
+        i += 2;
+        assign->right = parse_expression(tokens, &i);
+        if (!assign->right) {
+            free_ast(assign);
+            free_ast(program);
+            return NULL;
+        }
+
+        program->statements = (ASTNode**)realloc(program->statements, sizeof(ASTNode*) * (program->statement_count + 1));
+        program->statements[program->statement_count++] = assign;
+
+        if (tokens.data[i].type == TOKEN_NEWLINE) i++;
     }
-    return root;
+
+    return program;
+}
+
+void free_ast(ASTNode* node) {
+    if (!node) return;
+    free(node->value);
+    free_ast(node->left);
+    free_ast(node->right);
+    for (size_t i = 0; i < node->statement_count; ++i) free_ast(node->statements[i]);
+    free(node->statements);
+    free(node);
 }
