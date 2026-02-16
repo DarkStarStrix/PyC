@@ -1,29 +1,30 @@
 #include "parser.h"
 #include "lexer.h"
 #include "Core.h"
+#include "error_handler.h"
 #include "symbol_table.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static Token current_token;
 
-static void advance() {
+static ASTNode* expression(void);
+static ASTNode* parse_block(void);
+
+static void advance(void) {
     current_token = get_next_token();
 }
 
 static void expect(TokenType type) {
     if (current_token.type != type) {
-        char msg[256];
-        sprintf(msg, "Expected token type %d, got %d", type, current_token.type);
-        report_error(lexer.line, msg);
+        report_error(lexer_current_line(), 1, "Expected token type %d, got %d", type, current_token.type);
         exit(1);
     }
     advance();
 }
 
-static ASTNode* expression(); // Forward declaration
-
-static ASTNode* statement() {
+static ASTNode* statement(void) {
     ASTNode* node = malloc(sizeof(ASTNode));
 
     if (current_token.type == TOKEN_IF) {
@@ -45,28 +46,28 @@ static ASTNode* statement() {
         } else {
             node->if_stmt.else_body = NULL;
         }
-    } else if (current_token.type == TOKEN_IDENTIFIER && 
-               get_next_token().type == TOKEN_ASSIGN) {
+    } else if (current_token.type == TOKEN_IDENTIFIER && lexer_peek_token().type == TOKEN_ASSIGN) {
         node->type = NODE_ASSIGNMENT;
         strcpy(node->assign.name, current_token.value);
         advance();
-        advance(); // Skip '='
+        advance();
         node->assign.value = expression();
         expect(TOKEN_NEWLINE);
-        add_variable(node->assign.name);
+        add_variable(node->assign.name, "int", NULL);
     } else {
-        node->type = NODE_EXPRESSION;
-        node->expr = expression();
+        ASTNode* expr_node = expression();
         expect(TOKEN_NEWLINE);
+        free(node);
+        return expr_node;
     }
     return node;
 }
 
-static ASTNode* parse_block() {
+static ASTNode* parse_block(void) {
     ASTNode* block = malloc(sizeof(ASTNode));
     block->type = NODE_BLOCK;
     block->block.num_statements = 0;
-    block->block.statements = malloc(sizeof(ASTNode*) * 10); // Initial capacity
+    block->block.statements = malloc(sizeof(ASTNode*) * 10);
 
     while (current_token.type != TOKEN_DEDENT && current_token.type != TOKEN_EOF) {
         block->block.statements[block->block.num_statements++] = statement();
@@ -74,7 +75,7 @@ static ASTNode* parse_block() {
     return block;
 }
 
-static ASTNode* expression() {
+static ASTNode* expression(void) {
     ASTNode* left = malloc(sizeof(ASTNode));
     left->type = NODE_EXPRESSION;
 
@@ -85,8 +86,8 @@ static ASTNode* expression() {
     } else if (current_token.type == TOKEN_IDENTIFIER) {
         left->expr.type = EXPR_VARIABLE;
         strcpy(left->expr.value, current_token.value);
-        if (!check_variable(left->expr.value)) {
-            report_error(lexer.line, "Undefined variable");
+        if (!lookup_variable(left->expr.value)) {
+            report_error(lexer_current_line(), 1, "Undefined variable");
             exit(1);
         }
         advance();
@@ -94,17 +95,18 @@ static ASTNode* expression() {
 
     if (current_token.type == TOKEN_PLUS || current_token.type == TOKEN_MINUS) {
         ASTNode* binop = malloc(sizeof(ASTNode));
-        binop->type = NODE_BINARY_OP;
-        binop->binop.left = left;
-        binop->binop.op = current_token.type;
+        binop->type = NODE_EXPRESSION;
+        binop->expr.type = EXPR_BINARY_OP;
+        binop->expr.left = left;
+        binop->expr.op = current_token.type;
         advance();
-        binop->binop.right = expression();
+        binop->expr.right = expression();
         return binop;
     }
     return left;
 }
 
-ASTNode* parse() {
+ASTNode* parser_parse(void) {
     advance();
     ASTNode* root = malloc(sizeof(ASTNode));
     root->type = NODE_BLOCK;
@@ -119,4 +121,12 @@ ASTNode* parse() {
         root->block.statements[root->block.num_statements++] = statement();
     }
     return root;
+}
+
+void parser_init(const char* source) {
+    lexer_init(source);
+}
+
+void parser_cleanup(void) {
+    lexer_cleanup();
 }

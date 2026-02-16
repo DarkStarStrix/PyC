@@ -9,7 +9,7 @@
 
 // Forward declarations for external functions from ir_generator.c
 extern void generate_ir(ASTNode* ast_root);
-extern void cleanup_ir_generator();
+extern void cleanup_ir_generator(void);
 
 void print_usage(const char* program_name) {
     printf("Usage: %s [options] <command> <input_file>\n", program_name);
@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
     if (strcmp(command, "build") == 0) {
         compile_script(input_filename);
         if (!jit_only) {
-            backend(output_filename, optimize);
+            backend_run(output_filename, optimize);
         }
     } else if (strcmp(command, "optimize") == 0) {
         optimize_script(input_filename, optimize);
