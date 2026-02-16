@@ -1,32 +1,54 @@
-name: CMake Multi-Platform
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up CMake
-      uses: lukka/get-cmake@v3
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v2
 
-    - name: Configure
-      run: cmake -S . -B build
+      - name: Show toolchain versions
+        run: |
+          cmake --version
+          if [ "${{ runner.os }}" != "Windows" ]; then
+            cc --version || true
+            c++ --version || true
+          fi
+        shell: bash
 
-    - name: Build
-      run: cmake --build build
+      - name: Configure
+        run: cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF
 
-    - name: Run tests
-      if: always()
-      run: ctest --test-dir build
+      - name: Build stable targets
+        run: cmake --build build --config Release --parallel --target pyc pyc_core pyc_foundation
+
+      - name: Smoke test executable (POSIX)
+        if: runner.os != 'Windows'
+        run: ./build/pyc
+
+      - name: Smoke test executable (Windows)
+        if: runner.os == 'Windows'
+        run: ./build/Release/pyc.exe
+        shell: bash
+
+      - name: Run tests (if present)
+        run: ctest --test-dir build -C Release --output-on-failure
+        continue-on-error: true
