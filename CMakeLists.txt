@@ -1,27 +1,40 @@
 cmake_minimum_required(VERSION 3.10)
 project(PyC_Core C CXX)
 
-# Set the source directory
-set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
-set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header")
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Gather all .c and .cpp files
-file(GLOB SOURCES
-    "${SRC_DIR}/*.c"
-    "${SRC_DIR}/*.cpp"
+set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")
+include_directories(${HEADER_DIR})
+
+# Build a stable core library that is currently portable and compiles in CI.
+add_library(pyc_foundation STATIC
+    Core/C_Files/stack.c
+    Core/C_Files/symbol_table.c
 )
 
-# Add the executable
-add_executable(PyC_Core ${SOURCES})
+target_include_directories(pyc_foundation PUBLIC ${HEADER_DIR})
 
-# Ensure the compiler can find your header files!
-target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
+option(PYC_BUILD_EXPERIMENTAL "Build experimental compiler sources" OFF)
 
-# (Optional) Set C++ standard if needed
-set_target_properties(PyC_Core PROPERTIES
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED YES
-)
+if(PYC_BUILD_EXPERIMENTAL)
+    message(STATUS "Building experimental PyC compiler sources")
 
-# (Optional) Link libraries here, e.g.:
-# target_link_libraries(PyC_Core PRIVATE <library_name>)
+    add_executable(PyC_Core
+        Core/C_Files/Core.cpp
+        Core/C_Files/IR.c
+        Core/C_Files/api.c
+        Core/C_Files/backend.c
+        Core/C_Files/codegen.c
+        Core/C_Files/error_handler.c
+        Core/C_Files/frontend.c
+        Core/C_Files/ir_generator.c
+        Core/C_Files/lexer.c
+        Core/C_Files/main.c
+        Core/C_Files/parser.c
+    )
+
+    target_include_directories(PyC_Core PRIVATE ${HEADER_DIR})
+endif()
