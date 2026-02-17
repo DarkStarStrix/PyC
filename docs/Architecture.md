@@ -30,20 +30,22 @@ Stable source modules currently include:
 
 These modules are selected for portability and deterministic behavior.
 
-### Layer 3: Experimental Compiler Surface
+### Layer 3: Experimental Compiler-Next Surface
 
-Experimental modules include broader frontend/IR/backend and AI-related paths. They are available for development but intentionally isolated from required stable CI behavior until hardened.
+Experimental modules include compiler-next IR/passes/runtime and the AI bridge layer. They are available for development but intentionally isolated from stable-core guarantees until hardened.
 
 ## Target Graph
 
 ```text
 pyc_core_obj (OBJECT)
   ├─> pyc_core (STATIC)
-  ├─> pyc_foundation (STATIC, compatibility)
-  └─> PyC_Core (EXE, experimental, only when enabled)
+  └─> pyc_foundation (STATIC, compatibility)
 
 pyc (EXE, stable smoke driver)
   └─links─> pyc_core
+
+pyc_compiler_next (STATIC, experimental)
+  └─> pyc_ai_bridge (STATIC, policy bridge)
 
 pyc_core_microbench (EXE, optional)
   └─links─> pyc_core

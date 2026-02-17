@@ -18,17 +18,17 @@ PyC uses one workflow as the canonical build/test definition:
 1. Checkout repository (`actions/checkout@v4`).
 2. Setup CMake (`jwlawson/actions-setup-cmake@v2`).
 3. Print toolchain versions.
-4. Configure: `cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF`.
+4. Configure: `cmake -S . -B build`.
 5. Build: `pyc pyc_core pyc_foundation`.
 6. Smoke-run `pyc` (OS-specific path).
-7. Run `ctest` non-fatally.
+7. Run `ctest` as a required check.
 
 ## Local Build
 
 ### Stable Build
 
 ```bash
-cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF
+cmake -S . -B build
 cmake --build build --parallel --target pyc pyc_core pyc_foundation
 ```
 
@@ -44,25 +44,15 @@ Windows smoke run:
 .\build\Release\pyc.exe
 ```
 
-### Experimental Build
-
-```bash
-cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=ON
-cmake --build build --parallel --target PyC_Core
-```
-
 ### Benchmark Target Build
 
 ```bash
-cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF -D PYC_BUILD_BENCHMARKS=ON
+cmake -S . -B build -D PYC_BUILD_BENCHMARKS=ON
 cmake --build build --parallel --target pyc_core_microbench
 ```
 
 ## Build Options
 
-- `PYC_BUILD_EXPERIMENTAL`
-  - `OFF` by default.
-  - Enables experimental executable target `PyC_Core` when `ON`.
 - `PYC_BUILD_BENCHMARKS`
   - `OFF` by default.
   - Enables `pyc_core_microbench` when `ON`.

@@ -1,0 +1,4 @@
+0:input:lhs:dtype=1:shape=2x3:inputs=
+1:input:rhs:dtype=1:shape=3x4:inputs=
+2:matmul:fused_op_2_op_3:dtype=1:shape=2x4:inputs=0,1
+3:output:op_4:dtype=1:shape=2x4:inputs=2

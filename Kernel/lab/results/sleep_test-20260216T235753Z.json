@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "timestamp_utc": "2026-02-16T23:57:53.587268+00:00",
+    "label": "sleep_test",
+    "platform": "macOS-26.3-arm64-arm-64bit-Mach-O",
+    "python": "3.14.0",
+    "repeats": 5,
+    "warmup": 1
+  },
+  "command": "python3 -c 'import time; time.sleep(0.005)'",
+  "stats": {
+    "mean_ms": 22.176,
+    "min_ms": 21.816,
+    "max_ms": 22.619,
+    "stdev_ms": 0.276,
+    "samples_ms": [
+      22.314,
+      21.816,
+      21.993,
+      22.619,
+      22.139
+    ]
+  }
+}

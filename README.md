@@ -22,7 +22,7 @@ PyC currently focuses on stable build/link contracts and deterministic CI behavi
 - `pyc_foundation`: compatibility static library from the same objects.
 - `pyc`: minimal deterministic executable used by smoke tests.
 
-Experimental compiler code remains available behind `PYC_BUILD_EXPERIMENTAL=ON`.
+The next-generation compiler scaffolding is available behind `PYC_BUILD_COMPILER_NEXT=ON`.
 
 ## Repository Layout
 
@@ -30,6 +30,7 @@ Experimental compiler code remains available behind `PYC_BUILD_EXPERIMENTAL=ON`.
 - `Core/Header_Files/`: C headers.
 - `.github/workflows/cmake-multi-platform.yml`: canonical CI workflow.
 - `benchmark/`: benchmark harness and workloads.
+- `AI/`: linked AI bridge layer that applies optimization-policy contracts to compiler-next options.
 - `docs/`: project docs, benchmarking, build/CI, performance reports.
 
 ## Build
@@ -43,7 +44,7 @@ Experimental compiler code remains available behind `PYC_BUILD_EXPERIMENTAL=ON`.
 ### Configure + Build Stable Targets
 
 ```bash
-cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF
+cmake -S . -B build
 cmake --build build --parallel --target pyc pyc_core pyc_foundation
 ```
 
@@ -73,10 +74,12 @@ The project uses one canonical workflow: `CI` in `.github/workflows/cmake-multi-
 
 It runs on Ubuntu, macOS, and Windows, and performs:
 
-1. CMake configure with `PYC_BUILD_EXPERIMENTAL=OFF`
+1. CMake configure
 2. Explicit build of `pyc`, `pyc_core`, `pyc_foundation`
 3. OS-specific smoke test for `pyc`
 4. Non-fatal `ctest`
+
+CI also enforces source coverage for active C sources (`Core/C_Files`, `compiler`, `AI`, `tests/compiler_next`): if a `.c` file is not referenced by `CMakeLists.txt`, the suite fails.
 
 ## Benchmarking
 
@@ -94,6 +97,58 @@ Outputs:
 - `benchmark/results/latest.md`
 - `docs/performance-results.md`
 
+## How To Use PyC
+
+### Stable CLI Entrypoint (Recommended)
+
+Build and run the deterministic CI driver:
+
+```bash
+cmake -S . -B build
+cmake --build build --parallel --target pyc pyc_core pyc_foundation
+./build/pyc
+```
+
+Expected output:
+
+```text
+PyC CI driver: core targets configured successfully.
+```
+
+### Link `pyc_core` in Your Own Project
+
+1. Build `pyc_core`:
+
+```bash
+cmake -S . -B build
+cmake --build build --parallel --target pyc_core
+```
+
+2. In your C/C++ project:
+- Add include path: `Core/Header_Files/`
+- Link static library: `build/libpyc_core.a` (or platform-equivalent)
+
+Use `pyc_foundation` only when downstream compatibility requires it.
+
+## Compiler-Next (Experimental)
+
+Build and run the compiler-next smoke test:
+
+```bash
+cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
+cmake --build build --parallel --target pyc_compiler_next pyc_compiler_next_smoke
+./build/pyc_compiler_next_smoke
+```
+
+Public interfaces:
+
+- `include/pyc/compiler_api.h`
+- `include/pyc/ir.h`
+- `include/pyc/pass_manager.h`
+- `include/pyc/runtime_allocator.h`
+- `include/pyc/kernel_registry.h`
+- `include/pyc/ai_bridge.h`
+
 ## Status
 
 - Stable CI/link targets are in place and cross-platform oriented.
@@ -110,6 +165,16 @@ Key docs:
 - `docs/build-and-ci.md`
 - `docs/benchmarking.md`
 - `docs/performance-results.md`
+- `docs/REPO_RULES.md`
+
+## Community
+
+- `CODE_OF_CONDUCT.md`
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `SUPPORT.md`
+- `.github/ISSUE_TEMPLATE/`
+- `.github/pull_request_template.md`
 
 ## License
 

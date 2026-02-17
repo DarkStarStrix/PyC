@@ -1,8 +1,6 @@
 # PyC Benchmark Results
 
-![Latest Benchmark Visualization](assets/performance-latest.svg)
-
-- Timestamp (UTC): 2026-02-16T23:33:08.057997+00:00
+- Timestamp (UTC): 2026-02-17T01:25:10.517752+00:00
 - Platform: macOS-26.3-arm64-arm-64bit-Mach-O
 - CPU: arm
 - Python: 3.14.0
@@ -10,13 +8,13 @@
 
 ## Build
 
-- Configure: 59.674 ms
-- Build (`pyc pyc_core pyc_foundation pyc_core_microbench`): 257.738 ms
+- Configure: 73.822 ms
+- Build (`pyc pyc_core pyc_foundation pyc_core_microbench`): 1582.912 ms
 
 ## Runtime
 
-- `pyc` smoke: mean 1.783 ms (min 1.614, max 2.107, stdev 0.161)
-- `pyc_core_microbench`: mean 361.203 ms (min 323.778, max 456.805, stdev 40.596)
+- `pyc` smoke: mean 63.085 ms (min 2.142, max 303.614, stdev 120.266)
+- `pyc_core_microbench`: mean 218.771 ms (min 161.692, max 384.332, stdev 85.458)
 
 ## Artifact Sizes
 

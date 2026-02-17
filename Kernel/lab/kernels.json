@@ -1,0 +1,20 @@
+{
+  "kernels": [
+    {
+      "name": "matrix_mult",
+      "source": "Kernel/matrix_mult.cu",
+      "description": "CUDA matrix multiplication kernel (compile-only baseline).",
+      "tags": ["cuda", "matmul"],
+      "compile_cmd": "{nvcc} -O3 -c {source} -o {build_dir}/{name}.o",
+      "run_cmd": ""
+    },
+    {
+      "name": "tokenizer_kernel",
+      "source": "Kernel/kernel.cu",
+      "description": "Experimental tokenizer/matrix CUDA kernel file.",
+      "tags": ["cuda", "tokenizer", "experimental"],
+      "compile_cmd": "{nvcc} -O2 -c {source} -o {build_dir}/{name}.o",
+      "run_cmd": ""
+    }
+  ]
+}

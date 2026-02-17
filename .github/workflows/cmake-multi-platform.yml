@@ -33,21 +33,39 @@ jobs:
           if command -v clang >/dev/null 2>&1; then clang --version | head -n 1; fi
 
       - name: Configure
-        run: cmake -S . -B build -D PYC_BUILD_EXPERIMENTAL=OFF
+        run: cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
 
-      - name: Build stable targets
-        run: cmake --build build --config Release --parallel --target pyc pyc_core pyc_foundation
+      - name: Build validation targets
+        run: cmake --build build --config Release --parallel --target pyc_compiler_next pyc_ai_bridge pyc_compiler_next_smoke pyc_compiler_next_test_ir pyc_compiler_next_test_pass_manager pyc_compiler_next_test_runtime_allocator pyc_compiler_next_test_kernel_registry pyc_compiler_next_test_compiler_api pyc_compiler_next_test_determinism pyc_compiler_next_test_pass_golden pyc_compiler_next_test_policy_modes pyc_compiler_next_test_ai_bridge
 
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\\build\\Release\\pyc.exe
+        run: .\\build\\Release\\pyc_compiler_next_smoke.exe
 
       - name: Smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
+        run: ./build/pyc_compiler_next_smoke
+
+      - name: Run tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Build stable targets
+        run: cmake --build build --config Release --parallel --target pyc pyc_core pyc_foundation
+
+      - name: Stable smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\\build\\Release\\pyc.exe
+
+      - name: Stable smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
         run: ./build/pyc
 
-      - name: Run tests (non-fatal)
-        run: ctest --test-dir build -C Release --output-on-failure
-        continue-on-error: true
+      - name: Benchmark guardrail (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          python3 benchmark/harness.py --repeats 5 --micro-rounds 2000
+          python3 benchmark/tools/check_regression.py --baseline benchmark/baselines/ubuntu-latest.json --result benchmark/results/latest.json

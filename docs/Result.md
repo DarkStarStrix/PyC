@@ -14,7 +14,7 @@ Recent work established a deterministic baseline for cross-platform CI and measu
 
 ## Verified Outcomes
 
-- Stable configure/build path succeeds with `PYC_BUILD_EXPERIMENTAL=OFF`.
+- Stable configure/build path succeeds with canonical CMake options.
 - Explicit stable targets build as intended.
 - Smoke test output is deterministic and usable for CI validation.
 - Benchmark harness produces repeatable JSON + Markdown outputs.

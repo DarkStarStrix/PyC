@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible problem in build, runtime, or docs
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please provide a minimal, reproducible report.
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: What broke?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      placeholder: Exact commands and inputs
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / logs
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: OS, compiler, CMake version
+    validations:
+      required: true

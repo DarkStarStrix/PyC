@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: mailto:allanw.mk@gmail.com
+    about: Report vulnerabilities privately per SECURITY.md
+  - name: Support
+    url: https://github.com/DarkStarStrix/PyC/blob/main/SUPPORT.md
+    about: Read support and troubleshooting guidance

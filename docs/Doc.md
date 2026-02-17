@@ -31,11 +31,12 @@ Current stable source set:
 
 ### Experimental Scope
 
-The broader compiler implementation is considered experimental and gated by:
+The broader compiler-next implementation is considered experimental and gated by:
 
-- `PYC_BUILD_EXPERIMENTAL=ON`
+- `PYC_BUILD_COMPILER_NEXT=ON`
+- `PYC_BUILD_COMPILER_NEXT_TESTS=ON`
 
-This includes larger frontend/IR/backend paths that are not yet part of required stable CI pass/fail guarantees.
+This includes IR/pass/runtime modules that are still under phased promotion into stricter CI guarantees.
 
 ## Why the Split Exists
 
@@ -43,7 +44,7 @@ A previous CI path relied on legacy autotools-style `./configure` behavior that 
 
 ## How the Stable Flow Works
 
-1. Configure with CMake using `PYC_BUILD_EXPERIMENTAL=OFF`.
+1. Configure with CMake.
 2. Build explicit stable targets (`pyc`, `pyc_core`, `pyc_foundation`).
 3. Run `pyc` for deterministic smoke verification.
 4. Optionally run benchmark harness for drift detection and trend tracking.

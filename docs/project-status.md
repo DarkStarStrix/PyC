@@ -28,7 +28,7 @@
 
 - Stable source set is intentionally narrow to preserve portability and reproducibility.
 - Performance results are environment-dependent and should be compared only across similar machine classes.
-- `ctest` currently runs non-fatally in CI and may report no tests depending on configured suites.
+- `ctest` runs as a required CI check for configured test suites.
 
 ## Near-Term Priorities
 

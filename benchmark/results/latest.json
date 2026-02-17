@@ -1,43 +1,39 @@
 {
   "meta": {
-    "timestamp_utc": "2026-02-16T23:33:08.057997+00:00",
+    "timestamp_utc": "2026-02-17T01:25:10.517752+00:00",
     "platform": "macOS-26.3-arm64-arm-64bit-Mach-O",
     "cpu": "arm",
     "python": "3.14.0",
     "build_dir": "/Users/allanmurimiwandia/PyC/PyC/build",
-    "repeats": 7,
-    "micro_rounds": 4000
+    "repeats": 5,
+    "micro_rounds": 2000
   },
-  "configure_ms": 59.674,
-  "build_ms": 257.738,
+  "configure_ms": 73.822,
+  "build_ms": 1582.912,
   "smoke_pyc": {
-    "mean_ms": 1.783,
-    "min_ms": 1.614,
-    "max_ms": 2.107,
-    "stdev_ms": 0.161,
+    "mean_ms": 63.085,
+    "min_ms": 2.142,
+    "max_ms": 303.614,
+    "stdev_ms": 120.266,
     "samples": [
-      2.107,
-      1.668,
-      1.614,
-      1.836,
-      1.889,
-      1.661,
-      1.704
+      303.614,
+      2.142,
+      4.103,
+      2.555,
+      3.012
     ]
   },
   "microbench": {
-    "mean_ms": 361.203,
-    "min_ms": 323.778,
-    "max_ms": 456.805,
-    "stdev_ms": 40.596,
+    "mean_ms": 218.771,
+    "min_ms": 161.692,
+    "max_ms": 384.332,
+    "stdev_ms": 85.458,
     "samples": [
-      323.778,
-      355.688,
-      456.805,
-      353.085,
-      339.353,
-      340.784,
-      358.928
+      384.332,
+      161.692,
+      167.091,
+      162.417,
+      218.321
     ]
   },
   "artifacts": {

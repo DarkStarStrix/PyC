@@ -1,0 +1,7 @@
+{
+  "platform": "ubuntu-latest",
+  "max_configure_ms": 30000,
+  "max_build_ms": 180000,
+  "max_smoke_mean_ms": 100,
+  "max_microbench_mean_ms": 5000
+}

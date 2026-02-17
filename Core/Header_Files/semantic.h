@@ -1,8 +1,8 @@
 #ifndef PYC_SEMANTIC_H
 #define PYC_SEMANTIC_H
 
-#include "parser.h"
+typedef struct PycAstNode PycAstNode;
 
-int perform_semantic_analysis(ASTNode* ast);
+int perform_semantic_analysis(const PycAstNode* ast);
 
 #endif
