@@ -19,6 +19,25 @@ static int read_file(const char* path, char* out, size_t out_size) {
     return 0;
 }
 
+static void normalize_newlines(char* s) {
+    char* r = s;
+    char* w = s;
+    while (*r) {
+        if (*r == '\r') {
+            r++;
+            if (*r == '\n') {
+                *w++ = '\n';
+                r++;
+            } else {
+                *w++ = '\n';
+            }
+            continue;
+        }
+        *w++ = *r++;
+    }
+    *w = '\0';
+}
+
 int main(void) {
     pyc_ir_module m;
     pyc_ir_op op;
@@ -85,6 +104,8 @@ int main(void) {
 
     if (pyc_ir_serialize(&m, got, sizeof(got)) != 0) return 8;
     if (read_file(expected_path, expected, sizeof(expected)) != 0) return 9;
+    normalize_newlines(got);
+    normalize_newlines(expected);
 
     if (strcmp(got, expected) != 0) {
         fprintf(stderr, "golden mismatch\nEXPECTED:\n%s\nGOT:\n%s\n", expected, got);
