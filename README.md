@@ -173,9 +173,9 @@ Assets are published per OS:
 
 Static download page for end users:
 
-- `docs/downloads/index.html`
+- `index.html` (uses `styles.css` and `app.js` at repo root)
 
-When published with GitHub Pages (`docs/` source), this page auto-detects OS and links the latest release asset.
+When published with GitHub Pages, this page auto-detects OS and links the latest release asset.
 
 ## Status
 

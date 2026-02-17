@@ -36,7 +36,7 @@ If you are new to the project, read these in order:
   - Deterministic benchmark harness usage and methodology.
 - `docs/performance-results.md`
   - Latest measured benchmark outputs.
-- `docs/downloads/`
+- `index.html` (repo root)
   - Static user-facing download page that links latest release binaries by OS.
 - `docs/Result.md`
   - Current outcomes, progress summary, and near-term roadmap.
