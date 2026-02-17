@@ -6,6 +6,7 @@
 #include "pyc/ir.h"
 #include "pyc/kernel_registry.h"
 #include "pyc/optimizer_policy.h"
+#include "pyc/runtime_control.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +33,7 @@ typedef struct {
     size_t memory_budget_bytes;
     double target_utilization_floor;
     int deterministic_strict;
+    pyc_runtime_rails rails;
 } pyc_compile_options;
 
 typedef struct {
@@ -52,6 +54,9 @@ typedef struct {
     double pressure_score;
     double selected_kernel_score;
     double estimated_utilization;
+    pyc_objective_mode active_mode;
+    pyc_rollback_reason rollback_reason;
+    size_t rollback_count;
     int selected_kernel_count;
     char selected_kernel_symbol[PYC_KERNEL_SYMBOL_MAX];
 } pyc_run_stats;

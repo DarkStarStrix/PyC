@@ -1,0 +1,115 @@
+:root {
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --text: #0b1320;
+  --muted: #5a6877;
+  --brand: #0f7a66;
+  --brand-dark: #0a5c4d;
+  --line: #dce3ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top right, #deebff 0, var(--bg) 40%);
+  color: var(--text);
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 16px 48px;
+}
+
+.hero, .panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(11, 19, 32, 0.06);
+}
+
+.panel {
+  margin-top: 16px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 8px 0 8px;
+  font-size: 32px;
+}
+
+.subtext {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.cta-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-block;
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-decoration: none;
+  font-weight: 600;
+  background: var(--brand);
+  color: #fff;
+  transition: background-color 0.16s ease;
+}
+
+.btn:hover {
+  background: var(--brand-dark);
+}
+
+.btn-secondary {
+  background: #e8eef5;
+  color: #1e2a38;
+}
+
+.btn-secondary:hover {
+  background: #d9e3ee;
+}
+
+.btn.disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.status {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.asset-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.asset-list li {
+  margin-bottom: 8px;
+}
+
+.asset-list a {
+  color: #0b4f98;
+  text-decoration: none;
+}
+
+.asset-list a:hover {
+  text-decoration: underline;
+}

@@ -47,6 +47,7 @@ if(PYC_BUILD_COMPILER_NEXT)
       "${CMAKE_SOURCE_DIR}/compiler/passes/pass_manager.c"
       "${CMAKE_SOURCE_DIR}/compiler/runtime/runtime_allocator.c"
       "${CMAKE_SOURCE_DIR}/compiler/runtime/kernel_registry.c"
+      "${CMAKE_SOURCE_DIR}/compiler/runtime/runtime_control.c"
   )
 
   add_library(pyc_compiler_next STATIC ${PYC_COMPILER_NEXT_SOURCES})
@@ -90,6 +91,7 @@ if(PYC_BUILD_COMPILER_NEXT)
     pyc_add_compiler_next_test(pyc_compiler_next_test_determinism "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_determinism.c")
     pyc_add_compiler_next_test(pyc_compiler_next_test_pass_golden "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_pass_golden.c")
     pyc_add_compiler_next_test(pyc_compiler_next_test_policy_modes "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_policy_modes.c")
+    pyc_add_compiler_next_test(pyc_compiler_next_test_runtime_control "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_runtime_control.c")
 
     add_executable(pyc_compiler_next_test_ai_bridge "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_ai_bridge.c")
     target_include_directories(pyc_compiler_next_test_ai_bridge PRIVATE "${CMAKE_SOURCE_DIR}/include")

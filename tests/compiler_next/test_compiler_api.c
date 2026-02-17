@@ -64,6 +64,7 @@ int main(void) {
 
     desc.module = &module;
     desc.backend = PYC_BACKEND_CPU;
+    memset(&options, 0, sizeof(options));
     options.enable_fusion = 1;
     options.enable_memory_reuse = 1;
     options.enable_autotune = 0;
@@ -111,6 +112,14 @@ int main(void) {
     if (stats.selected_kernel_symbol[0] == '\0') {
         pyc_destroy_model(model);
         return 8;
+    }
+    if (stats.active_mode != PYC_MODE_BALANCED) {
+        pyc_destroy_model(model);
+        return 9;
+    }
+    if (stats.rollback_reason != PYC_ROLLBACK_NONE) {
+        pyc_destroy_model(model);
+        return 10;
     }
 
     pyc_destroy_model(model);

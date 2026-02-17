@@ -1,0 +1,113 @@
+name: Release Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to publish (for manual runs)"
+        required: false
+        default: "latest"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release package on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset_name: pyc-linux-x86_64.tar.gz
+            archive_type: tar
+          - os: macos-latest
+            asset_name: pyc-macos-arm64.tar.gz
+            archive_type: tar
+          - os: windows-latest
+            asset_name: pyc-windows-x86_64.zip
+            archive_type: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up CMake
+        uses: jwlawson/actions-setup-cmake@v2
+
+      - name: Configure
+        run: cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
+
+      - name: Build stable distributables
+        run: cmake --build build --config Release --parallel --target pyc pyc_core pyc_foundation
+
+      - name: Run tests before packaging
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Package (Linux/macOS)
+        if: matrix.archive_type == 'tar'
+        shell: bash
+        run: |
+          mkdir -p dist/bin dist/lib dist/include
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            cp build/pyc dist/bin/
+            cp build/libpyc_core.a dist/lib/
+            cp build/libpyc_foundation.a dist/lib/
+          else
+            cp build/pyc dist/bin/
+            cp build/libpyc_core.a dist/lib/
+            cp build/libpyc_foundation.a dist/lib/
+          fi
+          cp -R Core/Header_Files/* dist/include/
+          cp README.md LICENSE dist/
+          tar -czf "${{ matrix.asset_name }}" -C dist .
+
+      - name: Package (Windows)
+        if: matrix.archive_type == 'zip'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist/bin -Force | Out-Null
+          New-Item -ItemType Directory -Path dist/lib -Force | Out-Null
+          New-Item -ItemType Directory -Path dist/include -Force | Out-Null
+          Copy-Item build/Release/pyc.exe dist/bin/
+          Copy-Item build/Release/pyc_core.lib dist/lib/
+          Copy-Item build/Release/pyc_foundation.lib dist/lib/
+          Copy-Item Core/Header_Files/* dist/include/
+          Copy-Item README.md dist/
+          Copy-Item LICENSE dist/
+          Compress-Archive -Path dist/* -DestinationPath "${{ matrix.asset_name }}" -Force
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Flatten release assets
+        run: |
+          mkdir -p out
+          find release-assets -type f -maxdepth 2 -exec cp {} out/ \;
+          ls -lah out
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag_name || github.ref_name }}
+          files: out/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

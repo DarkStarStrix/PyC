@@ -4,6 +4,7 @@ Lightweight compiler/toolchain project with a canonical cross-platform CMake bui
 
 [![CI](https://github.com/DarkStarStrix/PyC/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/DarkStarStrix/PyC/actions/workflows/cmake-multi-platform.yml)
 ![Release](https://img.shields.io/badge/Release-Alpha-orange)
+![Tests](https://img.shields.io/badge/Tests-12%2F12%20Passing-brightgreen)
 ![Stability](https://img.shields.io/badge/Stability-Stable%20Core%20Targets-blue)
 ![Compiler Scope](https://img.shields.io/badge/Compiler%20Pipeline-Experimental-yellow)
 ![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows-5C7CFA)
@@ -81,6 +82,14 @@ It runs on Ubuntu, macOS, and Windows, and performs:
 
 CI also enforces source coverage for active C sources (`Core/C_Files`, `compiler`, `AI`, `tests/compiler_next`): if a `.c` file is not referenced by `CMakeLists.txt`, the suite fails.
 
+## Build Efficiency
+
+You do not need to rebuild everything from scratch locally on every push.
+
+1. Reuse the same `build/` directory between edits.
+2. Re-run `cmake --build build --parallel` for incremental builds.
+3. CI runners are ephemeral, but Linux/macOS jobs now use `ccache` to reduce repeated compile time across runs.
+
 ## Benchmarking
 
 PyC includes a deterministic benchmark harness for stable core targets.
@@ -147,7 +156,26 @@ Public interfaces:
 - `include/pyc/pass_manager.h`
 - `include/pyc/runtime_allocator.h`
 - `include/pyc/kernel_registry.h`
+- `include/pyc/runtime_control.h`
 - `include/pyc/ai_bridge.h`
+
+## Binary Distribution
+
+Release binaries are packaged and published by:
+
+- `.github/workflows/release-binaries.yml`
+
+Assets are published per OS:
+
+- `pyc-linux-x86_64.tar.gz`
+- `pyc-macos-arm64.tar.gz`
+- `pyc-windows-x86_64.zip`
+
+Static download page for end users:
+
+- `docs/downloads/index.html`
+
+When published with GitHub Pages (`docs/` source), this page auto-detects OS and links the latest release asset.
 
 ## Status
 
@@ -166,6 +194,7 @@ Key docs:
 - `docs/benchmarking.md`
 - `docs/performance-results.md`
 - `docs/REPO_RULES.md`
+- `docs/compiler-next/runtime-integration-spec.md`
 
 ## Community
 

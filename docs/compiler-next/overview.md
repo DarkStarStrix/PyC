@@ -39,5 +39,6 @@
 - `docs/compiler-next/roadmap-phases.md`
 - `docs/compiler-next/innovation-backlog.md`
 - `docs/compiler-next/rd-landscape.md` (classical vs AI compiler R&D, ecosystem sentiment, and priority experiments)
+- `docs/compiler-next/runtime-integration-spec.md` (how to embed PyC under real job runtimes with dynamic policy control)
 - `tests/compiler_next/test_roadmap_phase1.md`
 - `docs/compiler-next/kernel-lab.md` (mini CLI lab for kernel prototyping/testing/benchmarking)

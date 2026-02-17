@@ -8,6 +8,7 @@
 #include "pyc/kernel_registry.h"
 #include "pyc/pass_manager.h"
 #include "pyc/runtime_allocator.h"
+#include "pyc/runtime_control.h"
 
 typedef struct pyc_compiled_model {
     pyc_ir_module module;
@@ -16,6 +17,10 @@ typedef struct pyc_compiled_model {
     pyc_alloc_plan alloc_plan;
     pyc_kernel_desc selected_kernel;
     pyc_kernel_selection_trace kernel_trace;
+    pyc_runtime_controller controller;
+    double baseline_p95_ms;
+    double baseline_throughput;
+    size_t run_count;
     int has_selected_kernel;
     double compile_ms;
     char decision_log[512];
@@ -35,7 +40,47 @@ static pyc_compile_options default_compile_options(void) {
     o.memory_budget_bytes = 0;
     o.target_utilization_floor = 0.70;
     o.deterministic_strict = 1;
+    pyc_runtime_rails_default(&o.rails);
     return o;
+}
+
+static void sanitize_runtime_rails(pyc_runtime_rails* rails) {
+    pyc_runtime_rails defaults;
+    if (!rails) {
+        return;
+    }
+    pyc_runtime_rails_default(&defaults);
+
+    if (!(rails->enable_auto_switch == 0 || rails->enable_auto_switch == 1)) {
+        rails->enable_auto_switch = defaults.enable_auto_switch;
+    }
+    if (!(rails->enable_hard_rollback == 0 || rails->enable_hard_rollback == 1)) {
+        rails->enable_hard_rollback = defaults.enable_hard_rollback;
+    }
+    if (rails->dwell_steps == 0 || rails->dwell_steps > 100000) {
+        rails->dwell_steps = defaults.dwell_steps;
+    }
+    if (rails->cooldown_steps > 100000) {
+        rails->cooldown_steps = defaults.cooldown_steps;
+    }
+    if (rails->consecutive_breach_windows == 0 || rails->consecutive_breach_windows > 1000) {
+        rails->consecutive_breach_windows = defaults.consecutive_breach_windows;
+    }
+    if (rails->latency_regression_threshold <= 0.0 || rails->latency_regression_threshold > 1.0) {
+        rails->latency_regression_threshold = defaults.latency_regression_threshold;
+    }
+    if (rails->throughput_regression_threshold <= 0.0 || rails->throughput_regression_threshold > 1.0) {
+        rails->throughput_regression_threshold = defaults.throughput_regression_threshold;
+    }
+    if (rails->pressure_score_threshold <= 0.0 || rails->pressure_score_threshold > 10.0) {
+        rails->pressure_score_threshold = defaults.pressure_score_threshold;
+    }
+    if (rails->pressure_events_threshold == 0 || rails->pressure_events_threshold > 100000) {
+        rails->pressure_events_threshold = defaults.pressure_events_threshold;
+    }
+    if (rails->rematerialized_tensors_threshold == 0 || rails->rematerialized_tensors_threshold > 100000) {
+        rails->rematerialized_tensors_threshold = defaults.rematerialized_tensors_threshold;
+    }
 }
 
 const char* pyc_status_string(pyc_status status) {
@@ -76,14 +121,23 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
     model->backend = desc->backend;
     model->options = default_compile_options();
     if (options) {
-        model->options = *options;
-        if (model->options.objective_mode < PYC_MODE_BALANCED ||
-            model->options.objective_mode > PYC_MODE_UTILIZATION_FIRST) {
-            model->options.objective_mode = PYC_MODE_BALANCED;
-        }
+        model->options.enable_fusion = options->enable_fusion;
+        model->options.enable_memory_reuse = options->enable_memory_reuse;
+        model->options.enable_autotune = options->enable_autotune;
+        model->options.objective_mode = options->objective_mode;
+        model->options.memory_budget_bytes = options->memory_budget_bytes;
+        model->options.target_utilization_floor = options->target_utilization_floor;
+        model->options.deterministic_strict = options->deterministic_strict;
+        model->options.rails = options->rails;
+    }
+    sanitize_runtime_rails(&model->options.rails);
+    if (model->options.objective_mode < PYC_MODE_BALANCED ||
+        model->options.objective_mode > PYC_MODE_UTILIZATION_FIRST) {
+        model->options.objective_mode = PYC_MODE_BALANCED;
     }
 
     pyc_alloc_plan_init(&model->alloc_plan);
+    pyc_runtime_controller_init(&model->controller, model->options.objective_mode);
 
     start = clock();
 
@@ -170,6 +224,12 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     clock_t start;
     clock_t end;
     pyc_alloc_stats stats;
+    pyc_runtime_window_metrics metrics;
+    pyc_objective_mode active_mode;
+    pyc_rollback_reason rollback_reason;
+    double run_ms;
+    double throughput;
+    int runtime_error = 0;
 
     if (!model || !inputs || !outputs || input_count == 0 || output_count == 0) {
         return PYC_STATUS_INVALID_ARGUMENT;
@@ -179,15 +239,76 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
 
     if (outputs[0].data && inputs[0].data && outputs[0].size_bytes >= inputs[0].size_bytes) {
         memcpy(outputs[0].data, inputs[0].data, inputs[0].size_bytes);
+    } else {
+        runtime_error = 1;
     }
 
     end = clock();
+    run_ms = elapsed_ms(start, end);
+    throughput = run_ms > 0.0 ? 1000.0 / run_ms : 0.0;
+    model->run_count++;
+
+    pyc_alloc_plan_stats(&model->alloc_plan, &stats);
+    if (model->baseline_p95_ms == 0.0) {
+        model->baseline_p95_ms = run_ms;
+    }
+    if (model->baseline_throughput == 0.0) {
+        model->baseline_throughput = throughput;
+    }
+
+    memset(&metrics, 0, sizeof(metrics));
+    metrics.baseline_p95_ms = model->baseline_p95_ms;
+    metrics.observed_p95_ms = run_ms;
+    metrics.baseline_throughput = model->baseline_throughput;
+    metrics.observed_throughput = throughput;
+    metrics.pressure_score = stats.pressure_score;
+    metrics.pressure_events = stats.pressure_events;
+    metrics.rematerialized_tensors = stats.rematerialized_tensors;
+    metrics.runtime_error = runtime_error;
+
+    if (pyc_runtime_controller_observe(
+            &model->controller,
+            &model->options.rails,
+            &metrics,
+            &active_mode,
+            &rollback_reason) != 0) {
+        return PYC_STATUS_RUNTIME_FAILED;
+    }
+
+    model->options.objective_mode = active_mode;
+    model->kernel_trace.selected_score = 0.0;
+    model->kernel_trace.selected_estimated_utilization = 0.0;
+    model->has_selected_kernel = 0;
+    {
+        pyc_kernel_desc selected;
+        if (pyc_kernel_select_with_policy(
+                "matmul_fused",
+                model->backend,
+                model->options.objective_mode,
+                stats.pressure_score,
+                &selected,
+                &model->kernel_trace) == 0) {
+            model->selected_kernel = selected;
+            model->has_selected_kernel = 1;
+        }
+    }
+
+    snprintf(
+        model->decision_log,
+        sizeof(model->decision_log),
+        "mode=%d rollback=%d rollback_count=%zu pressure=%.6f kernel=%s score=%.3f util=%.3f",
+        (int)model->options.objective_mode,
+        (int)model->controller.last_rollback_reason,
+        model->controller.rollback_count,
+        stats.pressure_score,
+        model->has_selected_kernel ? model->selected_kernel.symbol : "none",
+        model->kernel_trace.selected_score,
+        model->kernel_trace.selected_estimated_utilization);
 
     if (out_stats) {
         memset(out_stats, 0, sizeof(*out_stats));
         out_stats->compile_ms = model->compile_ms;
-        out_stats->run_ms = elapsed_ms(start, end);
-        pyc_alloc_plan_stats(&model->alloc_plan, &stats);
+        out_stats->run_ms = run_ms;
         out_stats->peak_bytes = stats.peak_bytes;
         out_stats->total_requested_bytes = stats.total_requested_bytes;
         out_stats->reused_allocations = stats.reused_allocations;
@@ -197,12 +318,15 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         out_stats->selected_kernel_count = model->has_selected_kernel ? 1 : 0;
         out_stats->selected_kernel_score = model->kernel_trace.selected_score;
         out_stats->estimated_utilization = model->kernel_trace.selected_estimated_utilization;
+        out_stats->active_mode = model->options.objective_mode;
+        out_stats->rollback_reason = rollback_reason;
+        out_stats->rollback_count = model->controller.rollback_count;
         if (model->has_selected_kernel) {
             strcpy(out_stats->selected_kernel_symbol, model->selected_kernel.symbol);
         }
     }
 
-    return PYC_STATUS_OK;
+    return runtime_error ? PYC_STATUS_RUNTIME_FAILED : PYC_STATUS_OK;
 }
 
 const char* pyc_model_last_decision_log(const pyc_compiled_model* model) {

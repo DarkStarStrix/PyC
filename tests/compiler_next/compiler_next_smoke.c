@@ -55,6 +55,7 @@ int main(void) {
     desc.module = &module;
     desc.backend = PYC_BACKEND_CPU;
 
+    memset(&options, 0, sizeof(options));
     options.enable_fusion = 1;
     options.enable_memory_reuse = 1;
     options.enable_autotune = 0;

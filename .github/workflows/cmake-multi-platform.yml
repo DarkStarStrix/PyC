@@ -25,6 +25,12 @@ jobs:
       - name: Set up CMake
         uses: jwlawson/actions-setup-cmake@v2
 
+      - name: Set up ccache (Linux/macOS)
+        if: runner.os != 'Windows'
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-pyc
+
       - name: Toolchain versions
         shell: bash
         run: |
@@ -33,10 +39,16 @@ jobs:
           if command -v clang >/dev/null 2>&1; then clang --version | head -n 1; fi
 
       - name: Configure
-        run: cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
+          else
+            cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON -D CMAKE_C_COMPILER_LAUNCHER=ccache
+          fi
+        shell: bash
 
       - name: Build validation targets
-        run: cmake --build build --config Release --parallel --target pyc_compiler_next pyc_ai_bridge pyc_compiler_next_smoke pyc_compiler_next_test_ir pyc_compiler_next_test_pass_manager pyc_compiler_next_test_runtime_allocator pyc_compiler_next_test_kernel_registry pyc_compiler_next_test_compiler_api pyc_compiler_next_test_determinism pyc_compiler_next_test_pass_golden pyc_compiler_next_test_policy_modes pyc_compiler_next_test_ai_bridge
+        run: cmake --build build --config Release --parallel --target pyc_compiler_next pyc_ai_bridge pyc_compiler_next_smoke pyc_compiler_next_test_ir pyc_compiler_next_test_pass_manager pyc_compiler_next_test_runtime_allocator pyc_compiler_next_test_kernel_registry pyc_compiler_next_test_compiler_api pyc_compiler_next_test_determinism pyc_compiler_next_test_pass_golden pyc_compiler_next_test_policy_modes pyc_compiler_next_test_runtime_control pyc_compiler_next_test_ai_bridge
 
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'

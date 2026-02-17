@@ -19,6 +19,7 @@ If you are new to the project, read these in order:
   - Includes phased roadmap in `docs/compiler-next/roadmap-phases.md`.
   - Includes innovation shortlist in `docs/compiler-next/innovation-backlog.md`.
   - Includes R&D landscape and source-backed direction in `docs/compiler-next/rd-landscape.md`.
+  - Includes practical runtime usage spec in `docs/compiler-next/runtime-integration-spec.md`.
   - Includes Phase 1 test matrix in `tests/compiler_next/test_roadmap_phase1.md`.
   - Includes kernel mini-lab CLI guide in `docs/compiler-next/kernel-lab.md`.
 - `docs/Doc.md`
@@ -35,6 +36,8 @@ If you are new to the project, read these in order:
   - Deterministic benchmark harness usage and methodology.
 - `docs/performance-results.md`
   - Latest measured benchmark outputs.
+- `docs/downloads/`
+  - Static user-facing download page that links latest release binaries by OS.
 - `docs/Result.md`
   - Current outcomes, progress summary, and near-term roadmap.
 - `docs/contracts/`

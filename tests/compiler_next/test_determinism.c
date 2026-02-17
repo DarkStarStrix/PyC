@@ -60,6 +60,7 @@ int main(void) {
     desc.module = &module;
     desc.backend = PYC_BACKEND_CPU;
 
+    memset(&options, 0, sizeof(options));
     options.enable_fusion = 1;
     options.enable_memory_reuse = 1;
     options.enable_autotune = 0;
@@ -105,6 +106,8 @@ int main(void) {
     if (stats_a.peak_bytes != stats_b.peak_bytes) return 7;
     if (stats_a.selected_kernel_count != stats_b.selected_kernel_count) return 8;
     if (strcmp(pyc_model_last_decision_log(model_a), pyc_model_last_decision_log(model_b)) != 0) return 9;
+    if (stats_a.rollback_count != stats_b.rollback_count) return 10;
+    if (stats_a.active_mode != stats_b.active_mode) return 11;
 
     pyc_destroy_model(model_a);
     pyc_destroy_model(model_b);

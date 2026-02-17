@@ -7,6 +7,11 @@ PyC uses one workflow as the canonical build/test definition:
 - File: `.github/workflows/cmake-multi-platform.yml`
 - Name: `CI`
 
+Binary release packaging workflow:
+
+- File: `.github/workflows/release-binaries.yml`
+- Name: `Release Binaries`
+
 ### OS Matrix
 
 - `ubuntu-latest`
