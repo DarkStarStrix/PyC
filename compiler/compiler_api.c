@@ -1016,6 +1016,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     int runtime_error = 0;
     size_t guard_miss_count_this_run = 0;
     size_t fallback_count_this_run = 0;
+    double autotune_ms = 0.0;
 
     if (!model || !inputs || !outputs || input_count == 0 || output_count == 0) {
         return PYC_STATUS_INVALID_ARGUMENT;
@@ -1126,18 +1127,25 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     kernel_select_ms = elapsed_ms(stage_start, stage_end);
     model->guard_miss_count += guard_miss_count_this_run;
     model->fallback_count += fallback_count_this_run;
+    autotune_ms = run_ms;
+    if (autotune_ms <= 0.0) {
+        autotune_ms = dispatch_ms;
+    }
+    if (autotune_ms <= 0.0) {
+        autotune_ms = 0.001;
+    }
     if (!runtime_error && model->options.enable_autotune && model->has_selected_kernel) {
         if (pyc_kernel_benchmark_update_symbol(
                 "matmul_fused",
                 model->backend,
                 model->selected_kernel.symbol,
-                run_ms) == 0) {
+                autotune_ms) == 0) {
             if (autotune_persist_result(
                     model->autotune_db_path,
                     "matmul_fused",
                     model->backend,
                     model->selected_kernel.symbol,
-                    run_ms) == 0) {
+                    autotune_ms) == 0) {
                 model->autotune_saved = 1;
             }
         }
