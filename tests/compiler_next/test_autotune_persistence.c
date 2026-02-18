@@ -100,38 +100,16 @@ int main(void) {
     pyc_run_stats first_stats;
     pyc_run_stats second_stats;
     char db_path[512];
-    const char* tmp_dir = NULL;
     int first_rc;
     int second_rc;
+    FILE* probe;
 
-#if defined(_WIN32)
-    tmp_dir = getenv("TEMP");
-    if (!tmp_dir || tmp_dir[0] == '\0') {
-        tmp_dir = getenv("TMP");
-    }
-    if (!tmp_dir || tmp_dir[0] == '\0') {
-        tmp_dir = ".";
-    }
     snprintf(
         db_path,
         sizeof(db_path),
-        "%s\\pyc_autotune_test_%d_%ld.db",
-        tmp_dir,
+        "pyc_autotune_test_%d_%ld.db",
         (int)PYC_GETPID(),
         (long)time(NULL));
-#else
-    tmp_dir = getenv("TMPDIR");
-    if (!tmp_dir || tmp_dir[0] == '\0') {
-        tmp_dir = "/tmp";
-    }
-    snprintf(
-        db_path,
-        sizeof(db_path),
-        "%s/pyc_autotune_test_%d_%ld.db",
-        tmp_dir,
-        (int)PYC_GETPID(),
-        (long)time(NULL));
-#endif
 
     remove(db_path);
     build_module(&module);
@@ -152,6 +130,13 @@ int main(void) {
         remove(db_path);
         return 3;
     }
+    probe = fopen(db_path, "r");
+    if (!probe) {
+        fprintf(stderr, "autotune db file missing after first run db=%s\n", db_path);
+        remove(db_path);
+        return 7;
+    }
+    fclose(probe);
 
     second_rc = compile_run_once(&module, db_path, &second_stats);
     if (second_rc != 0) {

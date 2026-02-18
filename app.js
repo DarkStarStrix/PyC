@@ -4,11 +4,18 @@
   var owner = "DarkStarStrix";
   var repo = "PyC";
   var api = "https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest";
+  var defaultDownloadLinks = {
+    linux: "https://github.com/" + owner + "/" + repo + "/releases/latest/download/pyc-linux-x86_64.tar.gz",
+    macos: "https://github.com/" + owner + "/" + repo + "/releases/latest/download/pyc-macos-arm64.tar.gz",
+    windows: "https://github.com/" + owner + "/" + repo + "/releases/latest/download/pyc-windows-x86_64.zip"
+  };
 
   var PHASE4 = {
     runId: "20260218T023355Z_phase4_final",
-    cpuSvg: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
-    gpuSvg: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
+    cpuSvg: "benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
+    gpuSvg: "benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
+    cpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
+    gpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
     cpuJson: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.json",
     gpuJson: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.json"
   };
@@ -37,13 +44,11 @@
   var windowsLink = document.getElementById("download-windows");
   var status = document.getElementById("status");
   var assetList = document.getElementById("asset-list");
+  var themeToggle = document.getElementById("theme-toggle");
 
   var resultsStatus = document.getElementById("results-status");
   var cpuBody = document.getElementById("cpu-results-body");
   var gpuBody = document.getElementById("gpu-results-body");
-  var svgList = document.getElementById("svg-list");
-  var metadataList = document.getElementById("metadata-list");
-  var latestCharts = document.getElementById("latest-charts");
   var latestCpuSvg = document.getElementById("latest-cpu-svg");
   var latestGpuSvg = document.getElementById("latest-gpu-svg");
   var svgGallery = document.getElementById("svg-gallery");
@@ -52,6 +57,39 @@
     if (!path) return "#";
     if (/^https?:\/\//i.test(path)) return path;
     return new URL(path, window.location.href).toString();
+  }
+
+  function preferredTheme() {
+    var stored = null;
+    try {
+      stored = window.localStorage.getItem("pyc-theme");
+    } catch (e) {}
+    if (stored === "light" || stored === "dark") return stored;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  function applyTheme(theme) {
+    var resolved = theme === "dark" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", resolved);
+    if (themeToggle) {
+      themeToggle.textContent = resolved === "dark" ? "Light Mode" : "Dark Mode";
+      themeToggle.setAttribute("aria-pressed", resolved === "dark" ? "true" : "false");
+    }
+  }
+
+  function initThemeToggle() {
+    var initial = preferredTheme();
+    applyTheme(initial);
+
+    if (!themeToggle) return;
+    themeToggle.addEventListener("click", function () {
+      var current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+      var next = current === "dark" ? "light" : "dark";
+      applyTheme(next);
+      try {
+        window.localStorage.setItem("pyc-theme", next);
+      } catch (e) {}
+    });
   }
 
   function assetHref(path) {
@@ -77,14 +115,16 @@
     return null;
   }
 
-  function setLink(el, asset, fallback) {
+  function setLink(el, asset, fallback, fallbackText) {
     if (!el) return;
     if (asset) {
       el.textContent = asset.name;
       el.href = asset.browser_download_url;
       el.removeAttribute("aria-disabled");
     } else {
-      el.textContent = "latest release assets";
+      if (fallbackText) {
+        el.textContent = fallbackText;
+      }
       el.href = fallback;
       el.removeAttribute("aria-disabled");
     }
@@ -147,48 +187,19 @@
     });
   }
 
-  function appendLinks(container, entries) {
-    container.innerHTML = "";
-    if (!entries.length) {
-      var li = document.createElement("li");
-      li.textContent = "None published.";
-      container.appendChild(li);
-      return;
-    }
-
-    entries.forEach(function (entry) {
-      var li = document.createElement("li");
-      var a = document.createElement("a");
-      a.href = assetHref(entry.published);
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = entry.source;
-      li.appendChild(a);
-      container.appendChild(li);
-    });
-  }
-
   function renderPinnedPhase4Charts() {
-    latestCharts.innerHTML = "";
-
-    var charts = [
-      { source: "remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg", published: PHASE4.cpuSvg },
-      { source: "remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg", published: PHASE4.gpuSvg }
-    ];
-
-    charts.forEach(function (entry) {
-      var li = document.createElement("li");
-      var a = document.createElement("a");
-      a.href = toHref(entry.published);
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = entry.source;
-      li.appendChild(a);
-      latestCharts.appendChild(li);
-    });
-
-    if (latestCpuSvg) latestCpuSvg.src = toHref(PHASE4.cpuSvg);
-    if (latestGpuSvg) latestGpuSvg.src = toHref(PHASE4.gpuSvg);
+    if (latestCpuSvg) {
+      latestCpuSvg.src = toHref(PHASE4.cpuSvg);
+      latestCpuSvg.onerror = function () {
+        latestCpuSvg.src = PHASE4.cpuSvgRemote;
+      };
+    }
+    if (latestGpuSvg) {
+      latestGpuSvg.src = toHref(PHASE4.gpuSvg);
+      latestGpuSvg.onerror = function () {
+        latestGpuSvg.src = PHASE4.gpuSvgRemote;
+      };
+    }
   }
 
   function renderSvgGallery(entries) {
@@ -202,8 +213,10 @@
     }
 
     entries.forEach(function (entry) {
+      var card = document.createElement("figure");
+      card.className = "svg-preview";
+
       var item = document.createElement("a");
-      item.className = "svg-preview";
       item.href = assetHref(entry.published);
       item.target = "_blank";
       item.rel = "noopener noreferrer";
@@ -213,13 +226,20 @@
       img.alt = entry.source;
       img.loading = "lazy";
 
-      var label = document.createElement("span");
-      label.textContent = entry.source;
+      var label = document.createElement("figcaption");
+      label.textContent = captionFromSource(entry.source);
 
       item.appendChild(img);
-      item.appendChild(label);
-      svgGallery.appendChild(item);
+      card.appendChild(item);
+      card.appendChild(label);
+      svgGallery.appendChild(card);
     });
+  }
+
+  function captionFromSource(source) {
+    var file = String(source || "").split("/").pop().replace(/\.svg$/i, "");
+    if (!file) return "Chart";
+    return file.replace(/__/g, " | ").replace(/_/g, " ");
   }
 
   function adaptersToRows(payload) {
@@ -282,16 +302,31 @@
         releaseLink.href = release.html_url;
         status.textContent = "Latest release: " + release.tag_name;
         renderReleaseAssets(release.assets || []);
-        setLink(linuxLink, findAsset(release.assets || [], "linux"), release.html_url);
-        setLink(macosLink, findAsset(release.assets || [], "macos"), release.html_url);
-        setLink(windowsLink, findAsset(release.assets || [], "windows"), release.html_url);
+        setLink(
+          linuxLink,
+          findAsset(release.assets || [], "linux"),
+          defaultDownloadLinks.linux || release.html_url,
+          "pyc-linux-x86_64.tar.gz"
+        );
+        setLink(
+          macosLink,
+          findAsset(release.assets || [], "macos"),
+          defaultDownloadLinks.macos || release.html_url,
+          "pyc-macos-arm64.tar.gz"
+        );
+        setLink(
+          windowsLink,
+          findAsset(release.assets || [], "windows"),
+          defaultDownloadLinks.windows || release.html_url,
+          "pyc-windows-x86_64.zip"
+        );
       })
       .catch(function () {
-        status.textContent = "Could not load release metadata. Open latest release manually.";
+        status.textContent = "Release metadata unavailable. Direct download links are still active.";
         var fallback = "https://github.com/" + owner + "/" + repo + "/releases/latest";
-        setLink(linuxLink, null, fallback);
-        setLink(macosLink, null, fallback);
-        setLink(windowsLink, null, fallback);
+        setLink(linuxLink, null, defaultDownloadLinks.linux || fallback, "pyc-linux-x86_64.tar.gz");
+        setLink(macosLink, null, defaultDownloadLinks.macos || fallback, "pyc-macos-arm64.tar.gz");
+        setLink(windowsLink, null, defaultDownloadLinks.windows || fallback, "pyc-windows-x86_64.zip");
         releaseLink.href = fallback;
       });
   }
@@ -319,12 +354,6 @@
         var svgs = (manifest.artifacts || []).filter(function (entry) {
           return entry.kind === "image_svg";
         });
-        var metadata = (manifest.artifacts || []).filter(function (entry) {
-          return entry.kind === "metadata_json";
-        });
-
-        appendLinks(svgList, svgs);
-        appendLinks(metadataList, metadata);
         renderSvgGallery(svgs);
       })
       .catch(function () {
@@ -332,6 +361,7 @@
       });
   }
 
+  initThemeToggle();
   renderPinnedPhase4Charts();
   loadPhase4Stats();
   loadRelease();

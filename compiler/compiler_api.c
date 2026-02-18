@@ -704,6 +704,7 @@ static void resolve_autotune_db_path(
         selected = "benchmark/benchmarks/results/json/pyc_autotune.db";
     }
     strncpy(out_path, selected, out_path_size - 1);
+    out_path[out_path_size - 1] = '\0';
 }
 
 static int autotune_load_into_registry(

@@ -8,7 +8,10 @@
 </head>
 <body>
   <main class="container">
-    <p class="eyebrow">PyC Compiler Runtime</p>
+    <div class="top-bar">
+      <p class="eyebrow">PyC Compiler Runtime</p>
+      <button id="theme-toggle" type="button" class="theme-toggle" aria-label="Toggle color theme">Switch Theme</button>
+    </div>
     <h1>Deterministic compiler rails for AI workloads</h1>
     <p class="subtext">
       PyC is a C/CMake compiler runtime project focused on reproducible CI, memory-backpressure control, and policy-driven execution decisions.
@@ -24,9 +27,9 @@
       <p id="status" class="status">Loading release metadata...</p>
       <p class="section-text">Download binaries by platform:</p>
       <ul>
-        <li>Linux: <a id="download-linux" href="#" aria-disabled="true">checking latest artifact...</a></li>
-        <li>macOS: <a id="download-macos" href="#" aria-disabled="true">checking latest artifact...</a></li>
-        <li>Windows: <a id="download-windows" href="#" aria-disabled="true">checking latest artifact...</a></li>
+        <li>Linux: <a id="download-linux" href="https://github.com/DarkStarStrix/PyC/releases/latest/download/pyc-linux-x86_64.tar.gz">pyc-linux-x86_64.tar.gz</a></li>
+        <li>macOS: <a id="download-macos" href="https://github.com/DarkStarStrix/PyC/releases/latest/download/pyc-macos-arm64.tar.gz">pyc-macos-arm64.tar.gz</a></li>
+        <li>Windows: <a id="download-windows" href="https://github.com/DarkStarStrix/PyC/releases/latest/download/pyc-windows-x86_64.zip">pyc-windows-x86_64.zip</a></li>
       </ul>
     </section>
 
@@ -82,27 +85,29 @@ ctest --test-dir build -C Release --output-on-failure
       </table>
 
       <h3>Phase 4 Charts</h3>
-      <ul id="latest-charts" class="asset-list"></ul>
+      <p class="section-text">
+        In this Phase 4 run, PyC on CPU-path reached 24.0459 ms mean latency, ahead of PyTorch Compile at 26.7237 ms and PyTorch Eager at 36.9971 ms for this benchmark shape.
+      </p>
+      <p class="section-text">
+        On GPU, PyC is still operating in proxy/fallback behavior at 25.5228 ms while native baselines sit in sub-millisecond territory (for example PyTorch Eager at 0.1154 ms). This is a kernel-dispatch maturity issue rather than a deterministic-rails issue.
+      </p>
+      <p class="section-text">
+        Architecture decisions: keep deterministic compile/runtime contracts, explicit fallback counters, and policy-driven runtime controls first; then harden native CUDA kernels and utilization-aware scheduling. Broader goal: a production-grade AI compiler runtime that combines deterministic behavior with high GPU utilization and aggressive memory-backpressure control. More CUDA-focused tests are coming soon.
+      </p>
 
       <div class="chart-grid">
         <figure>
-          <img id="latest-cpu-svg" alt="Latest CPU benchmark chart" loading="lazy">
-          <figcaption>Latest CPU SVG</figcaption>
+          <img id="latest-cpu-svg" src="./benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg" alt="Phase 4 CPU benchmark chart" loading="lazy">
+          <figcaption>Phase 4 CPU SVG</figcaption>
         </figure>
         <figure>
-          <img id="latest-gpu-svg" alt="Latest GPU benchmark chart" loading="lazy">
-          <figcaption>Latest GPU SVG</figcaption>
+          <img id="latest-gpu-svg" src="./benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg" alt="Phase 4 GPU benchmark chart" loading="lazy">
+          <figcaption>Phase 4 GPU SVG</figcaption>
         </figure>
       </div>
 
-      <h3>Published SVG Charts</h3>
-      <ul id="svg-list" class="asset-list"></ul>
-
-      <h3>SVG Preview Gallery</h3>
+      <h3>All SVG Snapshots</h3>
       <div id="svg-gallery" class="svg-gallery"></div>
-
-      <h3>Published Metadata JSON</h3>
-      <ul id="metadata-list" class="asset-list"></ul>
     </section>
 
     <section>
