@@ -5,6 +5,32 @@
   var repo = "PyC";
   var api = "https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest";
 
+  var PHASE4 = {
+    runId: "20260218T023355Z_phase4_final",
+    cpuSvg: "website/results/artifacts/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
+    gpuSvg: "website/results/artifacts/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
+    cpuJson: "website/results/artifacts/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.json",
+    gpuJson: "website/results/artifacts/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.json"
+  };
+
+  var PHASE4_CPU_FALLBACK_ROWS = [
+    { display_name: "PyC CUDA", mode: "native", mean_ms: 24.0459, p50_ms: 24.0220, p95_ms: 24.1800, throughput_tokens_per_sec: 5450908.47 },
+    { display_name: "TensorRT", mode: "proxy", mean_ms: 24.4121, p50_ms: 9.3322, p95_ms: 68.6434, throughput_tokens_per_sec: 5369130.72 },
+    { display_name: "PyTorch Compile", mode: "native", mean_ms: 26.7237, p50_ms: 10.0514, p95_ms: 72.1404, throughput_tokens_per_sec: 4904708.07 },
+    { display_name: "XLA", mode: "proxy", mean_ms: 30.2406, p50_ms: 12.8271, p95_ms: 72.3854, throughput_tokens_per_sec: 4334310.06 },
+    { display_name: "Glow", mode: "proxy", mean_ms: 34.8523, p50_ms: 15.7008, p95_ms: 75.1887, throughput_tokens_per_sec: 3760782.37 },
+    { display_name: "PyTorch Eager", mode: "native", mean_ms: 36.9971, p50_ms: 15.4305, p95_ms: 75.9299, throughput_tokens_per_sec: 3542766.92 }
+  ];
+
+  var PHASE4_GPU_FALLBACK_ROWS = [
+    { display_name: "PyTorch Eager", mode: "native", mean_ms: 0.1154, p50_ms: 0.1135, p95_ms: 0.1285, throughput_tokens_per_sec: 1135905416.11 },
+    { display_name: "XLA", mode: "proxy", mean_ms: 0.1157, p50_ms: 0.1138, p95_ms: 0.1263, throughput_tokens_per_sec: 1133048992.77 },
+    { display_name: "Glow", mode: "proxy", mean_ms: 0.1314, p50_ms: 0.1190, p95_ms: 0.1332, throughput_tokens_per_sec: 997355892.15 },
+    { display_name: "PyTorch Compile", mode: "native", mean_ms: 0.1551, p50_ms: 0.1544, p95_ms: 0.1665, throughput_tokens_per_sec: 844896466.85 },
+    { display_name: "TensorRT", mode: "proxy", mean_ms: 0.1598, p50_ms: 0.1560, p95_ms: 0.1743, throughput_tokens_per_sec: 820055823.27 },
+    { display_name: "PyC CUDA", mode: "proxy", mean_ms: 25.5228, p50_ms: 25.3830, p95_ms: 27.3270, throughput_tokens_per_sec: 5135486.70 }
+  ];
+
   var releaseLink = document.getElementById("release-link");
   var linuxLink = document.getElementById("download-linux");
   var macosLink = document.getElementById("download-macos");
@@ -21,6 +47,12 @@
   var latestCpuSvg = document.getElementById("latest-cpu-svg");
   var latestGpuSvg = document.getElementById("latest-gpu-svg");
   var svgGallery = document.getElementById("svg-gallery");
+
+  function toHref(path) {
+    if (!path) return "#";
+    if (/^https?:\/\//i.test(path)) return path;
+    return new URL(path, window.location.href).toString();
+  }
 
   function findAsset(assets, os) {
     var patterns = {
@@ -118,7 +150,7 @@
     entries.forEach(function (entry) {
       var li = document.createElement("li");
       var a = document.createElement("a");
-      a.href = "./" + entry.published;
+      a.href = toHref(entry.published);
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.textContent = entry.source;
@@ -127,28 +159,18 @@
     });
   }
 
-  function findLatestChart(manifest, suffix) {
-    if (!manifest || !manifest.artifacts) return null;
-    var charts = manifest.artifacts.filter(function (entry) {
-      return entry.kind === "image_svg" && entry.source.indexOf("__" + suffix + ".svg") !== -1;
-    });
-    if (!charts.length) return null;
-    charts.sort(function (a, b) {
-      return a.source < b.source ? -1 : a.source > b.source ? 1 : 0;
-    });
-    return charts[charts.length - 1];
-  }
-
-  function renderLatestCharts(manifest) {
+  function renderPinnedPhase4Charts() {
     latestCharts.innerHTML = "";
 
-    var cpu = findLatestChart(manifest, "cpu");
-    var gpu = findLatestChart(manifest, "gpu");
-    [cpu, gpu].forEach(function (entry) {
-      if (!entry) return;
+    var charts = [
+      { source: "remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg", published: PHASE4.cpuSvg },
+      { source: "remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg", published: PHASE4.gpuSvg }
+    ];
+
+    charts.forEach(function (entry) {
       var li = document.createElement("li");
       var a = document.createElement("a");
-      a.href = "./" + entry.published;
+      a.href = toHref(entry.published);
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.textContent = entry.source;
@@ -156,18 +178,8 @@
       latestCharts.appendChild(li);
     });
 
-    if (cpu && latestCpuSvg) {
-      latestCpuSvg.src = "./" + cpu.published;
-    }
-    if (gpu && latestGpuSvg) {
-      latestGpuSvg.src = "./" + gpu.published;
-    }
-
-    if (!latestCharts.children.length) {
-      var empty = document.createElement("li");
-      empty.textContent = "No latest CPU/GPU charts found.";
-      latestCharts.appendChild(empty);
-    }
+    if (latestCpuSvg) latestCpuSvg.src = toHref(PHASE4.cpuSvg);
+    if (latestGpuSvg) latestGpuSvg.src = toHref(PHASE4.gpuSvg);
   }
 
   function renderSvgGallery(entries) {
@@ -183,12 +195,12 @@
     entries.forEach(function (entry) {
       var item = document.createElement("a");
       item.className = "svg-preview";
-      item.href = "./" + entry.published;
+      item.href = toHref(entry.published);
       item.target = "_blank";
       item.rel = "noopener noreferrer";
 
       var img = document.createElement("img");
-      img.src = "./" + entry.published;
+      img.src = toHref(entry.published);
       img.alt = entry.source;
       img.loading = "lazy";
 
@@ -199,6 +211,56 @@
       item.appendChild(label);
       svgGallery.appendChild(item);
     });
+  }
+
+  function adaptersToRows(payload) {
+    var rows = [];
+    if (!payload || !payload.adapters) return rows;
+
+    Object.keys(payload.adapters).forEach(function (key) {
+      var entry = payload.adapters[key];
+      var latency = entry && entry.latency_ms ? entry.latency_ms : {};
+      if (!entry || entry.status !== "ok") return;
+      rows.push({
+        adapter: key,
+        display_name: entry.display_name || key,
+        mode: entry.mode || "unknown",
+        mean_ms: latency.mean,
+        p50_ms: latency.p50,
+        p95_ms: latency.p95,
+        throughput_tokens_per_sec: entry.throughput_tokens_per_sec
+      });
+    });
+
+    rows.sort(function (a, b) {
+      if (a.mean_ms === undefined || a.mean_ms === null) return 1;
+      if (b.mean_ms === undefined || b.mean_ms === null) return -1;
+      return a.mean_ms - b.mean_ms;
+    });
+    return rows;
+  }
+
+  function loadPhase4Stats() {
+    Promise.all([
+      fetch(toHref(PHASE4.cpuJson)).then(function (resp) {
+        if (!resp.ok) throw new Error("phase4 cpu json unavailable");
+        return resp.json();
+      }),
+      fetch(toHref(PHASE4.gpuJson)).then(function (resp) {
+        if (!resp.ok) throw new Error("phase4 gpu json unavailable");
+        return resp.json();
+      })
+    ])
+      .then(function (payload) {
+        var cpuRows = adaptersToRows(payload[0]);
+        var gpuRows = adaptersToRows(payload[1]);
+        renderRows(cpuBody, cpuRows.length ? cpuRows : PHASE4_CPU_FALLBACK_ROWS);
+        renderRows(gpuBody, gpuRows.length ? gpuRows : PHASE4_GPU_FALLBACK_ROWS);
+      })
+      .catch(function () {
+        renderRows(cpuBody, PHASE4_CPU_FALLBACK_ROWS);
+        renderRows(gpuBody, PHASE4_GPU_FALLBACK_ROWS);
+      });
   }
 
   function loadRelease() {
@@ -226,29 +288,17 @@
   }
 
   function loadPublishedResults() {
-    Promise.all([
-      fetch("./website/results/manifest.json").then(function (resp) {
+    fetch(toHref("website/results/manifest.json"))
+      .then(function (resp) {
         if (!resp.ok) throw new Error("manifest unavailable");
         return resp.json();
-      }),
-      fetch("./website/results/latest-summary.json").then(function (resp) {
-        if (!resp.ok) throw new Error("latest summary unavailable");
-        return resp.json();
       })
-    ])
-      .then(function (payload) {
-        var manifest = payload[0];
-        var latest = payload[1];
-
+      .then(function (manifest) {
         resultsStatus.textContent =
-          "Published artifacts: " +
+          "Pinned benchmark run: " + PHASE4.runId +
+          " | published artifacts: " +
           manifest.counts.total +
           " (" + manifest.counts.images + " SVG, " + manifest.counts.metadata + " metadata JSON)";
-
-        renderRows(cpuBody, latest.cpu ? latest.cpu.adapters : []);
-        renderRows(gpuBody, latest.gpu ? latest.gpu.adapters : []);
-
-        renderLatestCharts(manifest);
 
         var svgs = (manifest.artifacts || []).filter(function (entry) {
           return entry.kind === "image_svg";
@@ -262,10 +312,12 @@
         renderSvgGallery(svgs);
       })
       .catch(function () {
-        resultsStatus.textContent = "Published benchmark data could not be loaded.";
+        resultsStatus.textContent = "Pinned benchmark run: " + PHASE4.runId + " (manifest unavailable; showing pinned charts and fallback stats).";
       });
   }
 
+  renderPinnedPhase4Charts();
+  loadPhase4Stats();
   loadRelease();
   loadPublishedResults();
 })();

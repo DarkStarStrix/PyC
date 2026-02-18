@@ -89,7 +89,7 @@ int main(void) {
     pyc_ir_module module;
     pyc_run_stats first_stats;
     pyc_run_stats second_stats;
-    const char* db_path = "/tmp/pyc_autotune_test.db";
+    const char* db_path = "pyc_autotune_test.db";
 
     remove(db_path);
     build_module(&module);
