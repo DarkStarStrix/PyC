@@ -18,6 +18,9 @@
   var svgList = document.getElementById("svg-list");
   var metadataList = document.getElementById("metadata-list");
   var latestCharts = document.getElementById("latest-charts");
+  var latestCpuSvg = document.getElementById("latest-cpu-svg");
+  var latestGpuSvg = document.getElementById("latest-gpu-svg");
+  var svgGallery = document.getElementById("svg-gallery");
 
   function findAsset(assets, os) {
     var patterns = {
@@ -153,11 +156,49 @@
       latestCharts.appendChild(li);
     });
 
+    if (cpu && latestCpuSvg) {
+      latestCpuSvg.src = "./" + cpu.published;
+    }
+    if (gpu && latestGpuSvg) {
+      latestGpuSvg.src = "./" + gpu.published;
+    }
+
     if (!latestCharts.children.length) {
       var empty = document.createElement("li");
       empty.textContent = "No latest CPU/GPU charts found.";
       latestCharts.appendChild(empty);
     }
+  }
+
+  function renderSvgGallery(entries) {
+    if (!svgGallery) return;
+    svgGallery.innerHTML = "";
+    if (!entries.length) {
+      var empty = document.createElement("p");
+      empty.textContent = "No SVG artifacts found.";
+      svgGallery.appendChild(empty);
+      return;
+    }
+
+    entries.forEach(function (entry) {
+      var item = document.createElement("a");
+      item.className = "svg-preview";
+      item.href = "./" + entry.published;
+      item.target = "_blank";
+      item.rel = "noopener noreferrer";
+
+      var img = document.createElement("img");
+      img.src = "./" + entry.published;
+      img.alt = entry.source;
+      img.loading = "lazy";
+
+      var label = document.createElement("span");
+      label.textContent = entry.source;
+
+      item.appendChild(img);
+      item.appendChild(label);
+      svgGallery.appendChild(item);
+    });
   }
 
   function loadRelease() {
@@ -218,6 +259,7 @@
 
         appendLinks(svgList, svgs);
         appendLinks(metadataList, metadata);
+        renderSvgGallery(svgs);
       })
       .catch(function () {
         resultsStatus.textContent = "Published benchmark data could not be loaded.";

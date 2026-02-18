@@ -51,7 +51,7 @@ jobs:
         shell: bash
 
       - name: Build validation targets
-        run: cmake --build build --config Release --parallel --target pyc_compiler_next pyc_ai_bridge pyc_compiler_next_smoke pyc_compiler_next_test_ir pyc_compiler_next_test_pass_manager pyc_compiler_next_test_runtime_allocator pyc_compiler_next_test_kernel_registry pyc_compiler_next_test_compiler_api pyc_compiler_next_test_determinism pyc_compiler_next_test_pass_golden pyc_compiler_next_test_policy_modes pyc_compiler_next_test_runtime_control pyc_compiler_next_test_ai_bridge
+        run: cmake --build build --config Release --parallel --target pyc_compiler_next pyc_ai_bridge pyc_compiler_next_tests
 
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
@@ -83,4 +83,4 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           python3 benchmark/harness.py --repeats 5 --micro-rounds 2000
-          python3 benchmark/tools/check_regression.py --baseline benchmark/baselines/ubuntu-latest.json --result benchmark/results/latest.json
+          python3 benchmark/tools/check_regression.py --baseline benchmark/baselines/ubuntu-latest.json --result benchmark/benchmarks/results/json/latest_core.json

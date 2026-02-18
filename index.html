@@ -42,6 +42,9 @@ ctest --test-dir build -C Release --output-on-failure
       <h2>Benchmark Publication</h2>
       <p id="results-status" class="status">Loading benchmark publication data...</p>
       <p class="section-text">
+        Current state: CPU-path PyC is competitive in this workload shape, while GPU-path PyC is still fallback/proxy-bound until native CUDA dispatch is consistently active.
+      </p>
+      <p class="section-text">
         Data files:
         <a href="./website/results/manifest.json" target="_blank" rel="noopener noreferrer">manifest.json</a>
         |
@@ -81,8 +84,22 @@ ctest --test-dir build -C Release --output-on-failure
       <h3>Latest Charts</h3>
       <ul id="latest-charts" class="asset-list"></ul>
 
+      <div class="chart-grid">
+        <figure>
+          <img id="latest-cpu-svg" alt="Latest CPU benchmark chart" loading="lazy">
+          <figcaption>Latest CPU SVG</figcaption>
+        </figure>
+        <figure>
+          <img id="latest-gpu-svg" alt="Latest GPU benchmark chart" loading="lazy">
+          <figcaption>Latest GPU SVG</figcaption>
+        </figure>
+      </div>
+
       <h3>Published SVG Charts</h3>
       <ul id="svg-list" class="asset-list"></ul>
+
+      <h3>SVG Preview Gallery</h3>
+      <div id="svg-gallery" class="svg-gallery"></div>
 
       <h3>Published Metadata JSON</h3>
       <ul id="metadata-list" class="asset-list"></ul>
