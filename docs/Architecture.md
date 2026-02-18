@@ -1,88 +1,109 @@
 # PyC Architecture
 
-## Architectural Goals
+## 1) System Intent
 
-The architecture is designed around two competing needs:
+PyC is split into a deterministic stable core and an experimental compiler-next stack. The stable core guarantees reproducible CMake targets for CI and downstream linking. Compiler-next is where graph IR, pass execution, runtime policy control, and kernel dispatch evolve quickly.
 
-- preserve deterministic, cross-platform integration behavior,
-- allow fast iteration in experimental compiler modules.
+## 2) Repository-Level Component Map
 
-The result is a layered model with clear stability boundaries.
+- `Core/C_Files` + `Core/Header_Files`: stable C primitives and compatibility surface.
+- `compiler/`: compiler-next implementation (IR, pass manager, runtime execution path, kernel registry, CUDA backend bridge).
+- `include/pyc/`: public headers for compiler-next/runtime APIs.
+- `tests/compiler_next/`: deterministic tests for correctness, policy behavior, cache/reliability contracts, and source-coverage enforcement.
+- `benchmark/`: benchmark harness, adapters, regression checks, and rendered artifacts.
+- `website/results/`: published benchmark charts + metadata for static site consumption.
 
-## Layered View
+## 3) Build Graph and Binary Contracts
 
-### Layer 1: Build and Integration Contract
+Canonical targets:
 
-- Build system: CMake.
-- Canonical CI workflow: `.github/workflows/cmake-multi-platform.yml`.
-- Stable targets: `pyc`, `pyc_core`, `pyc_foundation`.
+- `pyc_core_obj` (OBJECT): shared object source set for stable core.
+- `pyc_core` (STATIC): canonical stable static library.
+- `pyc_foundation` (STATIC): compatibility alias over same object set.
+- `pyc` (EXE): deterministic smoke entrypoint for CI validation.
 
-This layer guarantees that downstream consumers can reliably build and link core artifacts.
+Optional compiler-next targets (guarded by CMake options):
 
-### Layer 2: Stable Core Library Surface
+- `pyc_compiler_next` (STATIC)
+- `pyc_compiler_next_smoke` / `pyc_compiler_next_test_*`
 
-Stable source modules currently include:
+Design rule: stable artifacts must remain buildable across Linux/macOS/Windows even when experimental modules change.
 
-- `adapter.c`
-- `semantic.c`
-- `stack.c`
-- `symbol_table.c`
+## 4) Compiler-Next Execution Pipeline
 
-These modules are selected for portability and deterministic behavior.
+### 4.1 Frontdoor API
 
-### Layer 3: Experimental Compiler-Next Surface
+`compiler_api` accepts workload descriptors and policy mode requests. Inputs are normalized into a compact internal representation with deterministic defaults.
 
-Experimental modules include compiler-next IR/passes/runtime and the AI bridge layer. They are available for development but intentionally isolated from stable-core guarantees until hardened.
+### 4.2 IR and Pass Layer
 
-## Target Graph
+The pass manager runs ordered, explicit passes. Current behavior focuses on deterministic transformations and predictable naming/serialization to support golden tests and regression checks.
 
-```text
-pyc_core_obj (OBJECT)
-  ├─> pyc_core (STATIC)
-  └─> pyc_foundation (STATIC, compatibility)
+### 4.3 Runtime Controller
 
-pyc (EXE, stable smoke driver)
-  └─links─> pyc_core
+Runtime orchestration resolves:
 
-pyc_compiler_next (STATIC, experimental)
-  └─> pyc_ai_bridge (STATIC, policy bridge)
+- policy mode (`balanced`, `memory_first`, `utilization_first`),
+- kernel/backend selection,
+- fallback path when a backend is unavailable,
+- reliability counters (graph breaks, fallback count, guard misses).
 
-pyc_core_microbench (EXE, optional)
-  └─links─> pyc_core
+This gives predictable behavior under pressure while preserving observability.
+
+### 4.4 Kernel Registry
+
+Kernel capabilities are resolved through a registry surface instead of direct hardcoding in call sites. This keeps backend routing auditable and testable.
+
+### 4.5 CUDA Backend Boundary
+
+`cuda_backend` is compiled in a portability-safe form:
+
+- if CUDA toolkit is present, runtime can attempt native CUDA execution,
+- if CUDA toolkit is absent, deterministic CPU/proxy fallback remains valid,
+- availability can be controlled through explicit environment toggles for testability.
+
+This prevents nondeterministic crashes on non-CUDA hosts while still enabling native execution on provisioned GPU machines.
+
+## 5) Determinism and Reliability Contracts
+
+Core contracts encoded in code/tests/CI:
+
+- deterministic build entrypoints and explicit target lists,
+- non-flaky smoke validation (`pyc`),
+- feature tests must be added for behavior changes,
+- no weakening tests to pass broken implementations,
+- benchmark runs produce machine-readable metadata and reproducible artifacts.
+
+Runtime reliability counters (fallbacks, guard misses, cache/autotune states) are treated as first-class signals for promotion decisions.
+
+## 6) Benchmarking and Published Evidence
+
+Benchmarking is adapter-based and produces JSON/MD/SVG. A publish step centralizes website-facing assets:
+
+```bash
+python3 scripts/publish_site_results.py
 ```
 
-## Runtime Boundaries
+Outputs:
 
-### `pyc` Smoke Driver
+- `website/results/artifacts/**` (all SVG + `*.metadata.json`),
+- `website/results/manifest.json` (full artifact index),
+- `website/results/latest-summary.json` (latest CPU/GPU adapter summary).
 
-`pyc` is intentionally minimal. Its job is to prove target resolution, linker correctness, and runtime invocation path across platforms.
+The site reads these files directly, so published performance is traceable to versioned artifacts.
 
-### Adapter Boundary
+## 7) Known Constraints
 
-`adapter.c` acts as an OS-facing boundary. Platform-specific behavior (for example command spawning differences) is isolated there, reducing portability risk in the rest of the stable core.
+- Some competitor adapters may run in proxy mode depending on environment/toolchain availability.
+- TVM/XLA/TensorRT/Glow parity depends on installed runtimes and adapter wiring.
+- Native PyC CUDA performance requires full kernel path maturation; fallback/proxy mode is intentionally conservative.
 
-### Utility Data Structures
+## 8) Promotion Path
 
-`stack.c` and `symbol_table.c` provide baseline utility behavior that is easy to benchmark and validate.
+A compiler-next component is promoted only when it satisfies all of:
 
-## Cross-Platform Strategy
-
-- Avoid compiler-specific extensions in stable headers/source unless wrapped.
-- Isolate POSIX-specific behavior behind platform guards.
-- Keep stable core intentionally small until each additional module is validated under MSVC + Clang/GCC toolchains.
-
-## Architectural Risks
-
-- Experimental module drift can diverge from stable integration constraints.
-- Tight coupling between unstable headers may make promotion harder.
-- Benchmark coverage is currently core-focused, not full pipeline-focused.
-
-## Promotion Criteria for Experimental Modules
-
-A module should only move into stable core when it meets all criteria:
-
-1. Builds cleanly on Linux, macOS, and Windows/MSVC.
-2. Has deterministic behavior under repeated runs.
-3. Has at least one focused correctness test.
-4. Does not introduce nondeterministic CI dependencies.
-5. Has measurable benchmark impact tracked over time.
+1. Cross-platform build stability (Linux/macOS/Windows).
+2. Deterministic behavior under repeated runs.
+3. Dedicated correctness coverage in `tests/`.
+4. Clear observability and failure handling.
+5. Benchmark evidence with published metadata.

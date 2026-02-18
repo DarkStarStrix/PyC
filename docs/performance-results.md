@@ -1,27 +1,29 @@
-# PyC Benchmark Results
+# PyC Performance Results
 
-- Timestamp (UTC): 2026-02-17T01:25:10.517752+00:00
-- Platform: macOS-26.3-arm64-arm-64bit-Mach-O
-- CPU: arm
-- Python: 3.14.0
-- Build directory: `/Users/allanmurimiwandia/PyC/PyC/build`
+## Current Baseline
 
-## Build
+Primary comparative baseline comes from run `20260218T023355Z_phase4_final` (Linux host with RTX 4090, batch `64`, hidden `2048`, 40 iters, 10 warmup).
 
-- Configure: 73.822 ms
-- Build (`pyc pyc_core pyc_foundation pyc_core_microbench`): 1582.912 ms
+### CPU (mean latency)
 
-## Runtime
+- PyC CUDA (CPU native path): `24.0459 ms`
+- PyTorch Compile: `26.7237 ms`
+- PyTorch Eager: `36.9971 ms`
 
-- `pyc` smoke: mean 63.085 ms (min 2.142, max 303.614, stdev 120.266)
-- `pyc_core_microbench`: mean 218.771 ms (min 161.692, max 384.332, stdev 85.458)
+### GPU (mean latency)
 
-## Artifact Sizes
+- PyTorch Eager: `0.1154 ms`
+- PyTorch Compile: `0.1551 ms`
+- PyC CUDA: `25.5228 ms` (proxy/fallback mode in this run)
 
-- `pyc`: 33424 bytes
-- `pyc_core`: 7856 bytes
+## Interpretation
 
-## Notes
+- CPU-path execution is competitive in this benchmark shape.
+- GPU-path execution remains bottlenecked until PyC native CUDA dispatch stays active with zero fallback.
 
-- These numbers benchmark the stable core targets currently built in CI.
-- They do not benchmark the experimental full compiler pipeline.
+## Canonical Result Sources
+
+- `docs/results.md`
+- `docs/perf-report.md`
+- `website/results/latest-summary.json`
+- `website/results/manifest.json`

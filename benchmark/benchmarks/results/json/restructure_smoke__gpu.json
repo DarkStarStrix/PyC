@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "timestamp_utc": "2026-02-18T01:28:04.683525+00:00",
+    "host": "Allans-Air.attlocal.net",
+    "os": "macOS-26.3-arm64-arm-64bit-Mach-O",
+    "python": "3.14.0",
+    "device": "cuda",
+    "batch": 8,
+    "hidden": 64,
+    "iters": 2,
+    "warmup": 1,
+    "tag": "gpu",
+    "adapters": [
+      "torch_eager",
+      "torch_compile",
+      "pyc",
+      "tvm",
+      "xla",
+      "tensorrt",
+      "glow"
+    ],
+    "run_id": "restructure_smoke",
+    "git_head": "c5d8438",
+    "git_dirty": 1
+  },
+  "gpu": {
+    "available": false,
+    "reason": "nvidia-smi not found"
+  },
+  "adapters": {
+    "torch_eager": {
+      "status": "error",
+      "backend": "torch_eager",
+      "error": "Torch not compiled with CUDA enabled",
+      "adapter": "torch_eager",
+      "display_name": "PyTorch Eager"
+    },
+    "torch_compile": {
+      "status": "error",
+      "backend": "torch_compile",
+      "error": "Torch not compiled with CUDA enabled",
+      "adapter": "torch_compile",
+      "display_name": "PyTorch Compile"
+    },
+    "pyc": {
+      "status": "ok",
+      "backend": "pyc_cuda_stub",
+      "device": "cuda",
+      "batch": 8,
+      "hidden": 64,
+      "iters": 2,
+      "warmup": 1,
+      "latency_ms": {
+        "mean": 78.1006,
+        "p50": 77.0491,
+        "p95": 79.152,
+        "min": 77.0491,
+        "max": 79.152
+      },
+      "throughput_tokens_per_sec": 6555.65,
+      "peak_memory_bytes": 0,
+      "note": "PyC benchmark currently executes deterministic CPU path; CUDA mode is a stub fallback.",
+      "adapter": "pyc",
+      "display_name": "PyC CUDA"
+    },
+    "tvm": {
+      "status": "unavailable",
+      "reason": "TVM not installed; install TVM or change TVM_BENCH_CMD",
+      "adapter": "tvm",
+      "display_name": "TVM"
+    },
+    "xla": {
+      "status": "ok",
+      "backend": "xla_proxy_torch",
+      "device": "cpu",
+      "requested_device": "cuda",
+      "batch": 8,
+      "hidden": 64,
+      "iters": 2,
+      "warmup": 1,
+      "latency_ms": {
+        "mean": 0.0269,
+        "p50": 0.0236,
+        "p95": 0.0302,
+        "min": 0.0236,
+        "max": 0.0302
+      },
+      "throughput_tokens_per_sec": 19050807.55,
+      "peak_memory_bytes": 0,
+      "note": "torch_xla path unavailable; executed deterministic torch proxy workload.",
+      "adapter": "xla",
+      "display_name": "XLA"
+    },
+    "tensorrt": {
+      "status": "unavailable",
+      "reason": "CUDA not available",
+      "adapter": "tensorrt",
+      "display_name": "TensorRT"
+    },
+    "glow": {
+      "status": "unavailable",
+      "reason": "CUDA not available for Glow proxy benchmark",
+      "adapter": "glow",
+      "display_name": "Glow"
+    }
+  }
+}

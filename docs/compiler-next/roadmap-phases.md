@@ -149,43 +149,79 @@ For each wave:
 
 - full compiler-next suite passes (`ctest`: 8/8 passing).
 
-## Phase 3: CPU Performance Path
+## Phase 3: CPU Performance Path (Implemented)
 
-### Objectives
+### Implemented
 
-1. Add real CPU lowering/execution path.
-2. Establish baseline and optimized end-to-end benchmarks.
+1. Real CPU execution in `compiler/compiler_api.c`:
+   - graph execution for `input`, `matmul`, `add`, `relu`, `output`
+   - explicit runtime validation for shapes, ids, tensor sizes, and dtype
+2. Deterministic CPU correctness tests:
+   - `tests/compiler_next/test_cpu_execution.c`
+   - validates matmul numerics and add+relu numerics end-to-end
+3. Benchmark rails and reproducibility assets:
+   - deterministic benchmark harness and regression checker under `benchmark/`
+   - GPU-comparison adapter rails under `benchmark/benchmarks/gpu/` for follow-on backend work
 
-### Deliverables
+### Exit Status
 
-1. CPU kernels for target op family.
-2. End-to-end benchmark workloads with reproducible reports.
-3. Regression comparisons against baseline.
+- complete
 
-### Exit Criteria
+### Validation Status
 
-1. Achieved measurable end-to-end wins.
-2. Bench artifacts reproducible.
-3. Correctness stable under optimized path.
+- full compiler-next suite passes (`ctest`: 13/13 passing).
 
-## Phase 4: CUDA + Autotuning
+## Phase 4: CUDA + Autotuning (In Progress)
 
 ### Objectives
 
 1. Add CUDA backend integration.
 2. Add autotune candidate search and selection persistence.
+3. Implement reliability rails for compile/runtime behavior under dynamic workloads.
 
 ### Deliverables
 
 1. Backend-aware CUDA lowering path.
 2. Kernel candidate benchmark loop and stored best choices.
 3. Stable fallback when tuned kernels are missing.
+4. Reliability rails v1 (R1/R2 from `docs/compiler-next/compile-runtime-reliability-spec.md`):
+   - explicit guard checks + deterministic fallback reason codes
+   - compile budget modes + cache hit/miss instrumentation
+
+### Implemented So Far
+
+1. CUDA runtime dispatch rail with deterministic fallback/error reasoning:
+   - `include/pyc/cuda_backend.h`
+   - `compiler/runtime/cuda_backend.c`
+   - `tests/compiler_next/test_cuda_backend.c`
+   - native CUDA execution path for supported ops (`input`, `matmul`, `add`, `relu`, `output`) with guarded fallback
+2. Deterministic contract checks + guard counters in runtime stats:
+   - `guard_miss_count`, `fallback_count`
+3. Compile-budget and in-memory compile-cache instrumentation:
+   - `compile_budget_ms` and `cache_mode` in `pyc_compile_options`
+   - `compile_cache_hit` and `compile_budget_exceeded` in `pyc_run_stats`
+   - cache/budget validation test: `tests/compiler_next/test_compile_cache.c`
+4. Autotune candidate persistence (v1):
+   - per-kernel benchmark updates by symbol
+   - deterministic DB load/save for kernel timings
+   - coverage in `tests/compiler_next/test_autotune_persistence.c`
+5. Graph-break visibility (R3 foundation):
+   - pass-level `graph_break_count`, `compilability_score`, and summary reason
+   - surfaced in `pyc_run_stats`
+   - coverage in `tests/compiler_next/test_graph_break_reporting.c`
+
+### Remaining
+
+1. Native CUDA path performance tuning beyond correctness path.
+2. Richer autotune search space and stronger artifact compaction.
+3. Expanded graph-break taxonomy and per-op diagnostics output.
 
 ### Exit Criteria
 
 1. Correct CUDA execution on reference kernels.
 2. Verified speedups over baseline kernels.
 3. Deterministic runtime fallback behavior.
+4. `silent_mismatch_count == 0` on targeted dynamic/aliasing stress suite.
 
 ## Phase 5: Scale + Promotion
 
@@ -199,12 +235,18 @@ For each wave:
 1. Extended operator families.
 2. broader test/perf matrix and regression thresholds.
 3. Promotion checklist and compatibility matrix.
+4. Reliability rails v2 (R3/R4 from `docs/compiler-next/compile-runtime-reliability-spec.md`):
+   - graph-break visibility/reporting and compilability scoring
+   - cross-platform deterministic toolchain preflight and diagnostics
 
 ### Exit Criteria
 
 1. Cross-platform reliability at expanded scope.
 2. KPI targets met.
 3. Promotion policy enforced in CI.
+4. High-resolution pain point closed:
+   - no silent wrong-output incidents in reliability suite
+   - 100% mismatch scenarios converted to explicit fallback/failure with reason codes
 
 ## Innovation Backlog Integration
 
@@ -226,6 +268,21 @@ Phase mapping:
    - Deterministic what-if simulator
    - User-facing optimization contracts
    - Policy plugin interfaces
+   - Compile-runtime reliability rails (`docs/compiler-next/compile-runtime-reliability-spec.md`)
+
+Reliability-first mapping (new):
+
+1. Phase 4:
+   - R1 Guarded correctness rails
+   - R2 Compile budget + cache
+2. Phase 5:
+   - R3 Graph-break visibility
+   - R4 Cross-platform deterministic preflight
+
+Primary reliability target:
+
+- `docs/compiler-next/compile-runtime-reliability-spec.md`  
+  section: **High-Resolution Target Pain Point**.
 
 Promotion rule:
 

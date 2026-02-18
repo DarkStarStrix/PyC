@@ -151,6 +151,49 @@ static void analyze_liveness(const pyc_ir_module* module, pyc_pass_report* repor
     report->peak_live_values = peak;
 }
 
+static int is_compiler_next_supported_kind(pyc_ir_op_kind kind) {
+    return kind == PYC_IR_OP_INPUT ||
+           kind == PYC_IR_OP_MATMUL ||
+           kind == PYC_IR_OP_ADD ||
+           kind == PYC_IR_OP_RELU ||
+           kind == PYC_IR_OP_OUTPUT;
+}
+
+static void analyze_graph_breaks(const pyc_ir_module* module, pyc_pass_report* report) {
+    size_t i;
+    size_t breaks = 0;
+    const char* first_reason = "none";
+    for (i = 0; i < module->op_count; ++i) {
+        const pyc_ir_op* op = &module->ops[i];
+        if (!is_compiler_next_supported_kind(op->kind)) {
+            breaks++;
+            if (first_reason[0] == 'n') {
+                switch (op->kind) {
+                    case PYC_IR_OP_CONST: first_reason = "const"; break;
+                    case PYC_IR_OP_GELU: first_reason = "gelu"; break;
+                    case PYC_IR_OP_REDUCE_SUM: first_reason = "reduce_sum"; break;
+                    case PYC_IR_OP_LAYERNORM: first_reason = "layernorm"; break;
+                    default: first_reason = "unknown"; break;
+                }
+            }
+        }
+    }
+
+    report->graph_break_count = breaks;
+    if (module->op_count == 0) {
+        report->compilability_score = 0.0;
+    } else {
+        report->compilability_score =
+            ((double)(module->op_count - breaks) / (double)module->op_count);
+    }
+    snprintf(
+        report->graph_break_summary,
+        sizeof(report->graph_break_summary),
+        "breaks=%zu first_reason=%s",
+        breaks,
+        first_reason);
+}
+
 void pyc_pass_pipeline_default(pyc_pass_pipeline* pipeline) {
     if (!pipeline) {
         return;
@@ -204,6 +247,7 @@ int pyc_pass_pipeline_run(pyc_pass_pipeline* pipeline, pyc_ir_module* module, py
     if (pipeline->config.lowering) {
         report->passes_run++;
     }
+    analyze_graph_breaks(module, report);
 
     return 0;
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>PyC Downloads</title>
+  <title>PyC Downloads and Results</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -12,70 +12,84 @@
     <h1>Deterministic compiler rails for AI workloads</h1>
     <p class="subtext">
       PyC is a C/CMake compiler runtime project focused on reproducible CI, memory-backpressure control, and policy-driven execution decisions.
-      Use prebuilt binaries for fast onboarding, or build from source for full control.
+      This page publishes latest release downloads and benchmark evidence generated in-repo.
     </p>
-    <p class="section-text">
-      Latest release page:
-      <a id="release-link" href="#" target="_blank" rel="noopener noreferrer">open release details</a>
-    </p>
-    <p id="status" class="status">Loading release metadata...</p>
 
     <section>
-      <h2>What this project does</h2>
-      <ul>
-        <li>Stable core targets: <code>pyc</code>, <code>pyc_core</code>, <code>pyc_foundation</code></li>
-        <li>AI runtime optimization modes: <code>balanced</code>, <code>memory_first</code>, <code>utilization_first</code></li>
-        <li>Operational rails: guarded switching, rollback triggers, benchmark gates, and source coverage enforcement</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Download binaries</h2>
-      <p class="section-text">Pick your platform. These links always target the latest release assets.</p>
+      <h2>Release</h2>
+      <p class="section-text">
+        Latest release page:
+        <a id="release-link" href="#" target="_blank" rel="noopener noreferrer">open release details</a>
+      </p>
+      <p id="status" class="status">Loading release metadata...</p>
+      <p class="section-text">Download binaries by platform:</p>
       <ul>
         <li>Linux: <a id="download-linux" href="#" aria-disabled="true">checking latest artifact...</a></li>
         <li>macOS: <a id="download-macos" href="#" aria-disabled="true">checking latest artifact...</a></li>
         <li>Windows: <a id="download-windows" href="#" aria-disabled="true">checking latest artifact...</a></li>
       </ul>
-      <p class="section-text">Each package includes:</p>
-      <ul>
-        <li><code>bin/pyc</code> (or <code>pyc.exe</code>)</li>
-        <li><code>lib/</code> static libraries (<code>pyc_core</code>, <code>pyc_foundation</code>)</li>
-        <li><code>include/</code> headers</li>
-      </ul>
-      <p class="section-text">Quick smoke command after extraction:</p>
-      <pre><code>./bin/pyc
-# Windows: .\bin\pyc.exe</code></pre>
     </section>
 
     <section>
-      <h2>Build from source</h2>
-      <p class="section-text">If you want full control or development workflow integration:</p>
+      <h2>Build From Source</h2>
       <pre><code>cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
 cmake --build build --parallel
-ctest --test-dir build -C Release --output-on-failure</code></pre>
-      <p class="section-text">Stable smoke:</p>
-      <pre><code>./build/pyc
-# Windows: .\build\Release\pyc.exe</code></pre>
+ctest --test-dir build -C Release --output-on-failure
+./build/pyc</code></pre>
     </section>
 
     <section>
-      <h2>Integrate in AI runtime jobs</h2>
+      <h2>Benchmark Publication</h2>
+      <p id="results-status" class="status">Loading benchmark publication data...</p>
       <p class="section-text">
-        Put PyC under your job runtime to apply dynamic policy control during execution windows. It is meant to stay out of your way: deterministic defaults, explicit modes, and rollback rails when pressure rises.
+        Data files:
+        <a href="./website/results/manifest.json" target="_blank" rel="noopener noreferrer">manifest.json</a>
+        |
+        <a href="./website/results/latest-summary.json" target="_blank" rel="noopener noreferrer">latest-summary.json</a>
       </p>
-      <ul>
-        <li>Warmup: <code>utilization_first</code></li>
-        <li>Steady state: <code>balanced</code></li>
-        <li>Pressure event: <code>memory_first</code></li>
-      </ul>
-      <p class="section-text">
-        Detailed integration guide: <a href="https://github.com/DarkStarStrix/PyC/blob/main/docs/compiler-next/runtime-integration-spec.md" target="_blank" rel="noopener noreferrer">runtime integration spec</a>.
-      </p>
+
+      <h3>Latest CPU Summary</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Mode</th>
+            <th>Mean (ms)</th>
+            <th>P50 (ms)</th>
+            <th>P95 (ms)</th>
+            <th>Throughput</th>
+          </tr>
+        </thead>
+        <tbody id="cpu-results-body"></tbody>
+      </table>
+
+      <h3>Latest GPU Summary</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Mode</th>
+            <th>Mean (ms)</th>
+            <th>P50 (ms)</th>
+            <th>P95 (ms)</th>
+            <th>Throughput</th>
+          </tr>
+        </thead>
+        <tbody id="gpu-results-body"></tbody>
+      </table>
+
+      <h3>Latest Charts</h3>
+      <ul id="latest-charts" class="asset-list"></ul>
+
+      <h3>Published SVG Charts</h3>
+      <ul id="svg-list" class="asset-list"></ul>
+
+      <h3>Published Metadata JSON</h3>
+      <ul id="metadata-list" class="asset-list"></ul>
     </section>
 
     <section>
-      <h2>All release assets</h2>
+      <h2>All Release Assets</h2>
       <ul id="asset-list" class="asset-list"></ul>
     </section>
   </main>

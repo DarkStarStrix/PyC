@@ -2,6 +2,7 @@
 #define PYC_COMPILER_API_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "pyc/ir.h"
 #include "pyc/kernel_registry.h"
@@ -25,6 +26,11 @@ typedef struct {
     pyc_backend backend;
 } pyc_model_desc;
 
+typedef enum {
+    PYC_COMPILE_CACHE_DISABLED = 0,
+    PYC_COMPILE_CACHE_IN_MEMORY = 1
+} pyc_compile_cache_mode;
+
 typedef struct {
     int enable_fusion;
     int enable_memory_reuse;
@@ -33,6 +39,9 @@ typedef struct {
     size_t memory_budget_bytes;
     double target_utilization_floor;
     int deterministic_strict;
+    double compile_budget_ms;
+    pyc_compile_cache_mode cache_mode;
+    const char* autotune_db_path;
     pyc_runtime_rails rails;
 } pyc_compile_options;
 
@@ -59,6 +68,23 @@ typedef struct {
     size_t rollback_count;
     int selected_kernel_count;
     char selected_kernel_symbol[PYC_KERNEL_SYMBOL_MAX];
+    double dispatch_ms;
+    double graph_exec_ms;
+    double controller_ms;
+    double kernel_select_ms;
+    int deterministic_contract_enforced;
+    int deterministic_contract_ok;
+    uint64_t model_fingerprint;
+    char deterministic_contract_reason[64];
+    int compile_cache_hit;
+    int compile_budget_exceeded;
+    size_t guard_miss_count;
+    size_t fallback_count;
+    size_t graph_break_count;
+    double compilability_score;
+    int autotune_loaded;
+    int autotune_saved;
+    char graph_break_summary[128];
 } pyc_run_stats;
 
 typedef struct pyc_compiled_model pyc_compiled_model;

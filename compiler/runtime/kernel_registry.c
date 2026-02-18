@@ -128,10 +128,17 @@ int pyc_kernel_select_with_policy(
     return 0;
 }
 
-int pyc_kernel_benchmark_update(const char* op_key, pyc_backend backend, double time_ms) {
+int pyc_kernel_benchmark_update_symbol(
+    const char* op_key,
+    pyc_backend backend,
+    const char* symbol,
+    double time_ms) {
     size_t i;
     int updated = 0;
 
+    if (!op_key) {
+        return -1;
+    }
     for (i = 0; i < PYC_KERNEL_MAX; ++i) {
         if (!g_registry[i].used) {
             continue;
@@ -140,6 +147,10 @@ int pyc_kernel_benchmark_update(const char* op_key, pyc_backend backend, double 
             continue;
         }
         if (strcmp(g_registry[i].desc.op_key, op_key) != 0) {
+            continue;
+        }
+        if (symbol && symbol[0] != '\0' &&
+            strcmp(g_registry[i].desc.symbol, symbol) != 0) {
             continue;
         }
 
@@ -152,6 +163,10 @@ int pyc_kernel_benchmark_update(const char* op_key, pyc_backend backend, double 
     }
 
     return updated ? 0 : -1;
+}
+
+int pyc_kernel_benchmark_update(const char* op_key, pyc_backend backend, double time_ms) {
+    return pyc_kernel_benchmark_update_symbol(op_key, backend, NULL, time_ms);
 }
 
 void pyc_kernel_benchmark_read(const char* op_key, pyc_backend backend, pyc_kernel_benchmark* out) {

@@ -1,0 +1,173 @@
+{
+  "meta": {
+    "timestamp_utc": "2026-02-18T01:27:57.555296+00:00",
+    "host": "Allans-Air.attlocal.net",
+    "os": "macOS-26.3-arm64-arm-64bit-Mach-O",
+    "python": "3.14.0",
+    "device": "cpu",
+    "batch": 8,
+    "hidden": 64,
+    "iters": 2,
+    "warmup": 1,
+    "tag": "cpu",
+    "adapters": [
+      "torch_eager",
+      "torch_compile",
+      "pyc",
+      "tvm",
+      "xla",
+      "tensorrt",
+      "glow"
+    ],
+    "run_id": "restructure_smoke",
+    "git_head": "c5d8438",
+    "git_dirty": 1
+  },
+  "gpu": {
+    "available": false,
+    "reason": "nvidia-smi not found"
+  },
+  "adapters": {
+    "torch_eager": {
+      "status": "ok",
+      "backend": "torch_eager",
+      "device": "cpu",
+      "batch": 8,
+      "hidden": 64,
+      "iters": 2,
+      "warmup": 1,
+      "latency_ms": {
+        "mean": 0.0512,
+        "p50": 0.032,
+        "p95": 0.0705,
+        "min": 0.032,
+        "max": 0.0705
+      },
+      "throughput_tokens_per_sec": 9994339.0,
+      "peak_memory_bytes": 0,
+      "samples_ms": [
+        0.0705,
+        0.032
+      ],
+      "adapter": "torch_eager",
+      "display_name": "PyTorch Eager"
+    },
+    "torch_compile": {
+      "status": "ok",
+      "backend": "torch_compile",
+      "device": "cpu",
+      "batch": 8,
+      "hidden": 64,
+      "iters": 2,
+      "warmup": 1,
+      "latency_ms": {
+        "mean": 0.1071,
+        "p50": 0.0755,
+        "p95": 0.1387,
+        "min": 0.0755,
+        "max": 0.1387
+      },
+      "throughput_tokens_per_sec": 4780378.09,
+      "peak_memory_bytes": 0,
+      "samples_ms": [
+        0.1387,
+        0.0755
+      ],
+      "adapter": "torch_compile",
+      "display_name": "PyTorch Compile"
+    },
+    "pyc": {
+      "status": "ok",
+      "backend": "pyc_cpu_microbench",
+      "device": "cpu",
+      "batch": 8,
+      "hidden": 64,
+      "iters": 2,
+      "warmup": 1,
+      "latency_ms": {
+        "mean": 77.076,
+        "p50": 75.1349,
+        "p95": 79.017,
+        "min": 75.1349,
+        "max": 79.017
+      },
+      "throughput_tokens_per_sec": 6642.8,
+      "peak_memory_bytes": 0,
+      "note": "PyC benchmark currently executes deterministic CPU path; CUDA mode is a stub fallback.",
+      "adapter": "pyc",
+      "display_name": "PyC CUDA"
+    },
+    "tvm": {
+      "status": "unavailable",
+      "reason": "TVM not installed; install TVM or change TVM_BENCH_CMD",
+      "adapter": "tvm",
+      "display_name": "TVM"
+    },
+    "xla": {
+      "status": "ok",
+      "backend": "xla_proxy_torch",
+      "device": "cpu",
+      "requested_device": "cpu",
+      "batch": 8,
+      "hidden": 64,
+      "iters": 2,
+      "warmup": 1,
+      "latency_ms": {
+        "mean": 0.0285,
+        "p50": 0.0259,
+        "p95": 0.0311,
+        "min": 0.0259,
+        "max": 0.0311
+      },
+      "throughput_tokens_per_sec": 17952000.23,
+      "peak_memory_bytes": 0,
+      "note": "torch_xla path unavailable; executed deterministic torch proxy workload.",
+      "adapter": "xla",
+      "display_name": "XLA"
+    },
+    "tensorrt": {
+      "status": "ok",
+      "backend": "tensorrt_proxy_torch_compile",
+      "device": "cpu",
+      "requested_device": "cpu",
+      "batch": 8,
+      "hidden": 64,
+      "iters": 2,
+      "warmup": 1,
+      "latency_ms": {
+        "mean": 0.1089,
+        "p50": 0.0971,
+        "p95": 0.1208,
+        "min": 0.0971,
+        "max": 0.1208
+      },
+      "throughput_tokens_per_sec": 4699964.21,
+      "peak_memory_bytes": 0,
+      "note": "TensorRT is CUDA-only; executed deterministic torch.compile proxy on CPU.",
+      "adapter": "tensorrt",
+      "display_name": "TensorRT"
+    },
+    "glow": {
+      "status": "ok",
+      "backend": "glow_proxy",
+      "device": "cpu",
+      "requested_device": "cpu",
+      "batch": 8,
+      "hidden": 64,
+      "iters": 2,
+      "warmup": 1,
+      "latency_ms": {
+        "mean": 0.0273,
+        "p50": 0.0253,
+        "p95": 0.0292,
+        "min": 0.0253,
+        "max": 0.0292
+      },
+      "throughput_tokens_per_sec": 18788990.74,
+      "peak_memory_bytes": 0,
+      "note": "Glow runtime is not linked in this environment; this is a deterministic proxy workload.",
+      "adapter": "glow",
+      "display_name": "Glow"
+    }
+  }
+}

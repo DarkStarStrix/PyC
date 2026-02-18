@@ -1,0 +1,411 @@
+{
+  "source": "benchmark/benchmarks/results",
+  "published_root": "website/results",
+  "counts": {
+    "total": 44,
+    "images": 25,
+    "metadata": 19
+  },
+  "artifacts": [
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T012007Z_host89_v1__cpu.svg",
+      "published": "website/results/artifacts/images/20260218T012007Z_host89_v1__cpu.svg",
+      "bytes": 2295
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T012007Z_host89_v1__gpu.svg",
+      "published": "website/results/artifacts/images/20260218T012007Z_host89_v1__gpu.svg",
+      "bytes": 2281
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T012244Z_host89_v2__cpu.svg",
+      "published": "website/results/artifacts/images/20260218T012244Z_host89_v2__cpu.svg",
+      "bytes": 2295
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T012244Z_host89_v2__gpu.svg",
+      "published": "website/results/artifacts/images/20260218T012244Z_host89_v2__gpu.svg",
+      "bytes": 2281
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T014514Z_contracts_profile_v1__cpu.svg",
+      "published": "website/results/artifacts/images/20260218T014514Z_contracts_profile_v1__cpu.svg",
+      "bytes": 2042
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T014514Z_contracts_profile_v1__gpu.svg",
+      "published": "website/results/artifacts/images/20260218T014514Z_contracts_profile_v1__gpu.svg",
+      "bytes": 2028
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T014728Z_contracts_profile_v2__cpu.svg",
+      "published": "website/results/artifacts/images/20260218T014728Z_contracts_profile_v2__cpu.svg",
+      "bytes": 2301
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T014728Z_contracts_profile_v2__gpu.svg",
+      "published": "website/results/artifacts/images/20260218T014728Z_contracts_profile_v2__gpu.svg",
+      "bytes": 2292
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T015942Z__local_pyc_profile.svg",
+      "published": "website/results/artifacts/images/20260218T015942Z__local_pyc_profile.svg",
+      "bytes": 720
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T020115Z_phase_impl_v1__cpu.svg",
+      "published": "website/results/artifacts/images/20260218T020115Z_phase_impl_v1__cpu.svg",
+      "bytes": 2294
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T020115Z_phase_impl_v1__gpu.svg",
+      "published": "website/results/artifacts/images/20260218T020115Z_phase_impl_v1__gpu.svg",
+      "bytes": 2285
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T020653Z_phase_impl_v2__cpu.svg",
+      "published": "website/results/artifacts/images/20260218T020653Z_phase_impl_v2__cpu.svg",
+      "bytes": 2293
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/20260218T020653Z_phase_impl_v2__gpu.svg",
+      "published": "website/results/artifacts/images/20260218T020653Z_phase_impl_v2__gpu.svg",
+      "bytes": 2284
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/latest_core.svg",
+      "published": "website/results/artifacts/images/latest_core.svg",
+      "bytes": 1843
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/local_smoke__cpu.svg",
+      "published": "website/results/artifacts/images/local_smoke__cpu.svg",
+      "bytes": 2017
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/local_smoke__gpu.svg",
+      "published": "website/results/artifacts/images/local_smoke__gpu.svg",
+      "bytes": 970
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/restructure_smoke__cpu.svg",
+      "published": "website/results/artifacts/images/restructure_smoke__cpu.svg",
+      "bytes": 2023
+    },
+    {
+      "kind": "image_svg",
+      "source": "images/restructure_smoke__gpu.svg",
+      "published": "website/results/artifacts/images/restructure_smoke__gpu.svg",
+      "bytes": 976
+    },
+    {
+      "kind": "image_svg",
+      "source": "remote_results/core/latest.svg",
+      "published": "website/results/artifacts/remote_results/core/latest.svg",
+      "bytes": 1825
+    },
+    {
+      "kind": "image_svg",
+      "source": "remote_results/gpu/gpu_compare_all.svg",
+      "published": "website/results/artifacts/remote_results/gpu/gpu_compare_all.svg",
+      "bytes": 924
+    },
+    {
+      "kind": "image_svg",
+      "source": "remote_results/gpu/gpu_compare_cmds_horizontal.svg",
+      "published": "website/results/artifacts/remote_results/gpu/gpu_compare_cmds_horizontal.svg",
+      "bytes": 3956
+    },
+    {
+      "kind": "image_svg",
+      "source": "remote_results/gpu/gpu_compare_live_horizontal.svg",
+      "published": "website/results/artifacts/remote_results/gpu/gpu_compare_live_horizontal.svg",
+      "bytes": 3521
+    },
+    {
+      "kind": "image_svg",
+      "source": "remote_results/host89/core/latest.svg",
+      "published": "website/results/artifacts/remote_results/host89/core/latest.svg",
+      "bytes": 1838
+    },
+    {
+      "kind": "image_svg",
+      "source": "remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
+      "published": "website/results/artifacts/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
+      "bytes": 2041
+    },
+    {
+      "kind": "image_svg",
+      "source": "remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
+      "published": "website/results/artifacts/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
+      "bytes": 2025
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T012007Z_host89_v1__cpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T012007Z_host89_v1__cpu.metadata.json",
+      "bytes": 466
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T012007Z_host89_v1__gpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T012007Z_host89_v1__gpu.metadata.json",
+      "bytes": 467
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T012244Z_host89_v2__cpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T012244Z_host89_v2__cpu.metadata.json",
+      "bytes": 466
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T012244Z_host89_v2__gpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T012244Z_host89_v2__gpu.metadata.json",
+      "bytes": 467
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T014514Z_contracts_profile_v1__cpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T014514Z_contracts_profile_v1__cpu.metadata.json",
+      "bytes": 477
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T014514Z_contracts_profile_v1__gpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T014514Z_contracts_profile_v1__gpu.metadata.json",
+      "bytes": 478
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T014728Z_contracts_profile_v2__cpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T014728Z_contracts_profile_v2__cpu.metadata.json",
+      "bytes": 477
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T014728Z_contracts_profile_v2__gpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T014728Z_contracts_profile_v2__gpu.metadata.json",
+      "bytes": 478
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T015942Z__local_pyc_profile.metadata.json",
+      "published": "website/results/artifacts/json/20260218T015942Z__local_pyc_profile.metadata.json",
+      "bytes": 378
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T020115Z_phase_impl_v1__cpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T020115Z_phase_impl_v1__cpu.metadata.json",
+      "bytes": 470
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T020115Z_phase_impl_v1__gpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T020115Z_phase_impl_v1__gpu.metadata.json",
+      "bytes": 471
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T020653Z_phase_impl_v2__cpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T020653Z_phase_impl_v2__cpu.metadata.json",
+      "bytes": 470
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/20260218T020653Z_phase_impl_v2__gpu.metadata.json",
+      "published": "website/results/artifacts/json/20260218T020653Z_phase_impl_v2__gpu.metadata.json",
+      "bytes": 471
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/local_smoke__cpu.metadata.json",
+      "published": "website/results/artifacts/json/local_smoke__cpu.metadata.json",
+      "bytes": 445
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/local_smoke__gpu.metadata.json",
+      "published": "website/results/artifacts/json/local_smoke__gpu.metadata.json",
+      "bytes": 446
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/restructure_smoke__cpu.metadata.json",
+      "published": "website/results/artifacts/json/restructure_smoke__cpu.metadata.json",
+      "bytes": 451
+    },
+    {
+      "kind": "metadata_json",
+      "source": "json/restructure_smoke__gpu.metadata.json",
+      "published": "website/results/artifacts/json/restructure_smoke__gpu.metadata.json",
+      "bytes": 452
+    },
+    {
+      "kind": "metadata_json",
+      "source": "remote_results/host89/json/20260218T023355Z_phase4_final__cpu.metadata.json",
+      "published": "website/results/artifacts/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.metadata.json",
+      "bytes": 469
+    },
+    {
+      "kind": "metadata_json",
+      "source": "remote_results/host89/json/20260218T023355Z_phase4_final__gpu.metadata.json",
+      "published": "website/results/artifacts/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.metadata.json",
+      "bytes": 470
+    }
+  ],
+  "latest": {
+    "cpu": {
+      "run_id": "20260218T023355Z_phase4_final",
+      "created_utc": "2026-02-18T02:33:57.325322+00:00",
+      "host": "90c892d22de7",
+      "device": "cpu",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 40,
+      "warmup": 10,
+      "metadata_path": "website/results/artifacts/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.metadata.json",
+      "adapters": [
+        {
+          "adapter": "pyc",
+          "display_name": "PyC CUDA",
+          "mode": "native",
+          "mean_ms": 24.0459,
+          "p50_ms": 24.022,
+          "p95_ms": 24.18,
+          "throughput_tokens_per_sec": 5450908.47
+        },
+        {
+          "adapter": "tensorrt",
+          "display_name": "TensorRT",
+          "mode": "proxy",
+          "mean_ms": 24.4121,
+          "p50_ms": 9.3322,
+          "p95_ms": 68.6434,
+          "throughput_tokens_per_sec": 5369130.72
+        },
+        {
+          "adapter": "torch_compile",
+          "display_name": "PyTorch Compile",
+          "mode": "native",
+          "mean_ms": 26.7237,
+          "p50_ms": 10.0514,
+          "p95_ms": 72.1404,
+          "throughput_tokens_per_sec": 4904708.07
+        },
+        {
+          "adapter": "xla",
+          "display_name": "XLA",
+          "mode": "proxy",
+          "mean_ms": 30.2406,
+          "p50_ms": 12.8271,
+          "p95_ms": 72.3854,
+          "throughput_tokens_per_sec": 4334310.06
+        },
+        {
+          "adapter": "glow",
+          "display_name": "Glow",
+          "mode": "proxy",
+          "mean_ms": 34.8523,
+          "p50_ms": 15.7008,
+          "p95_ms": 75.1887,
+          "throughput_tokens_per_sec": 3760782.37
+        },
+        {
+          "adapter": "torch_eager",
+          "display_name": "PyTorch Eager",
+          "mode": "native",
+          "mean_ms": 36.9971,
+          "p50_ms": 15.4305,
+          "p95_ms": 75.9299,
+          "throughput_tokens_per_sec": 3542766.92
+        }
+      ]
+    },
+    "gpu": {
+      "run_id": "20260218T023355Z_phase4_final",
+      "created_utc": "2026-02-18T02:34:26.541928+00:00",
+      "host": "90c892d22de7",
+      "device": "cuda",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 40,
+      "warmup": 10,
+      "metadata_path": "website/results/artifacts/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.metadata.json",
+      "adapters": [
+        {
+          "adapter": "torch_eager",
+          "display_name": "PyTorch Eager",
+          "mode": "native",
+          "mean_ms": 0.1154,
+          "p50_ms": 0.1135,
+          "p95_ms": 0.1285,
+          "throughput_tokens_per_sec": 1135905416.11
+        },
+        {
+          "adapter": "xla",
+          "display_name": "XLA",
+          "mode": "proxy",
+          "mean_ms": 0.1157,
+          "p50_ms": 0.1138,
+          "p95_ms": 0.1263,
+          "throughput_tokens_per_sec": 1133048992.77
+        },
+        {
+          "adapter": "glow",
+          "display_name": "Glow",
+          "mode": "proxy",
+          "mean_ms": 0.1314,
+          "p50_ms": 0.119,
+          "p95_ms": 0.1332,
+          "throughput_tokens_per_sec": 997355892.15
+        },
+        {
+          "adapter": "torch_compile",
+          "display_name": "PyTorch Compile",
+          "mode": "native",
+          "mean_ms": 0.1551,
+          "p50_ms": 0.1544,
+          "p95_ms": 0.1665,
+          "throughput_tokens_per_sec": 844896466.85
+        },
+        {
+          "adapter": "tensorrt",
+          "display_name": "TensorRT",
+          "mode": "proxy",
+          "mean_ms": 0.1598,
+          "p50_ms": 0.156,
+          "p95_ms": 0.1743,
+          "throughput_tokens_per_sec": 820055823.27
+        },
+        {
+          "adapter": "pyc",
+          "display_name": "PyC CUDA",
+          "mode": "proxy",
+          "mean_ms": 25.5228,
+          "p50_ms": 25.383,
+          "p95_ms": 27.327,
+          "throughput_tokens_per_sec": 5135486.7
+        }
+      ]
+    }
+  }
+}

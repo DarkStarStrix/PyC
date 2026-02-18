@@ -1,0 +1,147 @@
+[1/6] System
+Python 3.11.11
+benchmark device: cpu
+Failed to initialize NVML: Unknown Error
+[2/6] Ensure deps
+Hit:1 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64  InRelease
+Hit:2 http://security.ubuntu.com/ubuntu jammy-security InRelease
+Hit:3 http://archive.ubuntu.com/ubuntu jammy InRelease
+Hit:4 https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy InRelease
+Get:5 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
+Hit:6 http://archive.ubuntu.com/ubuntu jammy-backports InRelease
+Get:7 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1613 kB]
+Get:8 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [4063 kB]
+Fetched 5804 kB in 2s (2788 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+build-essential is already the newest version (12.9ubuntu3).
+cmake is already the newest version (3.22.1-1ubuntu1.22.04.2).
+git is already the newest version (1:2.34.1-1ubuntu1.15).
+python3 is already the newest version (3.10.6-1~22.04.1).
+tmux is already the newest version (3.2a-4ubuntu0.2).
+python3-pip is already the newest version (22.0.2+dfsg-1ubuntu0.7).
+python3-venv is already the newest version (3.10.6-1~22.04.1).
+0 upgraded, 0 newly installed, 0 to remove and 117 not upgraded.
+[3/6] Python env
+Requirement already satisfied: pip in ./.venv/lib/python3.11/site-packages (26.0.1)
+Requirement already satisfied: numpy in ./.venv/lib/python3.11/site-packages (2.4.2)
+Requirement already satisfied: tqdm in ./.venv/lib/python3.11/site-packages (4.67.3)
+Requirement already satisfied: torch in ./.venv/lib/python3.11/site-packages (2.6.0+cu124)
+Requirement already satisfied: torchvision in ./.venv/lib/python3.11/site-packages (0.21.0+cu124)
+Requirement already satisfied: filelock in ./.venv/lib/python3.11/site-packages (from torch) (3.20.0)
+Requirement already satisfied: typing-extensions>=4.10.0 in ./.venv/lib/python3.11/site-packages (from torch) (4.15.0)
+Requirement already satisfied: networkx in ./.venv/lib/python3.11/site-packages (from torch) (3.6.1)
+Requirement already satisfied: jinja2 in ./.venv/lib/python3.11/site-packages (from torch) (3.1.6)
+Requirement already satisfied: fsspec in ./.venv/lib/python3.11/site-packages (from torch) (2025.12.0)
+Requirement already satisfied: nvidia-cuda-nvrtc-cu12==12.4.127 in ./.venv/lib/python3.11/site-packages (from torch) (12.4.127)
+Requirement already satisfied: nvidia-cuda-runtime-cu12==12.4.127 in ./.venv/lib/python3.11/site-packages (from torch) (12.4.127)
+Requirement already satisfied: nvidia-cuda-cupti-cu12==12.4.127 in ./.venv/lib/python3.11/site-packages (from torch) (12.4.127)
+Requirement already satisfied: nvidia-cudnn-cu12==9.1.0.70 in ./.venv/lib/python3.11/site-packages (from torch) (9.1.0.70)
+Requirement already satisfied: nvidia-cublas-cu12==12.4.5.8 in ./.venv/lib/python3.11/site-packages (from torch) (12.4.5.8)
+Requirement already satisfied: nvidia-cufft-cu12==11.2.1.3 in ./.venv/lib/python3.11/site-packages (from torch) (11.2.1.3)
+Requirement already satisfied: nvidia-curand-cu12==10.3.5.147 in ./.venv/lib/python3.11/site-packages (from torch) (10.3.5.147)
+Requirement already satisfied: nvidia-cusolver-cu12==11.6.1.9 in ./.venv/lib/python3.11/site-packages (from torch) (11.6.1.9)
+Requirement already satisfied: nvidia-cusparse-cu12==12.3.1.170 in ./.venv/lib/python3.11/site-packages (from torch) (12.3.1.170)
+Requirement already satisfied: nvidia-cusparselt-cu12==0.6.2 in ./.venv/lib/python3.11/site-packages (from torch) (0.6.2)
+Requirement already satisfied: nvidia-nccl-cu12==2.21.5 in ./.venv/lib/python3.11/site-packages (from torch) (2.21.5)
+Requirement already satisfied: nvidia-nvtx-cu12==12.4.127 in ./.venv/lib/python3.11/site-packages (from torch) (12.4.127)
+Requirement already satisfied: nvidia-nvjitlink-cu12==12.4.127 in ./.venv/lib/python3.11/site-packages (from torch) (12.4.127)
+Requirement already satisfied: triton==3.2.0 in ./.venv/lib/python3.11/site-packages (from torch) (3.2.0)
+Requirement already satisfied: sympy==1.13.1 in ./.venv/lib/python3.11/site-packages (from torch) (1.13.1)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in ./.venv/lib/python3.11/site-packages (from sympy==1.13.1->torch) (1.3.0)
+Requirement already satisfied: numpy in ./.venv/lib/python3.11/site-packages (from torchvision) (2.4.2)
+Requirement already satisfied: pillow!=8.3.*,>=5.3.0 in ./.venv/lib/python3.11/site-packages (from torchvision) (12.0.0)
+Requirement already satisfied: MarkupSafe>=2.0 in ./.venv/lib/python3.11/site-packages (from jinja2->torch) (2.1.5)
+[4/6] Build artifacts
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /root/PyC/build
+Consolidate compiler generated dependencies of target pyc_compiler_next
+Consolidate compiler generated dependencies of target pyc_core_obj
+[ 18%] Built target pyc_core_obj
+[ 25%] Built target pyc_compiler_next
+[ 27%] Built target pyc_foundation
+[ 30%] Building C object CMakeFiles/pyc_compiler_next_test_pass_manager.dir/tests/compiler_next/test_pass_manager.c.o
+[ 32%] Built target pyc_core
+[ 37%] Building C object CMakeFiles/pyc_compiler_next_test_determinism.dir/tests/compiler_next/test_determinism.c.o
+[ 37%] Building C object CMakeFiles/pyc_compiler_next_test_runtime_control.dir/tests/compiler_next/test_runtime_control.c.o
+[ 39%] Building C object CMakeFiles/pyc_compiler_next_test_cpu_execution.dir/tests/compiler_next/test_cpu_execution.c.o
+[ 41%] Building C object CMakeFiles/pyc_compiler_next_test_policy_modes.dir/tests/compiler_next/test_policy_modes.c.o
+[ 46%] Building C object CMakeFiles/pyc_compiler_next_smoke.dir/tests/compiler_next/compiler_next_smoke.c.o
+[ 46%] Building C object CMakeFiles/pyc_compiler_next_test_kernel_registry.dir/tests/compiler_next/test_kernel_registry.c.o
+[ 51%] Building C object CMakeFiles/pyc_compiler_next_test_compiler_api.dir/tests/compiler_next/test_compiler_api.c.o
+[ 51%] Building C object CMakeFiles/pyc_compiler_next_test_runtime_allocator.dir/tests/compiler_next/test_runtime_allocator.c.o
+[ 53%] Building C object CMakeFiles/pyc_compiler_next_test_pass_golden.dir/tests/compiler_next/test_pass_golden.c.o
+[ 55%] Building C object CMakeFiles/pyc_compiler_next_test_ir.dir/tests/compiler_next/test_ir.c.o
+[ 58%] Building C object CMakeFiles/pyc_ai_bridge.dir/AI/ai_bridge.c.o
+Consolidate compiler generated dependencies of target pyc
+Consolidate compiler generated dependencies of target pyc_core_microbench
+[ 62%] Built target pyc
+[ 67%] Built target pyc_core_microbench
+[ 69%] Linking C executable pyc_compiler_next_test_pass_manager
+[ 72%] Linking C executable pyc_compiler_next_test_runtime_allocator
+[ 74%] Linking C executable pyc_compiler_next_test_runtime_control
+[ 76%] Linking C static library libpyc_ai_bridge.a
+[ 81%] Linking C executable pyc_compiler_next_test_kernel_registry
+[ 81%] Linking C executable pyc_compiler_next_smoke
+[ 83%] Linking C executable pyc_compiler_next_test_ir
+[ 88%] Linking C executable pyc_compiler_next_test_policy_modes
+[ 88%] Linking C executable pyc_compiler_next_test_determinism
+[ 90%] Linking C executable pyc_compiler_next_test_cpu_execution
+[ 93%] Linking C executable pyc_compiler_next_test_pass_golden
+[ 95%] Linking C executable pyc_compiler_next_test_compiler_api
+[ 95%] Built target pyc_ai_bridge
+[ 95%] Built target pyc_compiler_next_test_pass_manager
+[ 95%] Built target pyc_compiler_next_test_runtime_allocator
+[ 95%] Built target pyc_compiler_next_test_runtime_control
+[ 95%] Built target pyc_compiler_next_test_ir
+[ 95%] Built target pyc_compiler_next_test_kernel_registry
+[ 95%] Built target pyc_compiler_next_smoke
+[ 95%] Built target pyc_compiler_next_test_policy_modes
+[ 95%] Built target pyc_compiler_next_test_determinism
+[ 95%] Built target pyc_compiler_next_test_pass_golden
+[ 95%] Built target pyc_compiler_next_test_compiler_api
+[ 95%] Built target pyc_compiler_next_test_cpu_execution
+[ 97%] Building C object CMakeFiles/pyc_compiler_next_test_ai_bridge.dir/tests/compiler_next/test_ai_bridge.c.o
+[100%] Linking C executable pyc_compiler_next_test_ai_bridge
+[100%] Built target pyc_compiler_next_test_ai_bridge
+Internal ctest changing into directory: /root/PyC/build
+Test project /root/PyC/build
+      Start  1: pyc_compiler_next_smoke_test
+ 1/13 Test  #1: pyc_compiler_next_smoke_test ...............   Passed    0.00 sec
+      Start  2: pyc_compiler_next_test_ir
+ 2/13 Test  #2: pyc_compiler_next_test_ir ..................   Passed    0.00 sec
+      Start  3: pyc_compiler_next_test_pass_manager
+ 3/13 Test  #3: pyc_compiler_next_test_pass_manager ........   Passed    0.00 sec
+      Start  4: pyc_compiler_next_test_runtime_allocator
+ 4/13 Test  #4: pyc_compiler_next_test_runtime_allocator ...   Passed    0.00 sec
+      Start  5: pyc_compiler_next_test_kernel_registry
+ 5/13 Test  #5: pyc_compiler_next_test_kernel_registry .....   Passed    0.00 sec
+      Start  6: pyc_compiler_next_test_compiler_api
+ 6/13 Test  #6: pyc_compiler_next_test_compiler_api ........   Passed    0.00 sec
+      Start  7: pyc_compiler_next_test_determinism
+ 7/13 Test  #7: pyc_compiler_next_test_determinism .........   Passed    0.00 sec
+      Start  8: pyc_compiler_next_test_pass_golden
+ 8/13 Test  #8: pyc_compiler_next_test_pass_golden .........   Passed    0.00 sec
+      Start  9: pyc_compiler_next_test_policy_modes
+ 9/13 Test  #9: pyc_compiler_next_test_policy_modes ........   Passed    0.00 sec
+      Start 10: pyc_compiler_next_test_runtime_control
+10/13 Test #10: pyc_compiler_next_test_runtime_control .....   Passed    0.00 sec
+      Start 11: pyc_compiler_next_test_cpu_execution
+11/13 Test #11: pyc_compiler_next_test_cpu_execution .......   Passed    0.00 sec
+      Start 12: pyc_compiler_next_test_ai_bridge
+12/13 Test #12: pyc_compiler_next_test_ai_bridge ...........   Passed    0.00 sec
+      Start 13: pyc_validate_cmake_source_coverage
+13/13 Test #13: pyc_validate_cmake_source_coverage .........   Passed    0.03 sec
+
+100% tests passed, 0 tests failed out of 13
+
+Total Test time (real) =   0.07 sec
+[5/6] Compare backends
+Wrote /root/PyC/benchmark/gpu/results/gpu_compare_live.json
+Wrote /root/PyC/benchmark/gpu/results/gpu_compare_live.md
+[6/6] Done
+-rw-r--r-- 1 root root 5.2K Feb 17 23:40 benchmark/gpu/results/gpu_compare_live.json
+-rw-r--r-- 1 root root 1.1K Feb 17 23:40 benchmark/gpu/results/gpu_compare_live.md

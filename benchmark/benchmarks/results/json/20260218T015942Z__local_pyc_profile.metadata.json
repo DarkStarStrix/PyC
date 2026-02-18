@@ -1,0 +1,18 @@
+{
+  "run_id": "20260218T015942Z",
+  "tag": "local_pyc_profile",
+  "created_utc": "2026-02-18T01:59:42.876758+00:00",
+  "host": "Allans-Air.attlocal.net",
+  "os": "macOS-26.3-arm64-arm-64bit-Mach-O",
+  "python": "3.14.0",
+  "git_head": "c5d8438",
+  "git_dirty": 1,
+  "device": "cpu",
+  "batch": 64,
+  "hidden": 2048,
+  "iters": 10,
+  "warmup": 2,
+  "adapters": [
+    "pyc"
+  ]
+}

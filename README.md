@@ -102,9 +102,21 @@ python3 benchmark/harness.py --repeats 7 --micro-rounds 4000
 
 Outputs:
 
-- `benchmark/results/latest.json`
-- `benchmark/results/latest.md`
+- `benchmark/benchmarks/results/json/latest_core.json`
+- `benchmark/benchmarks/results/reports/latest_core.md`
 - `docs/performance-results.md`
+
+Publish website-ready benchmark artifacts:
+
+```bash
+python3 scripts/publish_site_results.py
+```
+
+Published output:
+
+- `website/results/manifest.json`
+- `website/results/latest-summary.json`
+- `website/results/artifacts/**` (SVG + metadata JSON)
 
 ## How To Use PyC
 
@@ -177,6 +189,31 @@ Static download page for end users:
 
 When published with GitHub Pages, this page auto-detects OS and links the latest release asset.
 
+## GPU Benchmarking (Remote CUDA)
+
+For real GPU testing on rented Linux machines:
+
+1. Provision Ubuntu + NVIDIA GPU host.
+2. Run setup script:
+   ```bash
+   bash scripts/setup_cuda_remote_ubuntu.sh
+   source .venv/bin/activate
+   ```
+3. Run standardized suite:
+   ```bash
+   python3 benchmark/benchmarks/gpu/run_gpu_suite.py --device cuda --tag gpu_baseline
+   ```
+
+Detailed guide:
+
+- `docs/compiler-next/gpu-testing-playbook.md`
+
+Adapter comparison includes:
+
+- `torch_eager`, `torch_compile`, `pyc`, `tvm`, `xla`, `tensorrt`, `glow`
+
+For non-PyTorch backends, set adapter command env vars (for example `TVM_BENCH_CMD`, `XLA_BENCH_CMD`, `TENSORRT_BENCH_CMD`, `PYC_GPU_BENCH_CMD`, `GLOW_BENCH_CMD`) to your standardized benchmark command that emits JSON.
+
 ## Status
 
 - Stable CI/link targets are in place and cross-platform oriented.
@@ -192,8 +229,10 @@ Key docs:
 - `docs/project-status.md`
 - `docs/build-and-ci.md`
 - `docs/benchmarking.md`
+- `docs/results.md`
+- `docs/perf-report.md`
 - `docs/performance-results.md`
-- `docs/REPO_RULES.md`
+- `REPO_RULES.md`
 - `docs/compiler-next/runtime-integration-spec.md`
 
 ## Community

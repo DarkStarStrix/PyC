@@ -20,9 +20,11 @@ Inputs:
 
 Outputs:
 
-- `benchmark/results/latest.json`
-- `benchmark/results/latest.md`
+- `benchmark/benchmarks/results/json/latest_core.json`
+- `benchmark/benchmarks/results/reports/latest_core.md`
 - `docs/performance-results.md`
+- `website/results/manifest.json` (after publish step)
+- `website/results/latest-summary.json` (after publish step)
 
 ## Metrics Collected
 
@@ -44,6 +46,12 @@ Tuned run:
 
 ```bash
 python3 benchmark/harness.py --build-dir build --config Release --repeats 7 --micro-rounds 4000
+```
+
+Publish benchmark artifacts for the website:
+
+```bash
+python3 scripts/publish_site_results.py
 ```
 
 ## Methodology Notes

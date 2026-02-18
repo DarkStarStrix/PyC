@@ -20,6 +20,7 @@ Each item has measurable outcomes and a go/no-go rule.
 | B3 Deterministic What-If Simulator | 5 | Planned | >=80% predicted-winner agreement vs measured winner | Pending | Unassigned |
 | C1 Optimization Contracts | 5 | Planned | 100% contract compliance + >=90% explainable decision logs | Pending | Unassigned |
 | C2 Policy Plugin Interfaces | 5 | Planned | New policy integration <200 LOC adapter with no CI determinism regressions | Pending | Unassigned |
+| D1 Compile-Runtime Reliability Rails | 4-5 | Planned | 0 silent mismatch incidents; >=95% runs with explainable guard/fallback logs | Pending | Unassigned |
 
 R&D basis and sentiment context for this shortlist:
 
@@ -190,6 +191,29 @@ Turns compiler behavior into auditable intent rather than opaque heuristics.
 ### Roadmap Link
 
 - Phase 5.
+
+## D1. Compile-Runtime Reliability Rails
+
+### Idea
+
+Treat correctness, guard handling, compile-budget limits, and fallback explainability as first-class runtime contracts.
+
+### Why unique
+
+Directly targets observed `torch.compile` reliability pain points while preserving optimization velocity.
+
+### KPI
+
+- 0 silent mismatch incidents in correctness suite.
+- at least 95% runs include deterministic guard/fallback decision logs.
+
+### Go/No-Go
+
+- Go if guard/fallback behavior is deterministic and correctness parity holds under forced miss scenarios.
+
+### Roadmap Link
+
+- `docs/compiler-next/compile-runtime-reliability-spec.md`
 
 ## C2. Policy Plugins for Pass/Planner Decisions
 

@@ -25,6 +25,9 @@ typedef struct {
     int fused_patterns;
     int inferred_shapes;
     size_t peak_live_values;
+    size_t graph_break_count;
+    double compilability_score;
+    char graph_break_summary[128];
 } pyc_pass_report;
 
 typedef struct {

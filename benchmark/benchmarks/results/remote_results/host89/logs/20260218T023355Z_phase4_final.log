@@ -1,0 +1,15 @@
+Configured adapter commands:
+  PYC_GPU_BENCH_CMD=python3 /root/PyC/benchmark/benchmarks/gpu/external/bench_pyc_cmd.py
+  TVM_BENCH_CMD=python3 /root/PyC/benchmark/benchmarks/gpu/external/bench_tvm_cmd.py
+  XLA_BENCH_CMD=python3 /root/PyC/benchmark/benchmarks/gpu/external/bench_xla_cmd.py
+  TENSORRT_BENCH_CMD=python3 /root/PyC/benchmark/benchmarks/gpu/external/bench_tensorrt_cmd.py
+  GLOW_BENCH_CMD=python3 /root/PyC/benchmark/benchmarks/gpu/external/bench_glow_cmd.py
+Wrote benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.json
+Wrote benchmark/benchmarks/results/remote_results/host89/reports/20260218T023355Z_phase4_final__cpu.md
+Wrote benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg
+Wrote benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.metadata.json
+Wrote benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.json
+Wrote benchmark/benchmarks/results/remote_results/host89/reports/20260218T023355Z_phase4_final__gpu.md
+Wrote benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg
+Wrote benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.metadata.json
+Benchmark suite complete. Run ID: 20260218T023355Z_phase4_final

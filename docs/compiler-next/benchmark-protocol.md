@@ -27,3 +27,11 @@ Produce reproducible, decision-grade performance signals for compiler-next compo
 
 - Early phases: non-blocking perf jobs.
 - Later phases: threshold-based regression gates.
+
+## GPU Execution Path
+
+For real CUDA benchmarking on rented Linux hosts, use:
+
+- `docs/compiler-next/gpu-testing-playbook.md`
+- `scripts/setup_cuda_remote_ubuntu.sh`
+- `benchmark/benchmarks/gpu/run_gpu_suite.py`

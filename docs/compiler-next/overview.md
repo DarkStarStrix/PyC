@@ -40,5 +40,7 @@
 - `docs/compiler-next/innovation-backlog.md`
 - `docs/compiler-next/rd-landscape.md` (classical vs AI compiler R&D, ecosystem sentiment, and priority experiments)
 - `docs/compiler-next/runtime-integration-spec.md` (how to embed PyC under real job runtimes with dynamic policy control)
+- `docs/compiler-next/gpu-testing-playbook.md` (how to run standardized CUDA benchmarks on rented Linux GPU machines)
+- `docs/compiler-next/compile-runtime-reliability-spec.md` (reliability-first plan to solve `torch.compile`-class pain points: correctness, compile latency, graph breaks, and deterministic fallback)
 - `tests/compiler_next/test_roadmap_phase1.md`
 - `docs/compiler-next/kernel-lab.md` (mini CLI lab for kernel prototyping/testing/benchmarking)

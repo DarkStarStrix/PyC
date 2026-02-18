@@ -1,0 +1,241 @@
+{
+  "meta": {
+    "timestamp_utc": "2026-02-18T01:13:43.755360+00:00",
+    "host": "90c892d22de7",
+    "os": "Linux-6.8.0-85-generic-x86_64-with-glibc2.35",
+    "python": "3.11.11",
+    "device": "cpu",
+    "batch": 64,
+    "hidden": 2048,
+    "iters": 30,
+    "warmup": 10,
+    "tag": "full_cpu_all_v3",
+    "adapters": [
+      "torch_eager",
+      "torch_compile",
+      "pyc",
+      "tvm",
+      "xla",
+      "tensorrt",
+      "glow"
+    ]
+  },
+  "gpu": {
+    "available": true,
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 4090",
+        "driver_version": "570.195.03",
+        "memory_total": "24564 MiB",
+        "compute_capability": "8.9"
+      },
+      {
+        "name": "NVIDIA GeForce RTX 4090",
+        "driver_version": "570.195.03",
+        "memory_total": "24564 MiB",
+        "compute_capability": "8.9"
+      }
+    ]
+  },
+  "adapters": {
+    "torch_eager": {
+      "status": "ok",
+      "backend": "torch_eager",
+      "device": "cpu",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 30,
+      "warmup": 10,
+      "latency_ms": {
+        "mean": 30.7592,
+        "p50": 13.4279,
+        "p95": 72.9134,
+        "min": 12.2396,
+        "max": 73.4494
+      },
+      "throughput_tokens_per_sec": 4261224.43,
+      "peak_memory_bytes": 0,
+      "samples_ms": [
+        13.403,
+        12.8743,
+        69.5552,
+        15.302,
+        12.8879,
+        70.3929,
+        12.9608,
+        12.3737,
+        72.9134,
+        14.0768,
+        12.6009,
+        12.5638,
+        72.9013,
+        12.2396,
+        12.375,
+        71.2758,
+        13.0118,
+        12.7337,
+        70.8714,
+        13.3024,
+        13.0364,
+        70.8962,
+        15.6262,
+        13.481,
+        70.7786,
+        13.6971,
+        13.4279,
+        73.4494,
+        14.4205,
+        13.3481
+      ],
+      "adapter": "torch_eager",
+      "display_name": "PyTorch Eager"
+    },
+    "torch_compile": {
+      "status": "ok",
+      "backend": "torch_compile",
+      "device": "cpu",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 30,
+      "warmup": 10,
+      "latency_ms": {
+        "mean": 33.2978,
+        "p50": 14.7016,
+        "p95": 72.5172,
+        "min": 13.3027,
+        "max": 72.551
+      },
+      "throughput_tokens_per_sec": 3936360.59,
+      "peak_memory_bytes": 0,
+      "samples_ms": [
+        72.551,
+        15.8741,
+        14.6437,
+        69.4716,
+        15.0576,
+        13.7851,
+        70.2697,
+        13.6039,
+        13.794,
+        72.4977,
+        15.154,
+        13.5554,
+        72.3127,
+        15.4272,
+        13.7125,
+        70.7439,
+        13.8729,
+        13.7236,
+        72.5172,
+        14.987,
+        13.3027,
+        71.2739,
+        14.7016,
+        13.8557,
+        71.5879,
+        14.33,
+        13.6192,
+        71.4273,
+        13.6687,
+        13.611
+      ],
+      "adapter": "torch_compile",
+      "display_name": "PyTorch Compile"
+    },
+    "pyc": {
+      "status": "ok",
+      "backend": "pyc_cpu_microbench",
+      "device": "cpu",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 30,
+      "warmup": 10,
+      "latency_ms": {
+        "mean": 144.0853,
+        "p50": 143.3431,
+        "p95": 152.0857,
+        "min": 136.4303,
+        "max": 153.2713
+      },
+      "throughput_tokens_per_sec": 909683.44,
+      "peak_memory_bytes": 0,
+      "note": "PyC benchmark currently executes deterministic CPU path; CUDA mode is a stub fallback.",
+      "adapter": "pyc",
+      "display_name": "PyC CUDA"
+    },
+    "tvm": {
+      "status": "ok",
+      "backend": "tvm",
+      "device": "cpu",
+      "requested_device": "cpu",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 30,
+      "warmup": 10,
+      "latency_ms": {
+        "mean": 32.9258,
+        "p50": 13.5731,
+        "p95": 77.2123,
+        "min": 9.9998,
+        "max": 79.3405
+      },
+      "throughput_tokens_per_sec": 3980825.35,
+      "peak_memory_bytes": 0,
+      "note": "",
+      "adapter": "tvm",
+      "display_name": "TVM"
+    },
+    "xla": {
+      "status": "ok",
+      "backend": "xla_proxy_torch",
+      "device": "cpu",
+      "requested_device": "cpu",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 30,
+      "warmup": 10,
+      "latency_ms": {
+        "mean": 33.8499,
+        "p50": 15.0325,
+        "p95": 73.7028,
+        "min": 12.9927,
+        "max": 74.5228
+      },
+      "throughput_tokens_per_sec": 3872149.37,
+      "peak_memory_bytes": 0,
+      "note": "torch_xla path unavailable; executed deterministic torch proxy workload.",
+      "adapter": "xla",
+      "display_name": "XLA"
+    },
+    "tensorrt": {
+      "status": "error",
+      "error": "external command must print JSON",
+      "stdout": "[02/18/2026-01:14:10] [TRT] [W] Functionality provided through tensorrt.plugin module is experimental.\n",
+      "stderr": "Neither TRTLLM_PLUGIN_PATH is set nor is it directed to download the shared library. Please set either of the two to use TRT-LLM libraries in torchTRT\nTraceback (most recent call last):\n  File \"/root/PyC/benchmark/gpu/external/bench_tensorrt_cmd.py\", line 156, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File \"/root/PyC/benchmark/gpu/external/bench_tensorrt_cmd.py\", line 38, in main\n    torch.nn.Linear(hidden, hidden * 4),\n                    ^^^^^^\nUnboundLocalError: cannot access local variable 'hidden' where it is not associated with a value\n",
+      "adapter": "tensorrt",
+      "display_name": "TensorRT"
+    },
+    "glow": {
+      "status": "ok",
+      "backend": "glow_proxy",
+      "device": "cpu",
+      "requested_device": "cpu",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 30,
+      "warmup": 10,
+      "latency_ms": {
+        "mean": 33.5014,
+        "p50": 13.9688,
+        "p95": 86.5618,
+        "min": 9.9711,
+        "max": 88.0492
+      },
+      "throughput_tokens_per_sec": 3912436.82,
+      "peak_memory_bytes": 0,
+      "note": "Glow runtime is not linked in this environment; this is a deterministic proxy workload.",
+      "adapter": "glow",
+      "display_name": "Glow"
+    }
+  }
+}

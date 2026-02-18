@@ -36,5 +36,5 @@ ctest --test-dir build -C Release --output-on-failure
 
 ```bash
 python3 benchmark/harness.py --repeats 5 --micro-rounds 2000
-python3 benchmark/tools/check_regression.py --baseline benchmark/baselines/ubuntu-latest.json --result benchmark/results/latest.json
+python3 benchmark/tools/check_regression.py --baseline benchmark/baselines/ubuntu-latest.json --result benchmark/benchmarks/results/json/latest_core.json
 ```

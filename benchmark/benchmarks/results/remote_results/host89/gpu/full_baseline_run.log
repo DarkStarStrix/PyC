@@ -1,0 +1,490 @@
+[1/9] host info
+Linux 90c892d22de7 6.8.0-85-generic #85-Ubuntu SMP PREEMPT_DYNAMIC Thu Sep 18 15:26:59 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+Python 3.11.11
+NVIDIA GeForce RTX 4090, 570.195.03, 24564 MiB, 8.9
+NVIDIA GeForce RTX 4090, 570.195.03, 24564 MiB, 8.9
+[2/9] system deps
+Hit:1 http://security.ubuntu.com/ubuntu jammy-security InRelease
+Hit:2 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64  InRelease
+Hit:3 http://archive.ubuntu.com/ubuntu jammy InRelease
+Hit:4 http://archive.ubuntu.com/ubuntu jammy-updates InRelease
+Hit:5 http://archive.ubuntu.com/ubuntu jammy-backports InRelease
+Hit:6 https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy InRelease
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+build-essential is already the newest version (12.9ubuntu3).
+build-essential set to manually installed.
+python3 is already the newest version (3.10.6-1~22.04.1).
+python3 set to manually installed.
+The following additional packages will be installed:
+  cmake-data dh-elpa-helper emacsen-common javascript-common libarchive13
+  libjs-jquery libjs-sphinxdoc libjs-underscore libjsoncpp25 libpython3-dev
+  libpython3.10 libpython3.10-dev libpython3.10-minimal libpython3.10-stdlib
+  librhash0 libuv1 python3-dev python3-pip-whl python3-pkg-resources
+  python3-setuptools python3-setuptools-whl python3-wheel python3.10
+  python3.10-dev python3.10-minimal python3.10-venv zlib1g-dev
+Suggested packages:
+  cmake-doc ninja-build cmake-format gettext-base git-daemon-run
+  | git-daemon-sysvinit git-doc git-email git-gui gitk gitweb git-cvs
+  git-mediawiki git-svn lrzip python-setuptools-doc python3.10-doc
+  binfmt-support
+Recommended packages:
+  less
+The following NEW packages will be installed:
+  cmake cmake-data dh-elpa-helper emacsen-common javascript-common
+  libarchive13 libjs-jquery libjs-sphinxdoc libjs-underscore libjsoncpp25
+  libpython3-dev libpython3.10 libpython3.10-dev librhash0 libuv1 python3-dev
+  python3-pip python3-pip-whl python3-setuptools python3-setuptools-whl
+  python3-venv python3-wheel python3.10-dev python3.10-venv zlib1g-dev
+The following packages will be upgraded:
+  git libpython3.10-minimal libpython3.10-stdlib python3-pkg-resources
+  python3.10 python3.10-minimal
+6 upgraded, 25 newly installed, 0 to remove and 117 not upgraded.
+Need to get 28.5 MB of archives.
+After this operation, 74.4 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3.10 amd64 3.10.12-1~22.04.14 [509 kB]
+Get:2 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libpython3.10-stdlib amd64 3.10.12-1~22.04.14 [1850 kB]
+Get:3 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3.10-minimal amd64 3.10.12-1~22.04.14 [2275 kB]
+Get:4 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libpython3.10-minimal amd64 3.10.12-1~22.04.14 [816 kB]
+Get:5 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3-pkg-resources all 59.6.0-1.2ubuntu0.22.04.3 [133 kB]
+Get:6 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libuv1 amd64 1.43.0-1ubuntu0.1 [92.7 kB]
+Get:7 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libarchive13 amd64 3.6.0-1ubuntu1.5 [368 kB]
+Get:8 http://archive.ubuntu.com/ubuntu jammy/main amd64 libjsoncpp25 amd64 1.9.5-3 [80.0 kB]
+Get:9 http://archive.ubuntu.com/ubuntu jammy/main amd64 librhash0 amd64 1.4.2-1ubuntu1 [125 kB]
+Get:10 http://archive.ubuntu.com/ubuntu jammy/main amd64 dh-elpa-helper all 2.0.9ubuntu1 [7610 B]
+Get:11 http://archive.ubuntu.com/ubuntu jammy/main amd64 emacsen-common all 3.0.4 [14.9 kB]
+Get:12 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 cmake-data all 3.22.1-1ubuntu1.22.04.2 [1913 kB]
+Get:13 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 cmake amd64 3.22.1-1ubuntu1.22.04.2 [5010 kB]
+Get:14 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 git amd64 1:2.34.1-1ubuntu1.15 [3166 kB]
+Get:15 http://archive.ubuntu.com/ubuntu jammy/main amd64 javascript-common all 11+nmu1 [5936 B]
+Get:16 http://archive.ubuntu.com/ubuntu jammy/main amd64 libjs-jquery all 3.6.0+dfsg+~3.5.13-1 [321 kB]
+Get:17 http://archive.ubuntu.com/ubuntu jammy/main amd64 libjs-underscore all 1.13.2~dfsg-2 [118 kB]
+Get:18 http://archive.ubuntu.com/ubuntu jammy/main amd64 libjs-sphinxdoc all 4.3.2-1 [139 kB]
+Get:19 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libpython3.10 amd64 3.10.12-1~22.04.14 [1949 kB]
+Get:20 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 zlib1g-dev amd64 1:1.2.11.dfsg-2ubuntu9.2 [164 kB]
+Get:21 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libpython3.10-dev amd64 3.10.12-1~22.04.14 [4765 kB]
+Get:22 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libpython3-dev amd64 3.10.6-1~22.04.1 [7064 B]
+Get:23 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3.10-dev amd64 3.10.12-1~22.04.14 [508 kB]
+Get:24 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3-dev amd64 3.10.6-1~22.04.1 [26.0 kB]
+Get:25 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 python3-setuptools all 59.6.0-1.2ubuntu0.22.04.3 [340 kB]
+Get:26 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-wheel all 0.37.1-2ubuntu0.22.04.1 [32.0 kB]
+Get:27 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-pip all 22.0.2+dfsg-1ubuntu0.7 [1306 kB]
+Get:28 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-pip-whl all 22.0.2+dfsg-1ubuntu0.7 [1683 kB]
+Get:29 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-setuptools-whl all 59.6.0-1.2ubuntu0.22.04.3 [789 kB]
+Get:30 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3.10-venv amd64 3.10.12-1~22.04.14 [5724 B]
+Get:31 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 python3-venv amd64 3.10.6-1~22.04.1 [1042 B]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 28.5 MB in 0s (81.8 MB/s)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 24307 files and directories currently installed.)
+Preparing to unpack .../00-python3.10_3.10.12-1~22.04.14_amd64.deb ...
+Unpacking python3.10 (3.10.12-1~22.04.14) over (3.10.12-1~22.04.9) ...
+Preparing to unpack .../01-libpython3.10-stdlib_3.10.12-1~22.04.14_amd64.deb ...
+Unpacking libpython3.10-stdlib:amd64 (3.10.12-1~22.04.14) over (3.10.12-1~22.04.9) ...
+Preparing to unpack .../02-python3.10-minimal_3.10.12-1~22.04.14_amd64.deb ...
+Unpacking python3.10-minimal (3.10.12-1~22.04.14) over (3.10.12-1~22.04.9) ...
+Preparing to unpack .../03-libpython3.10-minimal_3.10.12-1~22.04.14_amd64.deb ...
+Unpacking libpython3.10-minimal:amd64 (3.10.12-1~22.04.14) over (3.10.12-1~22.04.9) ...
+Preparing to unpack .../04-python3-pkg-resources_59.6.0-1.2ubuntu0.22.04.3_all.deb ...
+Unpacking python3-pkg-resources (59.6.0-1.2ubuntu0.22.04.3) over (59.6.0-1.2ubuntu0.22.04.2) ...
+Selecting previously unselected package libuv1:amd64.
+Preparing to unpack .../05-libuv1_1.43.0-1ubuntu0.1_amd64.deb ...
+Unpacking libuv1:amd64 (1.43.0-1ubuntu0.1) ...
+Selecting previously unselected package libarchive13:amd64.
+Preparing to unpack .../06-libarchive13_3.6.0-1ubuntu1.5_amd64.deb ...
+Unpacking libarchive13:amd64 (3.6.0-1ubuntu1.5) ...
+Selecting previously unselected package libjsoncpp25:amd64.
+Preparing to unpack .../07-libjsoncpp25_1.9.5-3_amd64.deb ...
+Unpacking libjsoncpp25:amd64 (1.9.5-3) ...
+Selecting previously unselected package librhash0:amd64.
+Preparing to unpack .../08-librhash0_1.4.2-1ubuntu1_amd64.deb ...
+Unpacking librhash0:amd64 (1.4.2-1ubuntu1) ...
+Selecting previously unselected package dh-elpa-helper.
+Preparing to unpack .../09-dh-elpa-helper_2.0.9ubuntu1_all.deb ...
+Unpacking dh-elpa-helper (2.0.9ubuntu1) ...
+Selecting previously unselected package emacsen-common.
+Preparing to unpack .../10-emacsen-common_3.0.4_all.deb ...
+Unpacking emacsen-common (3.0.4) ...
+Selecting previously unselected package cmake-data.
+Preparing to unpack .../11-cmake-data_3.22.1-1ubuntu1.22.04.2_all.deb ...
+Unpacking cmake-data (3.22.1-1ubuntu1.22.04.2) ...
+Selecting previously unselected package cmake.
+Preparing to unpack .../12-cmake_3.22.1-1ubuntu1.22.04.2_amd64.deb ...
+Unpacking cmake (3.22.1-1ubuntu1.22.04.2) ...
+Preparing to unpack .../13-git_1%3a2.34.1-1ubuntu1.15_amd64.deb ...
+Unpacking git (1:2.34.1-1ubuntu1.15) over (1:2.34.1-1ubuntu1.12) ...
+Selecting previously unselected package javascript-common.
+Preparing to unpack .../14-javascript-common_11+nmu1_all.deb ...
+Unpacking javascript-common (11+nmu1) ...
+Selecting previously unselected package libjs-jquery.
+Preparing to unpack .../15-libjs-jquery_3.6.0+dfsg+~3.5.13-1_all.deb ...
+Unpacking libjs-jquery (3.6.0+dfsg+~3.5.13-1) ...
+Selecting previously unselected package libjs-underscore.
+Preparing to unpack .../16-libjs-underscore_1.13.2~dfsg-2_all.deb ...
+Unpacking libjs-underscore (1.13.2~dfsg-2) ...
+Selecting previously unselected package libjs-sphinxdoc.
+Preparing to unpack .../17-libjs-sphinxdoc_4.3.2-1_all.deb ...
+Unpacking libjs-sphinxdoc (4.3.2-1) ...
+Selecting previously unselected package libpython3.10:amd64.
+Preparing to unpack .../18-libpython3.10_3.10.12-1~22.04.14_amd64.deb ...
+Unpacking libpython3.10:amd64 (3.10.12-1~22.04.14) ...
+Selecting previously unselected package zlib1g-dev:amd64.
+Preparing to unpack .../19-zlib1g-dev_1%3a1.2.11.dfsg-2ubuntu9.2_amd64.deb ...
+Unpacking zlib1g-dev:amd64 (1:1.2.11.dfsg-2ubuntu9.2) ...
+Selecting previously unselected package libpython3.10-dev:amd64.
+Preparing to unpack .../20-libpython3.10-dev_3.10.12-1~22.04.14_amd64.deb ...
+Unpacking libpython3.10-dev:amd64 (3.10.12-1~22.04.14) ...
+Selecting previously unselected package libpython3-dev:amd64.
+Preparing to unpack .../21-libpython3-dev_3.10.6-1~22.04.1_amd64.deb ...
+Unpacking libpython3-dev:amd64 (3.10.6-1~22.04.1) ...
+Selecting previously unselected package python3.10-dev.
+Preparing to unpack .../22-python3.10-dev_3.10.12-1~22.04.14_amd64.deb ...
+Unpacking python3.10-dev (3.10.12-1~22.04.14) ...
+Selecting previously unselected package python3-dev.
+Preparing to unpack .../23-python3-dev_3.10.6-1~22.04.1_amd64.deb ...
+Unpacking python3-dev (3.10.6-1~22.04.1) ...
+Selecting previously unselected package python3-setuptools.
+Preparing to unpack .../24-python3-setuptools_59.6.0-1.2ubuntu0.22.04.3_all.deb ...
+Unpacking python3-setuptools (59.6.0-1.2ubuntu0.22.04.3) ...
+Selecting previously unselected package python3-wheel.
+Preparing to unpack .../25-python3-wheel_0.37.1-2ubuntu0.22.04.1_all.deb ...
+Unpacking python3-wheel (0.37.1-2ubuntu0.22.04.1) ...
+Selecting previously unselected package python3-pip.
+Preparing to unpack .../26-python3-pip_22.0.2+dfsg-1ubuntu0.7_all.deb ...
+Unpacking python3-pip (22.0.2+dfsg-1ubuntu0.7) ...
+Selecting previously unselected package python3-pip-whl.
+Preparing to unpack .../27-python3-pip-whl_22.0.2+dfsg-1ubuntu0.7_all.deb ...
+Unpacking python3-pip-whl (22.0.2+dfsg-1ubuntu0.7) ...
+Selecting previously unselected package python3-setuptools-whl.
+Preparing to unpack .../28-python3-setuptools-whl_59.6.0-1.2ubuntu0.22.04.3_all.deb ...
+Unpacking python3-setuptools-whl (59.6.0-1.2ubuntu0.22.04.3) ...
+Selecting previously unselected package python3.10-venv.
+Preparing to unpack .../29-python3.10-venv_3.10.12-1~22.04.14_amd64.deb ...
+Unpacking python3.10-venv (3.10.12-1~22.04.14) ...
+Selecting previously unselected package python3-venv.
+Preparing to unpack .../30-python3-venv_3.10.6-1~22.04.1_amd64.deb ...
+Unpacking python3-venv (3.10.6-1~22.04.1) ...
+Setting up python3-pkg-resources (59.6.0-1.2ubuntu0.22.04.3) ...
+Setting up javascript-common (11+nmu1) ...
+Setting up python3-setuptools-whl (59.6.0-1.2ubuntu0.22.04.3) ...
+Setting up python3-setuptools (59.6.0-1.2ubuntu0.22.04.3) ...
+Setting up python3-pip-whl (22.0.2+dfsg-1ubuntu0.7) ...
+Setting up libarchive13:amd64 (3.6.0-1ubuntu1.5) ...
+Setting up python3-wheel (0.37.1-2ubuntu0.22.04.1) ...
+Setting up libuv1:amd64 (1.43.0-1ubuntu0.1) ...
+Setting up emacsen-common (3.0.4) ...
+Setting up dh-elpa-helper (2.0.9ubuntu1) ...
+Setting up libpython3.10-minimal:amd64 (3.10.12-1~22.04.14) ...
+Setting up libjsoncpp25:amd64 (1.9.5-3) ...
+Setting up git (1:2.34.1-1ubuntu1.15) ...
+Setting up python3-pip (22.0.2+dfsg-1ubuntu0.7) ...
+Setting up zlib1g-dev:amd64 (1:1.2.11.dfsg-2ubuntu9.2) ...
+Setting up librhash0:amd64 (1.4.2-1ubuntu1) ...
+Setting up cmake-data (3.22.1-1ubuntu1.22.04.2) ...
+Setting up libjs-jquery (3.6.0+dfsg+~3.5.13-1) ...
+Setting up libjs-underscore (1.13.2~dfsg-2) ...
+Setting up python3.10-minimal (3.10.12-1~22.04.14) ...
+Setting up libpython3.10-stdlib:amd64 (3.10.12-1~22.04.14) ...
+Setting up libjs-sphinxdoc (4.3.2-1) ...
+Setting up cmake (3.22.1-1ubuntu1.22.04.2) ...
+Setting up libpython3.10:amd64 (3.10.12-1~22.04.14) ...
+Setting up python3.10 (3.10.12-1~22.04.14) ...
+Setting up libpython3.10-dev:amd64 (3.10.12-1~22.04.14) ...
+Setting up python3.10-dev (3.10.12-1~22.04.14) ...
+Setting up libpython3-dev:amd64 (3.10.6-1~22.04.1) ...
+Setting up python3.10-venv (3.10.12-1~22.04.14) ...
+Setting up python3-venv (3.10.6-1~22.04.1) ...
+Setting up python3-dev (3.10.6-1~22.04.1) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.9) ...
+Processing triggers for mailcap (3.70+nmu1ubuntu1) ...
+[3/9] python env
+Requirement already satisfied: pip in ./.venv/lib/python3.11/site-packages (24.0)
+Collecting pip
+  Downloading pip-26.0.1-py3-none-any.whl.metadata (4.7 kB)
+Downloading pip-26.0.1-py3-none-any.whl (1.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 29.5 MB/s eta 0:00:00
+Installing collected packages: pip
+  Attempting uninstall: pip
+    Found existing installation: pip 24.0
+    Uninstalling pip-24.0:
+      Successfully uninstalled pip-24.0
+Successfully installed pip-26.0.1
+Collecting numpy
+  Downloading numpy-2.4.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+Collecting tqdm
+  Downloading tqdm-4.67.3-py3-none-any.whl.metadata (57 kB)
+Collecting matplotlib
+  Downloading matplotlib-3.10.8-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (52 kB)
+Collecting contourpy>=1.0.1 (from matplotlib)
+  Downloading contourpy-1.3.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (5.5 kB)
+Collecting cycler>=0.10 (from matplotlib)
+  Downloading cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+Collecting fonttools>=4.22.0 (from matplotlib)
+  Downloading fonttools-4.61.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (114 kB)
+Collecting kiwisolver>=1.3.1 (from matplotlib)
+  Downloading kiwisolver-1.4.9-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (6.3 kB)
+Collecting packaging>=20.0 (from matplotlib)
+  Downloading packaging-26.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting pillow>=8 (from matplotlib)
+  Downloading pillow-12.1.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (8.8 kB)
+Collecting pyparsing>=3 (from matplotlib)
+  Downloading pyparsing-3.3.2-py3-none-any.whl.metadata (5.8 kB)
+Collecting python-dateutil>=2.7 (from matplotlib)
+  Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting six>=1.5 (from python-dateutil>=2.7->matplotlib)
+  Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Downloading numpy-2.4.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.9/16.9 MB 68.7 MB/s  0:00:00
+Downloading tqdm-4.67.3-py3-none-any.whl (78 kB)
+Downloading matplotlib-3.10.8-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (8.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.7/8.7 MB 145.4 MB/s  0:00:00
+Downloading contourpy-1.3.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (355 kB)
+Downloading cycler-0.12.1-py3-none-any.whl (8.3 kB)
+Downloading fonttools-4.61.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.0/5.0 MB 77.6 MB/s  0:00:00
+Downloading kiwisolver-1.4.9-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (1.4 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 127.9 MB/s  0:00:00
+Downloading packaging-26.0-py3-none-any.whl (74 kB)
+Downloading pillow-12.1.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (7.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.0/7.0 MB 58.1 MB/s  0:00:00
+Downloading pyparsing-3.3.2-py3-none-any.whl (122 kB)
+Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+Installing collected packages: tqdm, six, pyparsing, pillow, packaging, numpy, kiwisolver, fonttools, cycler, python-dateutil, contourpy, matplotlib
+
+Successfully installed contourpy-1.3.3 cycler-0.12.1 fonttools-4.61.1 kiwisolver-1.4.9 matplotlib-3.10.8 numpy-2.4.2 packaging-26.0 pillow-12.1.1 pyparsing-3.3.2 python-dateutil-2.9.0.post0 six-1.17.0 tqdm-4.67.3
+Looking in indexes: https://download.pytorch.org/whl/cu124
+Collecting torch
+  Downloading https://download.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp311-cp311-linux_x86_64.whl.metadata (28 kB)
+Collecting torchvision
+  Downloading https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-cp311-cp311-linux_x86_64.whl.metadata (6.1 kB)
+Collecting filelock (from torch)
+  Downloading filelock-3.20.0-py3-none-any.whl.metadata (2.1 kB)
+Collecting typing-extensions>=4.10.0 (from torch)
+  Downloading https://download.pytorch.org/whl/typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting networkx (from torch)
+  Downloading networkx-3.6.1-py3-none-any.whl.metadata (6.8 kB)
+Collecting jinja2 (from torch)
+  Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting fsspec (from torch)
+  Downloading fsspec-2025.12.0-py3-none-any.whl.metadata (10 kB)
+Collecting nvidia-cuda-nvrtc-cu12==12.4.127 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cuda_nvrtc_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (24.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 24.6/24.6 MB 227.1 MB/s  0:00:00
+Collecting nvidia-cuda-runtime-cu12==12.4.127 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cuda_runtime_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (883 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 883.7/883.7 kB 126.9 MB/s  0:00:00
+Collecting nvidia-cuda-cupti-cu12==12.4.127 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cuda_cupti_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (13.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 13.8/13.8 MB 280.0 MB/s  0:00:00
+Collecting nvidia-cudnn-cu12==9.1.0.70 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl (664.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 664.8/664.8 MB 287.4 MB/s  0:00:01
+Collecting nvidia-cublas-cu12==12.4.5.8 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cublas_cu12-12.4.5.8-py3-none-manylinux2014_x86_64.whl (363.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 363.4/363.4 MB 356.8 MB/s  0:00:00
+Collecting nvidia-cufft-cu12==11.2.1.3 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cufft_cu12-11.2.1.3-py3-none-manylinux2014_x86_64.whl (211.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 211.5/211.5 MB 324.1 MB/s  0:00:00
+Collecting nvidia-curand-cu12==10.3.5.147 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_curand_cu12-10.3.5.147-py3-none-manylinux2014_x86_64.whl (56.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 56.3/56.3 MB 327.1 MB/s  0:00:00
+Collecting nvidia-cusolver-cu12==11.6.1.9 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cusolver_cu12-11.6.1.9-py3-none-manylinux2014_x86_64.whl (127.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 127.9/127.9 MB 392.9 MB/s  0:00:00
+Collecting nvidia-cusparse-cu12==12.3.1.170 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cusparse_cu12-12.3.1.170-py3-none-manylinux2014_x86_64.whl (207.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 207.5/207.5 MB 402.8 MB/s  0:00:00
+Collecting nvidia-cusparselt-cu12==0.6.2 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_cusparselt_cu12-0.6.2-py3-none-manylinux2014_x86_64.whl.metadata (6.8 kB)
+Collecting nvidia-nccl-cu12==2.21.5 (from torch)
+  Downloading https://download.pytorch.org/whl/nvidia_nccl_cu12-2.21.5-py3-none-manylinux2014_x86_64.whl (188.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 188.7/188.7 MB 408.4 MB/s  0:00:00
+Collecting nvidia-nvtx-cu12==12.4.127 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_nvtx_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (99 kB)
+Collecting nvidia-nvjitlink-cu12==12.4.127 (from torch)
+  Downloading https://download.pytorch.org/whl/cu124/nvidia_nvjitlink_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (21.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 21.1/21.1 MB 349.3 MB/s  0:00:00
+Collecting triton==3.2.0 (from torch)
+  Downloading https://download.pytorch.org/whl/triton-3.2.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (1.4 kB)
+Collecting sympy==1.13.1 (from torch)
+  Downloading sympy-1.13.1-py3-none-any.whl.metadata (12 kB)
+Collecting mpmath<1.4,>=1.1.0 (from sympy==1.13.1->torch)
+  Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+Requirement already satisfied: numpy in ./.venv/lib/python3.11/site-packages (from torchvision) (2.4.2)
+Requirement already satisfied: pillow!=8.3.*,>=5.3.0 in ./.venv/lib/python3.11/site-packages (from torchvision) (12.1.1)
+Collecting MarkupSafe>=2.0 (from jinja2->torch)
+  Downloading https://download.pytorch.org/whl/MarkupSafe-2.1.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (28 kB)
+Downloading https://download.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp311-cp311-linux_x86_64.whl (768.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 768.5/768.5 MB 274.0 MB/s  0:00:01
+Downloading https://download.pytorch.org/whl/cu124/nvidia_cusparselt_cu12-0.6.2-py3-none-manylinux2014_x86_64.whl (150.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 150.1/150.1 MB 388.5 MB/s  0:00:00
+Downloading sympy-1.13.1-py3-none-any.whl (6.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.2/6.2 MB 82.1 MB/s  0:00:00
+Downloading https://download.pytorch.org/whl/triton-3.2.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (166.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 166.7/166.7 MB 329.2 MB/s  0:00:00
+Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 64.4 MB/s  0:00:00
+Downloading https://download.pytorch.org/whl/cu124/torchvision-0.21.0%2Bcu124-cp311-cp311-linux_x86_64.whl (7.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.3/7.3 MB 177.9 MB/s  0:00:00
+Downloading https://download.pytorch.org/whl/typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Downloading filelock-3.20.0-py3-none-any.whl (16 kB)
+Downloading fsspec-2025.12.0-py3-none-any.whl (201 kB)
+Downloading https://download.pytorch.org/whl/jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading networkx-3.6.1-py3-none-any.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 240.4 MB/s  0:00:00
+Installing collected packages: triton, nvidia-cusparselt-cu12, mpmath, typing-extensions, sympy, nvidia-nvtx-cu12, nvidia-nvjitlink-cu12, nvidia-nccl-cu12, nvidia-curand-cu12, nvidia-cufft-cu12, nvidia-cuda-runtime-cu12, nvidia-cuda-nvrtc-cu12, nvidia-cuda-cupti-cu12, nvidia-cublas-cu12, networkx, MarkupSafe, fsspec, filelock, nvidia-cusparse-cu12, nvidia-cudnn-cu12, jinja2, nvidia-cusolver-cu12, torch, torchvision
+
+Successfully installed MarkupSafe-2.1.5 filelock-3.20.0 fsspec-2025.12.0 jinja2-3.1.6 mpmath-1.3.0 networkx-3.6.1 nvidia-cublas-cu12-12.4.5.8 nvidia-cuda-cupti-cu12-12.4.127 nvidia-cuda-nvrtc-cu12-12.4.127 nvidia-cuda-runtime-cu12-12.4.127 nvidia-cudnn-cu12-9.1.0.70 nvidia-cufft-cu12-11.2.1.3 nvidia-curand-cu12-10.3.5.147 nvidia-cusolver-cu12-11.6.1.9 nvidia-cusparse-cu12-12.3.1.170 nvidia-cusparselt-cu12-0.6.2 nvidia-nccl-cu12-2.21.5 nvidia-nvjitlink-cu12-12.4.127 nvidia-nvtx-cu12-12.4.127 sympy-1.13.1 torch-2.6.0+cu124 torchvision-0.21.0+cu124 triton-3.2.0 typing-extensions-4.15.0
+[4/9] build + tests
+-- The C compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Found Python3: /usr/bin/python3.10 (found version "3.10.12") found components: Interpreter 
+-- Configuring done
+-- Generating done
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    PYC_BUILD_EXPERIMENTAL
+
+
+-- Build files have been written to: /root/PyC/build
+[  4%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/runtime/runtime_control.c.o
+[  4%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/compiler_api.c.o
+[  6%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/runtime/runtime_allocator.c.o
+[  9%] Building C object CMakeFiles/pyc_core_obj.dir/Core/C_Files/adapter.c.o
+[ 11%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/ir/ir.c.o
+[ 13%] Building C object CMakeFiles/pyc_core_obj.dir/Core/C_Files/stack.c.o
+[ 18%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/runtime/kernel_registry.c.o
+[ 18%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/passes/pass_manager.c.o
+[ 20%] Building C object CMakeFiles/pyc_core_obj.dir/Core/C_Files/semantic.c.o
+[ 23%] Building C object CMakeFiles/pyc_core_obj.dir/Core/C_Files/symbol_table.c.o
+/root/PyC/compiler/passes/pass_manager.c: In function ‘fuse_module’:
+/root/PyC/compiler/passes/pass_manager.c:105:61: warning: ‘%s’ directive output may be truncated writing up to 63 bytes into a region of size 58 [-Wformat-truncation=]
+  105 |             snprintf(fused_name, sizeof(fused_name), "fused_%s_%s", cur->name, nxt->name);
+      |                                                             ^~
+/root/PyC/compiler/passes/pass_manager.c:105:13: note: ‘snprintf’ output between 8 and 134 bytes into a destination of size 64
+  105 |             snprintf(fused_name, sizeof(fused_name), "fused_%s_%s", cur->name, nxt->name);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[ 25%] Linking C static library libpyc_compiler_next.a
+[ 25%] Built target pyc_core_obj
+[ 27%] Linking C static library libpyc_foundation.a
+[ 30%] Linking C static library libpyc_core.a
+[ 30%] Built target pyc_compiler_next
+[ 32%] Building C object CMakeFiles/pyc_ai_bridge.dir/AI/ai_bridge.c.o
+[ 32%] Built target pyc_foundation
+[ 34%] Building C object CMakeFiles/pyc_compiler_next_test_pass_golden.dir/tests/compiler_next/test_pass_golden.c.o
+[ 41%] Building C object CMakeFiles/pyc_compiler_next_test_policy_modes.dir/tests/compiler_next/test_policy_modes.c.o
+[ 41%] Building C object CMakeFiles/pyc_compiler_next_test_runtime_allocator.dir/tests/compiler_next/test_runtime_allocator.c.o
+[ 41%] Building C object CMakeFiles/pyc_compiler_next_test_pass_manager.dir/tests/compiler_next/test_pass_manager.c.o
+[ 46%] Building C object CMakeFiles/pyc_compiler_next_test_ir.dir/tests/compiler_next/test_ir.c.o
+[ 46%] Building C object CMakeFiles/pyc_compiler_next_test_determinism.dir/tests/compiler_next/test_determinism.c.o
+[ 48%] Building C object CMakeFiles/pyc_compiler_next_test_kernel_registry.dir/tests/compiler_next/test_kernel_registry.c.o
+[ 51%] Building C object CMakeFiles/pyc_compiler_next_test_cpu_execution.dir/tests/compiler_next/test_cpu_execution.c.o
+[ 51%] Built target pyc_core
+[ 53%] Building C object CMakeFiles/pyc_compiler_next_smoke.dir/tests/compiler_next/compiler_next_smoke.c.o
+[ 55%] Building C object CMakeFiles/pyc_compiler_next_test_compiler_api.dir/tests/compiler_next/test_compiler_api.c.o
+[ 58%] Building C object CMakeFiles/pyc_compiler_next_test_runtime_control.dir/tests/compiler_next/test_runtime_control.c.o
+[ 60%] Linking C static library libpyc_ai_bridge.a
+[ 62%] Building C object CMakeFiles/pyc_core_microbench.dir/benchmark/workloads/core_microbench.c.o
+[ 65%] Linking C executable pyc_compiler_next_test_runtime_allocator
+[ 67%] Building C object CMakeFiles/pyc.dir/Core/C_Files/ci_main.c.o
+[ 69%] Linking C executable pyc_compiler_next_test_pass_manager
+[ 72%] Linking C executable pyc_compiler_next_test_policy_modes
+[ 74%] Linking C executable pyc_compiler_next_test_pass_golden
+[ 79%] Linking C executable pyc_compiler_next_test_ir
+[ 79%] Linking C executable pyc_compiler_next_test_kernel_registry
+[ 81%] Linking C executable pyc_compiler_next_smoke
+[ 83%] Linking C executable pyc_compiler_next_test_compiler_api
+[ 86%] Linking C executable pyc_compiler_next_test_determinism
+[ 88%] Linking C executable pyc_compiler_next_test_cpu_execution
+[ 90%] Linking C executable pyc_compiler_next_test_runtime_control
+[ 93%] Linking C executable pyc
+[ 95%] Linking C executable pyc_core_microbench
+[ 95%] Built target pyc_ai_bridge
+[ 95%] Built target pyc_compiler_next_test_pass_manager
+[ 95%] Built target pyc_compiler_next_test_runtime_allocator
+[ 95%] Built target pyc_compiler_next_test_pass_golden
+[ 95%] Built target pyc_compiler_next_test_ir
+[ 95%] Built target pyc_compiler_next_test_kernel_registry
+[ 95%] Built target pyc_compiler_next_test_policy_modes
+[ 95%] Built target pyc_compiler_next_test_compiler_api
+[ 95%] Built target pyc_compiler_next_smoke
+[ 95%] Built target pyc_compiler_next_test_determinism
+[ 95%] Built target pyc_compiler_next_test_cpu_execution
+[ 97%] Building C object CMakeFiles/pyc_compiler_next_test_ai_bridge.dir/tests/compiler_next/test_ai_bridge.c.o
+[ 97%] Built target pyc_compiler_next_test_runtime_control
+[ 97%] Built target pyc
+[ 97%] Built target pyc_core_microbench
+[100%] Linking C executable pyc_compiler_next_test_ai_bridge
+[100%] Built target pyc_compiler_next_test_ai_bridge
+Internal ctest changing into directory: /root/PyC/build
+Test project /root/PyC/build
+      Start  1: pyc_compiler_next_smoke_test
+ 1/13 Test  #1: pyc_compiler_next_smoke_test ...............   Passed    0.00 sec
+      Start  2: pyc_compiler_next_test_ir
+ 2/13 Test  #2: pyc_compiler_next_test_ir ..................   Passed    0.00 sec
+      Start  3: pyc_compiler_next_test_pass_manager
+ 3/13 Test  #3: pyc_compiler_next_test_pass_manager ........   Passed    0.00 sec
+      Start  4: pyc_compiler_next_test_runtime_allocator
+ 4/13 Test  #4: pyc_compiler_next_test_runtime_allocator ...   Passed    0.00 sec
+      Start  5: pyc_compiler_next_test_kernel_registry
+ 5/13 Test  #5: pyc_compiler_next_test_kernel_registry .....   Passed    0.00 sec
+      Start  6: pyc_compiler_next_test_compiler_api
+ 6/13 Test  #6: pyc_compiler_next_test_compiler_api ........   Passed    0.00 sec
+      Start  7: pyc_compiler_next_test_determinism
+ 7/13 Test  #7: pyc_compiler_next_test_determinism .........   Passed    0.00 sec
+      Start  8: pyc_compiler_next_test_pass_golden
+ 8/13 Test  #8: pyc_compiler_next_test_pass_golden .........   Passed    0.00 sec
+      Start  9: pyc_compiler_next_test_policy_modes
+ 9/13 Test  #9: pyc_compiler_next_test_policy_modes ........   Passed    0.00 sec
+      Start 10: pyc_compiler_next_test_runtime_control
+10/13 Test #10: pyc_compiler_next_test_runtime_control .....   Passed    0.00 sec
+      Start 11: pyc_compiler_next_test_cpu_execution
+11/13 Test #11: pyc_compiler_next_test_cpu_execution .......   Passed    0.00 sec
+      Start 12: pyc_compiler_next_test_ai_bridge
+12/13 Test #12: pyc_compiler_next_test_ai_bridge ...........   Passed    0.00 sec
+      Start 13: pyc_validate_cmake_source_coverage
+13/13 Test #13: pyc_validate_cmake_source_coverage .........***Failed    0.03 sec
+ERROR: .c files not referenced by CMakeLists.txt:
+  - Core/C_Files/._adapter.c
+  - Core/C_Files/._ci_main.c
+  - Core/C_Files/._semantic.c
+  - Core/C_Files/._stack.c
+  - Core/C_Files/._symbol_table.c
+  - compiler/._compiler_api.c
+  - compiler/ir/._ir.c
+  - compiler/passes/._pass_manager.c
+  - compiler/runtime/._kernel_registry.c
+  - compiler/runtime/._runtime_allocator.c
+  - compiler/runtime/._runtime_control.c
+  - AI/._ai_bridge.c
+  - tests/compiler_next/._compiler_next_smoke.c
+  - tests/compiler_next/._test_ai_bridge.c
+  - tests/compiler_next/._test_compiler_api.c
+  - tests/compiler_next/._test_cpu_execution.c
+  - tests/compiler_next/._test_determinism.c
+  - tests/compiler_next/._test_ir.c
+  - tests/compiler_next/._test_kernel_registry.c
+  - tests/compiler_next/._test_pass_golden.c
+  - tests/compiler_next/._test_pass_manager.c
+  - tests/compiler_next/._test_policy_modes.c
+  - tests/compiler_next/._test_runtime_allocator.c
+  - tests/compiler_next/._test_runtime_control.c
+
+
+92% tests passed, 1 tests failed out of 13
+
+Total Test time (real) =   0.06 sec
+
+The following tests FAILED:
+	 13 - pyc_validate_cmake_source_coverage (Failed)
+Errors while running CTest
+[resume] clean sidecars
+find: paths must precede expression: `._.github'
+find: possible unquoted pattern after predicate `-name'?

@@ -52,6 +52,7 @@ int pyc_kernel_select_with_policy(
     pyc_kernel_desc* out,
     pyc_kernel_selection_trace* trace);
 int pyc_kernel_benchmark_update(const char* op_key, pyc_backend backend, double time_ms);
+int pyc_kernel_benchmark_update_symbol(const char* op_key, pyc_backend backend, const char* symbol, double time_ms);
 void pyc_kernel_benchmark_read(const char* op_key, pyc_backend backend, pyc_kernel_benchmark* out);
 
 #ifdef __cplusplus

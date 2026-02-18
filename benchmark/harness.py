@@ -113,9 +113,12 @@ def main():
     args = parser.parse_args()
 
     build_dir = (ROOT / args.build_dir).resolve()
-    results_dir = (ROOT / "benchmark" / "results").resolve()
+    results_dir = (ROOT / "benchmark" / "benchmarks" / "results").resolve()
+    json_dir = (results_dir / "json").resolve()
+    reports_dir = (results_dir / "reports").resolve()
     docs_dir = (ROOT / "docs").resolve()
-    results_dir.mkdir(parents=True, exist_ok=True)
+    json_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
 
     configure_cmd = [
         "cmake", "-S", str(ROOT), "-B", str(build_dir),
@@ -168,8 +171,8 @@ def main():
         },
     }
 
-    json_path = results_dir / "latest.json"
-    md_path = results_dir / "latest.md"
+    json_path = json_dir / "latest_core.json"
+    md_path = reports_dir / "latest_core.md"
     docs_path = docs_dir / "performance-results.md"
 
     json_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")

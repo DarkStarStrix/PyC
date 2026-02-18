@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "timestamp_utc": "2026-02-18T00:46:15.125448+00:00",
+    "platform": "Linux-6.8.0-85-generic-x86_64-with-glibc2.35",
+    "cpu": "x86_64",
+    "python": "3.11.11",
+    "build_dir": "/root/PyC/build",
+    "repeats": 7,
+    "micro_rounds": 4000
+  },
+  "configure_ms": 157.729,
+  "build_ms": 491.809,
+  "smoke_pyc": {
+    "mean_ms": 1.214,
+    "min_ms": 1.141,
+    "max_ms": 1.311,
+    "stdev_ms": 0.065,
+    "samples": [
+      1.239,
+      1.141,
+      1.15,
+      1.154,
+      1.293,
+      1.213,
+      1.311
+    ]
+  },
+  "microbench": {
+    "mean_ms": 267.208,
+    "min_ms": 260.243,
+    "max_ms": 274.62,
+    "stdev_ms": 5.459,
+    "samples": [
+      260.243,
+      274.62,
+      264.417,
+      274.14,
+      269.152,
+      267.422,
+      260.463
+    ]
+  },
+  "artifacts": {
+    "pyc_bytes": 15960,
+    "pyc_core_bytes": 11172
+  }
+}

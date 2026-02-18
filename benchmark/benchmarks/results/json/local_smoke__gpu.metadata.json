@@ -1,0 +1,24 @@
+{
+  "run_id": "local_smoke",
+  "tag": "gpu",
+  "created_utc": "2026-02-18T01:19:19.479882+00:00",
+  "host": "Allans-Air.attlocal.net",
+  "os": "macOS-26.3-arm64-arm-64bit-Mach-O",
+  "python": "3.14.0",
+  "git_head": "c5d8438",
+  "git_dirty": 1,
+  "device": "cuda",
+  "batch": 8,
+  "hidden": 64,
+  "iters": 2,
+  "warmup": 1,
+  "adapters": [
+    "torch_eager",
+    "torch_compile",
+    "pyc",
+    "tvm",
+    "xla",
+    "tensorrt",
+    "glow"
+  ]
+}

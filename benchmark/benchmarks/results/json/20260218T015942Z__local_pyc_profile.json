@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "timestamp_utc": "2026-02-18T01:59:42.876758+00:00",
+    "host": "Allans-Air.attlocal.net",
+    "os": "macOS-26.3-arm64-arm-64bit-Mach-O",
+    "python": "3.14.0",
+    "device": "cpu",
+    "batch": 64,
+    "hidden": 2048,
+    "iters": 10,
+    "warmup": 2,
+    "tag": "local_pyc_profile",
+    "adapters": [
+      "pyc"
+    ],
+    "run_id": "20260218T015942Z",
+    "git_head": "c5d8438",
+    "git_dirty": 1
+  },
+  "gpu": {
+    "available": false,
+    "reason": "nvidia-smi not found"
+  },
+  "adapters": {
+    "pyc": {
+      "status": "ok",
+      "backend": "pyc_compiler_next",
+      "device": "cpu",
+      "batch": 64,
+      "hidden": 2048,
+      "iters": 10,
+      "warmup": 2,
+      "latency_ms": {
+        "mean": 179.1593,
+        "p50": 177.801,
+        "p95": 180.143,
+        "min": 175.201,
+        "max": 195.276
+      },
+      "throughput_tokens_per_sec": 731594.73,
+      "peak_memory_bytes": 17825792,
+      "profile": {
+        "dispatch_ms_mean": 179.1478,
+        "graph_exec_ms_mean": 179.1478,
+        "controller_ms_mean": 0.0004,
+        "kernel_select_ms_mean": 0.0025
+      },
+      "mode": "native",
+      "note": "PyC benchmark uses compiler-next API path; CUDA currently executes deterministic fallback until native kernels land.",
+      "adapter": "pyc",
+      "display_name": "PyC CUDA"
+    }
+  }
+}

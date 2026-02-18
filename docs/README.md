@@ -11,6 +11,7 @@ If you are new to the project, read these in order:
 3. `docs/Architecture.md`
 4. `docs/build-and-ci.md`
 5. `docs/benchmarking.md`
+6. `docs/results.md`
 
 ## Documentation Map
 
@@ -24,10 +25,12 @@ If you are new to the project, read these in order:
   - Includes kernel mini-lab CLI guide in `docs/compiler-next/kernel-lab.md`.
 - `docs/Doc.md`
   - Product and technical overview, scope, terminology, and current constraints.
-- `docs/REPO_RULES.md`
-  - Hard repository rules and the exact enforcement mechanisms.
 - `docs/Architecture.md`
   - Component-level architecture, data flow, and module boundaries.
+- `docs/results.md`
+  - Canonical benchmark outcomes and published artifact references.
+- `docs/perf-report.md`
+  - Short current-state performance assessment.
 - `docs/project-status.md`
   - What is stable now vs what is experimental.
 - `docs/build-and-ci.md`
@@ -35,11 +38,11 @@ If you are new to the project, read these in order:
 - `docs/benchmarking.md`
   - Deterministic benchmark harness usage and methodology.
 - `docs/performance-results.md`
-  - Latest measured benchmark outputs.
+  - Stable-core local benchmark snapshot.
 - `index.html` (repo root)
   - Static user-facing download page that links latest release binaries by OS.
 - `docs/Result.md`
-  - Current outcomes, progress summary, and near-term roadmap.
+  - Legacy pointer to `docs/results.md`.
 - `docs/contracts/`
   - Interface contracts for cross-module behavior.
 - `docs/milestones/`
@@ -67,6 +70,12 @@ Run benchmark harness:
 
 ```bash
 python3 benchmark/harness.py --repeats 7 --micro-rounds 4000
+```
+
+Publish website benchmark artifacts:
+
+```bash
+python3 scripts/publish_site_results.py
 ```
 
 Build compiler-next smoke target:

@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-INPUT = ROOT / "benchmark" / "results" / "latest.json"
-OUT_BENCH = ROOT / "benchmark" / "results" / "latest.svg"
+INPUT = ROOT / "benchmark" / "benchmarks" / "results" / "json" / "latest_core.json"
+OUT_BENCH = ROOT / "benchmark" / "benchmarks" / "results" / "images" / "latest_core.svg"
 OUT_DOCS = ROOT / "docs" / "assets" / "performance-latest.svg"
 
 
@@ -68,7 +68,7 @@ def main():
   <text x="40" y="92" font-family="Arial, sans-serif" font-size="16" fill="#334155">{subtitle}</text>
   {''.join(rows)}
   <text x="40" y="560" font-family="Arial, sans-serif" font-size="20" fill="#1f2937">{artifact_line}</text>
-  <text x="40" y="590" font-family="Arial, sans-serif" font-size="16" fill="#64748b">Source: benchmark/results/latest.json</text>
+  <text x="40" y="590" font-family="Arial, sans-serif" font-size="16" fill="#64748b">Source: benchmark/benchmarks/results/json/latest_core.json</text>
 </svg>
 '''
 
