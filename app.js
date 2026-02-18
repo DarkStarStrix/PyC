@@ -7,10 +7,10 @@
 
   var PHASE4 = {
     runId: "20260218T023355Z_phase4_final",
-    cpuSvg: "website/results/artifacts/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
-    gpuSvg: "website/results/artifacts/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
-    cpuJson: "website/results/artifacts/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.json",
-    gpuJson: "website/results/artifacts/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.json"
+    cpuSvg: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
+    gpuSvg: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
+    cpuJson: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.json",
+    gpuJson: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.json"
   };
 
   var PHASE4_CPU_FALLBACK_ROWS = [
@@ -52,6 +52,15 @@
     if (!path) return "#";
     if (/^https?:\/\//i.test(path)) return path;
     return new URL(path, window.location.href).toString();
+  }
+
+  function assetHref(path) {
+    if (!path) return "#";
+    if (/^https?:\/\//i.test(path)) return path;
+    if (path.indexOf("website/results/") === 0) {
+      return "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/" + path;
+    }
+    return toHref(path);
   }
 
   function findAsset(assets, os) {
@@ -150,7 +159,7 @@
     entries.forEach(function (entry) {
       var li = document.createElement("li");
       var a = document.createElement("a");
-      a.href = toHref(entry.published);
+      a.href = assetHref(entry.published);
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.textContent = entry.source;
@@ -195,12 +204,12 @@
     entries.forEach(function (entry) {
       var item = document.createElement("a");
       item.className = "svg-preview";
-      item.href = toHref(entry.published);
+      item.href = assetHref(entry.published);
       item.target = "_blank";
       item.rel = "noopener noreferrer";
 
       var img = document.createElement("img");
-      img.src = toHref(entry.published);
+      img.src = assetHref(entry.published);
       img.alt = entry.source;
       img.loading = "lazy";
 
@@ -290,8 +299,15 @@
   function loadPublishedResults() {
     fetch(toHref("website/results/manifest.json"))
       .then(function (resp) {
-        if (!resp.ok) throw new Error("manifest unavailable");
+        if (!resp.ok) throw new Error("local manifest unavailable");
         return resp.json();
+      })
+      .catch(function () {
+        return fetch("https://raw.githubusercontent.com/DarkStarStrix/PyC/main/website/results/manifest.json")
+          .then(function (resp) {
+            if (!resp.ok) throw new Error("remote manifest unavailable");
+            return resp.json();
+          });
       })
       .then(function (manifest) {
         resultsStatus.textContent =

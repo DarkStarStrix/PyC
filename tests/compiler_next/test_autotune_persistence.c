@@ -1,5 +1,15 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <stdlib.h>
+
+#if defined(_WIN32)
+#include <process.h>
+#define PYC_GETPID _getpid
+#else
+#include <unistd.h>
+#define PYC_GETPID getpid
+#endif
 
 #include "pyc/compiler_api.h"
 
@@ -89,18 +99,76 @@ int main(void) {
     pyc_ir_module module;
     pyc_run_stats first_stats;
     pyc_run_stats second_stats;
-    const char* db_path = "pyc_autotune_test.db";
+    char db_path[512];
+    const char* tmp_dir = NULL;
+    int first_rc;
+    int second_rc;
+
+#if defined(_WIN32)
+    tmp_dir = getenv("TEMP");
+    if (!tmp_dir || tmp_dir[0] == '\0') {
+        tmp_dir = getenv("TMP");
+    }
+    if (!tmp_dir || tmp_dir[0] == '\0') {
+        tmp_dir = ".";
+    }
+    snprintf(
+        db_path,
+        sizeof(db_path),
+        "%s\\pyc_autotune_test_%d_%ld.db",
+        tmp_dir,
+        (int)PYC_GETPID(),
+        (long)time(NULL));
+#else
+    tmp_dir = getenv("TMPDIR");
+    if (!tmp_dir || tmp_dir[0] == '\0') {
+        tmp_dir = "/tmp";
+    }
+    snprintf(
+        db_path,
+        sizeof(db_path),
+        "%s/pyc_autotune_test_%d_%ld.db",
+        tmp_dir,
+        (int)PYC_GETPID(),
+        (long)time(NULL));
+#endif
 
     remove(db_path);
     build_module(&module);
 
-    if (compile_run_once(&module, db_path, &first_stats) != 0) return 1;
-    if (!first_stats.autotune_saved) return 2;
-    if (first_stats.autotune_loaded) return 3;
+    first_rc = compile_run_once(&module, db_path, &first_stats);
+    if (first_rc != 0) {
+        fprintf(stderr, "autotune first run failed rc=%d db=%s\n", first_rc, db_path);
+        remove(db_path);
+        return 1;
+    }
+    if (!first_stats.autotune_saved) {
+        fprintf(stderr, "autotune first run did not save db=%s\n", db_path);
+        remove(db_path);
+        return 2;
+    }
+    if (first_stats.autotune_loaded) {
+        fprintf(stderr, "autotune first run unexpectedly loaded db=%s\n", db_path);
+        remove(db_path);
+        return 3;
+    }
 
-    if (compile_run_once(&module, db_path, &second_stats) != 0) return 4;
-    if (!second_stats.autotune_saved) return 5;
-    if (!second_stats.autotune_loaded) return 6;
+    second_rc = compile_run_once(&module, db_path, &second_stats);
+    if (second_rc != 0) {
+        fprintf(stderr, "autotune second run failed rc=%d db=%s\n", second_rc, db_path);
+        remove(db_path);
+        return 4;
+    }
+    if (!second_stats.autotune_saved) {
+        fprintf(stderr, "autotune second run did not save db=%s\n", db_path);
+        remove(db_path);
+        return 5;
+    }
+    if (!second_stats.autotune_loaded) {
+        fprintf(stderr, "autotune second run did not load db=%s\n", db_path);
+        remove(db_path);
+        return 6;
+    }
 
     remove(db_path);
     printf(
