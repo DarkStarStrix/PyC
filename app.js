@@ -10,33 +10,17 @@
     windows: "https://github.com/" + owner + "/" + repo + "/releases/latest/download/pyc-windows-x86_64.zip"
   };
 
-  var PHASE4 = {
-    runId: "20260218T023355Z_phase4_final",
-    cpuSvg: "benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
-    gpuSvg: "benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
-    cpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg",
-    gpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg",
-    cpuJson: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__cpu.json",
-    gpuJson: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/remote_results/host89/json/20260218T023355Z_phase4_final__gpu.json"
+  var LATEST_BENCH = {
+    runId: "20260219T164800Z_opt5_full_v2",
+    cpuSvg: "benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__cpu.svg",
+    gpuSvg: "benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__gpu.svg",
+    cpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__cpu.svg",
+    gpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__gpu.svg",
+    cpuJson: "benchmark/benchmarks/results/json/20260219T164800Z_opt5_full_v2__cpu.json",
+    gpuJson: "benchmark/benchmarks/results/json/20260219T164800Z_opt5_full_v2__gpu.json",
+    summaryJson: "benchmark/benchmarks/results/latest/latest_summary.json",
+    summaryJsonRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/latest/latest_summary.json"
   };
-
-  var PHASE4_CPU_FALLBACK_ROWS = [
-    { display_name: "PyC CUDA", mode: "native", mean_ms: 24.0459, p50_ms: 24.0220, p95_ms: 24.1800, throughput_tokens_per_sec: 5450908.47 },
-    { display_name: "TensorRT", mode: "proxy", mean_ms: 24.4121, p50_ms: 9.3322, p95_ms: 68.6434, throughput_tokens_per_sec: 5369130.72 },
-    { display_name: "PyTorch Compile", mode: "native", mean_ms: 26.7237, p50_ms: 10.0514, p95_ms: 72.1404, throughput_tokens_per_sec: 4904708.07 },
-    { display_name: "XLA", mode: "proxy", mean_ms: 30.2406, p50_ms: 12.8271, p95_ms: 72.3854, throughput_tokens_per_sec: 4334310.06 },
-    { display_name: "Glow", mode: "proxy", mean_ms: 34.8523, p50_ms: 15.7008, p95_ms: 75.1887, throughput_tokens_per_sec: 3760782.37 },
-    { display_name: "PyTorch Eager", mode: "native", mean_ms: 36.9971, p50_ms: 15.4305, p95_ms: 75.9299, throughput_tokens_per_sec: 3542766.92 }
-  ];
-
-  var PHASE4_GPU_FALLBACK_ROWS = [
-    { display_name: "PyTorch Eager", mode: "native", mean_ms: 0.1154, p50_ms: 0.1135, p95_ms: 0.1285, throughput_tokens_per_sec: 1135905416.11 },
-    { display_name: "XLA", mode: "proxy", mean_ms: 0.1157, p50_ms: 0.1138, p95_ms: 0.1263, throughput_tokens_per_sec: 1133048992.77 },
-    { display_name: "Glow", mode: "proxy", mean_ms: 0.1314, p50_ms: 0.1190, p95_ms: 0.1332, throughput_tokens_per_sec: 997355892.15 },
-    { display_name: "PyTorch Compile", mode: "native", mean_ms: 0.1551, p50_ms: 0.1544, p95_ms: 0.1665, throughput_tokens_per_sec: 844896466.85 },
-    { display_name: "TensorRT", mode: "proxy", mean_ms: 0.1598, p50_ms: 0.1560, p95_ms: 0.1743, throughput_tokens_per_sec: 820055823.27 },
-    { display_name: "PyC CUDA", mode: "proxy", mean_ms: 25.5228, p50_ms: 25.3830, p95_ms: 27.3270, throughput_tokens_per_sec: 5135486.70 }
-  ];
 
   var releaseLink = document.getElementById("release-link");
   var linuxLink = document.getElementById("download-linux");
@@ -95,9 +79,6 @@
   function assetHref(path) {
     if (!path) return "#";
     if (/^https?:\/\//i.test(path)) return path;
-    if (path.indexOf("website/results/") === 0) {
-      return "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/" + path;
-    }
     return toHref(path);
   }
 
@@ -187,17 +168,17 @@
     });
   }
 
-  function renderPinnedPhase4Charts() {
+  function renderPinnedLatestCharts() {
     if (latestCpuSvg) {
-      latestCpuSvg.src = toHref(PHASE4.cpuSvg);
+      latestCpuSvg.src = toHref(LATEST_BENCH.cpuSvg);
       latestCpuSvg.onerror = function () {
-        latestCpuSvg.src = PHASE4.cpuSvgRemote;
+        latestCpuSvg.src = LATEST_BENCH.cpuSvgRemote;
       };
     }
     if (latestGpuSvg) {
-      latestGpuSvg.src = toHref(PHASE4.gpuSvg);
+      latestGpuSvg.src = toHref(LATEST_BENCH.gpuSvg);
       latestGpuSvg.onerror = function () {
-        latestGpuSvg.src = PHASE4.gpuSvgRemote;
+        latestGpuSvg.src = LATEST_BENCH.gpuSvgRemote;
       };
     }
   }
@@ -225,6 +206,9 @@
       img.src = assetHref(entry.published);
       img.alt = entry.source;
       img.loading = "lazy";
+      img.onerror = function () {
+        card.remove();
+      };
 
       var label = document.createElement("figcaption");
       label.textContent = captionFromSource(entry.source);
@@ -269,26 +253,26 @@
     return rows;
   }
 
-  function loadPhase4Stats() {
+  function loadLatestStats() {
     Promise.all([
-      fetch(toHref(PHASE4.cpuJson)).then(function (resp) {
-        if (!resp.ok) throw new Error("phase4 cpu json unavailable");
+      fetch(toHref(LATEST_BENCH.cpuJson)).then(function (resp) {
+        if (!resp.ok) throw new Error("latest cpu json unavailable");
         return resp.json();
       }),
-      fetch(toHref(PHASE4.gpuJson)).then(function (resp) {
-        if (!resp.ok) throw new Error("phase4 gpu json unavailable");
+      fetch(toHref(LATEST_BENCH.gpuJson)).then(function (resp) {
+        if (!resp.ok) throw new Error("latest gpu json unavailable");
         return resp.json();
       })
     ])
       .then(function (payload) {
         var cpuRows = adaptersToRows(payload[0]);
         var gpuRows = adaptersToRows(payload[1]);
-        renderRows(cpuBody, cpuRows.length ? cpuRows : PHASE4_CPU_FALLBACK_ROWS);
-        renderRows(gpuBody, gpuRows.length ? gpuRows : PHASE4_GPU_FALLBACK_ROWS);
+        renderRows(cpuBody, cpuRows);
+        renderRows(gpuBody, gpuRows);
       })
       .catch(function () {
-        renderRows(cpuBody, PHASE4_CPU_FALLBACK_ROWS);
-        renderRows(gpuBody, PHASE4_GPU_FALLBACK_ROWS);
+        renderRows(cpuBody, []);
+        renderRows(gpuBody, []);
       });
   }
 
@@ -332,7 +316,8 @@
   }
 
   function loadPublishedResults() {
-    fetch(toHref("website/results/manifest.json"))
+    Promise.all([
+      fetch(toHref("website/results/manifest.json"))
       .then(function (resp) {
         if (!resp.ok) throw new Error("local manifest unavailable");
         return resp.json();
@@ -343,27 +328,64 @@
             if (!resp.ok) throw new Error("remote manifest unavailable");
             return resp.json();
           });
-      })
-      .then(function (manifest) {
-        resultsStatus.textContent =
-          "Pinned benchmark run: " + PHASE4.runId +
-          " | published artifacts: " +
-          manifest.counts.total +
-          " (" + manifest.counts.images + " SVG, " + manifest.counts.metadata + " metadata JSON)";
+      }),
+      fetch(toHref(LATEST_BENCH.summaryJson))
+        .then(function (resp) {
+          if (!resp.ok) throw new Error("local latest summary unavailable");
+          return resp.json();
+        })
+        .catch(function () {
+          return fetch(LATEST_BENCH.summaryJsonRemote).then(function (resp) {
+            if (!resp.ok) throw new Error("remote latest summary unavailable");
+            return resp.json();
+          });
+        })
+        .catch(function () {
+          return {};
+        })
+    ])
+      .then(function (payload) {
+        var manifest = payload[0] || {};
+        var latestSummary = payload[1] || {};
+        var latestRun = latestSummary.run_id || LATEST_BENCH.runId;
+        var total = manifest.counts && typeof manifest.counts.total === "number" ? manifest.counts.total : 0;
+        var imageCount = manifest.counts && typeof manifest.counts.images === "number" ? manifest.counts.images : 0;
+        var metadataCount = manifest.counts && typeof manifest.counts.metadata === "number" ? manifest.counts.metadata : 0;
 
-        var svgs = (manifest.artifacts || []).filter(function (entry) {
-          return entry.kind === "image_svg";
-        });
+        if (latestSummary.cpu && Array.isArray(latestSummary.cpu.rows)) {
+          renderRows(cpuBody, latestSummary.cpu.rows);
+        }
+        if (latestSummary.gpu && Array.isArray(latestSummary.gpu.rows)) {
+          renderRows(gpuBody, latestSummary.gpu.rows);
+        }
+
+        resultsStatus.textContent =
+          "Latest benchmark run: " + latestRun +
+          " | published artifacts: " +
+          total +
+          " (" + imageCount + " SVG, " + metadataCount + " metadata JSON)";
+
+        var seen = {};
+        var svgs = (manifest.artifacts || [])
+          .filter(function (entry) {
+            if (!entry || entry.kind !== "image_svg" || !entry.published) return false;
+            if (seen[entry.published]) return false;
+            seen[entry.published] = 1;
+            return true;
+          })
+          .sort(function (a, b) {
+            return String(b.source || "").localeCompare(String(a.source || ""));
+          });
         renderSvgGallery(svgs);
       })
       .catch(function () {
-        resultsStatus.textContent = "Pinned benchmark run: " + PHASE4.runId + " (manifest unavailable; showing pinned charts and fallback stats).";
+        resultsStatus.textContent = "Latest benchmark run: " + LATEST_BENCH.runId + " (manifest unavailable).";
       });
   }
 
   initThemeToggle();
-  renderPinnedPhase4Charts();
-  loadPhase4Stats();
+  renderPinnedLatestCharts();
+  loadLatestStats();
   loadRelease();
   loadPublishedResults();
 })();

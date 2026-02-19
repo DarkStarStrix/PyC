@@ -62,10 +62,13 @@ ctest --test-dir build --output-on-failure</code></pre>
       <h2>Benchmark Publication</h2>
       <p id="results-status" class="status">Loading benchmark publication data...</p>
       <p class="section-text">
-        Current state: CPU-path PyC is competitive in this workload shape, while GPU-path PyC is still fallback/proxy-bound until native CUDA dispatch is consistently active.
+        Current state: benchmark tables and charts are pinned to run <code>20260219T164800Z_opt5_full_v2</code>. This represents the latest standardized CPU/GPU comparison set currently published on the site.
       </p>
       <p class="section-text">
-        Data files:
+        Project state: Phase 6 production-readiness gates are in place (status/error contracts, decision-log observability, CUDA contract behavior, and rollback rails). Runtime behavior remains deterministic-first while CUDA profiling and kernel-depth work continue.
+      </p>
+      <p class="section-text">
+        Published data files:
         <a href="./website/results/manifest.json" target="_blank" rel="noopener noreferrer">manifest.json</a>
         |
         <a href="./website/results/latest-summary.json" target="_blank" rel="noopener noreferrer">latest-summary.json</a>
@@ -103,23 +106,19 @@ ctest --test-dir build --output-on-failure</code></pre>
 
       <h3>Latest Charts</h3>
       <p class="section-text">
-        Charts and tables on this page are now sourced from the canonical latest benchmark bundle generated under
-        <code>benchmark/benchmarks/results/latest/</code>.
+        Main charts are pinned to the explicit run files below so local verification and published output stay aligned.
       </p>
       <p class="section-text">
-        This keeps the publication path deterministic: every benchmark run is standardized, latest CPU/GPU artifacts are re-rendered from JSON, and the website consumes those canonical files.
-      </p>
-      <p class="section-text">
-        Architecture direction remains unchanged: deterministic compile/runtime contracts first, then deeper native CUDA kernel and scheduling optimization.
+        The gallery is sourced from <code>website/results/manifest.json</code> and now resolves paths from published site artifacts directly.
       </p>
 
       <div class="chart-grid">
         <figure>
-          <img id="latest-cpu-svg" src="./benchmark/benchmarks/results/latest/latest_cpu.svg" alt="Latest CPU benchmark chart" loading="lazy">
+          <img id="latest-cpu-svg" src="./benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__cpu.svg" alt="Latest CPU benchmark chart" loading="lazy">
           <figcaption>Latest CPU SVG</figcaption>
         </figure>
         <figure>
-          <img id="latest-gpu-svg" src="./benchmark/benchmarks/results/latest/latest_gpu.svg" alt="Latest GPU benchmark chart" loading="lazy">
+          <img id="latest-gpu-svg" src="./benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__gpu.svg" alt="Latest GPU benchmark chart" loading="lazy">
           <figcaption>Latest GPU SVG</figcaption>
         </figure>
       </div>
