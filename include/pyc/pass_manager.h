@@ -26,6 +26,13 @@ typedef struct {
     int inferred_shapes;
     size_t peak_live_values;
     size_t graph_break_count;
+    size_t graph_break_const_count;
+    size_t graph_break_gelu_count;
+    size_t graph_break_reduce_sum_count;
+    size_t graph_break_layernorm_count;
+    size_t graph_break_unknown_count;
+    int first_graph_break_op_id;
+    char first_graph_break_op_name[PYC_IR_MAX_NAME];
     double compilability_score;
     char graph_break_summary[128];
 } pyc_pass_report;

@@ -196,3 +196,41 @@ void pyc_kernel_benchmark_read(const char* op_key, pyc_backend backend, pyc_kern
         }
     }
 }
+
+size_t pyc_kernel_collect(
+    const char* op_key,
+    pyc_backend backend,
+    pyc_kernel_desc* out_descs,
+    size_t out_capacity) {
+    size_t i;
+    size_t count = 0;
+    if (!op_key || !out_descs || out_capacity == 0) {
+        return 0;
+    }
+
+    for (i = 0; i < PYC_KERNEL_MAX; ++i) {
+        size_t pos;
+        if (!g_registry[i].used) {
+            continue;
+        }
+        if (g_registry[i].desc.backend != backend) {
+            continue;
+        }
+        if (strcmp(g_registry[i].desc.op_key, op_key) != 0) {
+            continue;
+        }
+        if (count >= out_capacity) {
+            break;
+        }
+
+        /* Keep deterministic lexical order by symbol. */
+        pos = count;
+        while (pos > 0 && strcmp(g_registry[i].desc.symbol, out_descs[pos - 1].symbol) < 0) {
+            out_descs[pos] = out_descs[pos - 1];
+            pos--;
+        }
+        out_descs[pos] = g_registry[i].desc;
+        count++;
+    }
+    return count;
+}

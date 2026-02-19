@@ -163,23 +163,64 @@ static void analyze_graph_breaks(const pyc_ir_module* module, pyc_pass_report* r
     size_t i;
     size_t breaks = 0;
     const char* first_reason = "none";
+    int first_op_id = -1;
+    const char* first_op_name = "none";
+    size_t const_count = 0;
+    size_t gelu_count = 0;
+    size_t reduce_sum_count = 0;
+    size_t layernorm_count = 0;
+    size_t unknown_count = 0;
+
+    report->first_graph_break_op_id = -1;
+    report->first_graph_break_op_name[0] = '\0';
+
     for (i = 0; i < module->op_count; ++i) {
         const pyc_ir_op* op = &module->ops[i];
         if (!is_compiler_next_supported_kind(op->kind)) {
+            const char* reason = "unknown";
             breaks++;
-            if (first_reason[0] == 'n') {
-                switch (op->kind) {
-                    case PYC_IR_OP_CONST: first_reason = "const"; break;
-                    case PYC_IR_OP_GELU: first_reason = "gelu"; break;
-                    case PYC_IR_OP_REDUCE_SUM: first_reason = "reduce_sum"; break;
-                    case PYC_IR_OP_LAYERNORM: first_reason = "layernorm"; break;
-                    default: first_reason = "unknown"; break;
-                }
+            switch (op->kind) {
+                case PYC_IR_OP_CONST:
+                    const_count++;
+                    reason = "const";
+                    break;
+                case PYC_IR_OP_GELU:
+                    gelu_count++;
+                    reason = "gelu";
+                    break;
+                case PYC_IR_OP_REDUCE_SUM:
+                    reduce_sum_count++;
+                    reason = "reduce_sum";
+                    break;
+                case PYC_IR_OP_LAYERNORM:
+                    layernorm_count++;
+                    reason = "layernorm";
+                    break;
+                default:
+                    unknown_count++;
+                    reason = "unknown";
+                    break;
+            }
+            if (first_op_id < 0) {
+                first_reason = reason;
+                first_op_id = (int)i;
+                first_op_name = op->name[0] ? op->name : "unnamed";
             }
         }
     }
 
     report->graph_break_count = breaks;
+    report->graph_break_const_count = const_count;
+    report->graph_break_gelu_count = gelu_count;
+    report->graph_break_reduce_sum_count = reduce_sum_count;
+    report->graph_break_layernorm_count = layernorm_count;
+    report->graph_break_unknown_count = unknown_count;
+    report->first_graph_break_op_id = first_op_id;
+    strncpy(
+        report->first_graph_break_op_name,
+        first_op_name,
+        sizeof(report->first_graph_break_op_name) - 1);
+    report->first_graph_break_op_name[sizeof(report->first_graph_break_op_name) - 1] = '\0';
     if (module->op_count == 0) {
         report->compilability_score = 0.0;
     } else {
@@ -189,9 +230,15 @@ static void analyze_graph_breaks(const pyc_ir_module* module, pyc_pass_report* r
     snprintf(
         report->graph_break_summary,
         sizeof(report->graph_break_summary),
-        "breaks=%zu first_reason=%s",
+        "breaks=%zu first=%s@%d c=%zu g=%zu r=%zu l=%zu u=%zu",
         breaks,
-        first_reason);
+        first_reason,
+        first_op_id,
+        const_count,
+        gelu_count,
+        reduce_sum_count,
+        layernorm_count,
+        unknown_count);
 }
 
 void pyc_pass_pipeline_default(pyc_pass_pipeline* pipeline) {

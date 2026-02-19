@@ -363,16 +363,24 @@
       .then(function (payload) {
         var manifest = payload[0] || {};
         var latestSummary = payload[1] || {};
-        var latestRun = latestSummary.run_id || LATEST_BENCH.runId;
+        var latestRun =
+          latestSummary.run_id ||
+          (latestSummary.cpu && latestSummary.cpu.run_id) ||
+          (latestSummary.gpu && latestSummary.gpu.run_id) ||
+          LATEST_BENCH.runId;
         var total = manifest.counts && typeof manifest.counts.total === "number" ? manifest.counts.total : 0;
         var imageCount = manifest.counts && typeof manifest.counts.images === "number" ? manifest.counts.images : 0;
         var metadataCount = manifest.counts && typeof manifest.counts.metadata === "number" ? manifest.counts.metadata : 0;
 
         if (latestSummary.cpu && Array.isArray(latestSummary.cpu.rows)) {
           renderRows(cpuBody, latestSummary.cpu.rows);
+        } else if (latestSummary.cpu && Array.isArray(latestSummary.cpu.adapters)) {
+          renderRows(cpuBody, latestSummary.cpu.adapters);
         }
         if (latestSummary.gpu && Array.isArray(latestSummary.gpu.rows)) {
           renderRows(gpuBody, latestSummary.gpu.rows);
+        } else if (latestSummary.gpu && Array.isArray(latestSummary.gpu.adapters)) {
+          renderRows(gpuBody, latestSummary.gpu.adapters);
         }
 
         resultsStatus.textContent =
