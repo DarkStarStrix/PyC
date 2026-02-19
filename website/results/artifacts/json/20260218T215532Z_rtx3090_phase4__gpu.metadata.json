@@ -1,0 +1,24 @@
+{
+  "run_id": "20260218T215532Z_rtx3090_phase4",
+  "tag": "gpu",
+  "created_utc": "2026-02-18T21:56:45.038598+00:00",
+  "host": "d9aff3ced886",
+  "os": "Linux-6.8.0-83-generic-x86_64-with-glibc2.35",
+  "python": "3.11.11",
+  "git_head": "unknown",
+  "git_dirty": 0,
+  "device": "cuda",
+  "batch": 64,
+  "hidden": 2048,
+  "iters": 80,
+  "warmup": 20,
+  "adapters": [
+    "torch_eager",
+    "torch_compile",
+    "pyc",
+    "tvm",
+    "xla",
+    "tensorrt",
+    "glow"
+  ]
+}

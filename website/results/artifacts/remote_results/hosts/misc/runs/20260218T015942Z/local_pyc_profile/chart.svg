@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="282" viewBox="0 0 1200 282">
+  <rect width="100%" height="100%" fill="#f8fafc"/>
+  <text x="30" y="42" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#0f172a">PyC Backend Suite (CPU)</text>
+  <text x="30" y="72" font-family="Arial, sans-serif" font-size="14" fill="#334155">run_id=20260218T015942Z | host=Allans-Air.attlocal.net | git=c5d8438 | dirty=1</text>
+  <text x="30" y="134" font-family="Arial, sans-serif" font-size="18" fill="#111">PyC CUDA</text><rect x="380" y="110" width="760" height="36" fill="#2563eb" rx="6" /><text x="1152" y="134" font-family="Arial, sans-serif" font-size="16" fill="#111">179.1593 ms</text>
+</svg>

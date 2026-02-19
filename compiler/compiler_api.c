@@ -14,6 +14,9 @@
 #include "pyc/runtime_allocator.h"
 #include "pyc/runtime_control.h"
 
+#define PYC_AUTOTUNE_CANDIDATE_MAX 16
+#define PYC_AUTOTUNE_DB_ENTRY_MAX 512
+
 typedef struct pyc_compiled_model {
     pyc_ir_module module;
     pyc_backend backend;
@@ -37,9 +40,18 @@ typedef struct pyc_compiled_model {
     size_t guard_miss_count;
     size_t fallback_count;
     size_t graph_break_count;
+    size_t graph_break_const_count;
+    size_t graph_break_gelu_count;
+    size_t graph_break_reduce_sum_count;
+    size_t graph_break_layernorm_count;
+    size_t graph_break_unknown_count;
+    int first_graph_break_op_id;
+    char first_graph_break_op_name[PYC_IR_MAX_NAME];
     double compilability_score;
     int autotune_loaded;
     int autotune_saved;
+    pyc_kernel_desc autotune_candidates[PYC_AUTOTUNE_CANDIDATE_MAX];
+    size_t autotune_candidate_count;
     char graph_break_summary[128];
     char autotune_db_path[256];
     uint64_t compile_cache_key;
@@ -82,6 +94,13 @@ typedef struct {
     int has_selected_kernel;
     uint64_t module_fingerprint;
     size_t graph_break_count;
+    size_t graph_break_const_count;
+    size_t graph_break_gelu_count;
+    size_t graph_break_reduce_sum_count;
+    size_t graph_break_layernorm_count;
+    size_t graph_break_unknown_count;
+    int first_graph_break_op_id;
+    char first_graph_break_op_name[PYC_IR_MAX_NAME];
     double compilability_score;
     char graph_break_summary[128];
 } pyc_compile_cache_entry;
@@ -137,6 +156,13 @@ static void compile_cache_store(
     int has_selected_kernel,
     uint64_t compiled_fingerprint,
     size_t graph_break_count,
+    size_t graph_break_const_count,
+    size_t graph_break_gelu_count,
+    size_t graph_break_reduce_sum_count,
+    size_t graph_break_layernorm_count,
+    size_t graph_break_unknown_count,
+    int first_graph_break_op_id,
+    const char* first_graph_break_op_name,
     double compilability_score,
     const char* graph_break_summary) {
     pyc_compile_cache_entry* entry;
@@ -156,15 +182,52 @@ static void compile_cache_store(
     entry->has_selected_kernel = has_selected_kernel;
     entry->module_fingerprint = compiled_fingerprint;
     entry->graph_break_count = graph_break_count;
+    entry->graph_break_const_count = graph_break_const_count;
+    entry->graph_break_gelu_count = graph_break_gelu_count;
+    entry->graph_break_reduce_sum_count = graph_break_reduce_sum_count;
+    entry->graph_break_layernorm_count = graph_break_layernorm_count;
+    entry->graph_break_unknown_count = graph_break_unknown_count;
+    entry->first_graph_break_op_id = first_graph_break_op_id;
+    if (first_graph_break_op_name) {
+        strncpy(
+            entry->first_graph_break_op_name,
+            first_graph_break_op_name,
+            sizeof(entry->first_graph_break_op_name) - 1);
+        entry->first_graph_break_op_name[sizeof(entry->first_graph_break_op_name) - 1] = '\0';
+    }
     entry->compilability_score = compilability_score;
     if (graph_break_summary) {
         strncpy(entry->graph_break_summary, graph_break_summary, sizeof(entry->graph_break_summary) - 1);
+        entry->graph_break_summary[sizeof(entry->graph_break_summary) - 1] = '\0';
     }
     g_compile_cache_next++;
 }
 
 static double elapsed_ms(clock_t start, clock_t end) {
     return ((double)(end - start) * 1000.0) / (double)CLOCKS_PER_SEC;
+}
+
+static void spin_sleep_ms(int delay_ms) {
+    clock_t start;
+    if (delay_ms <= 0) {
+        return;
+    }
+    start = clock();
+    while (elapsed_ms(start, clock()) < (double)delay_ms) {
+    }
+}
+
+static FILE* fopen_with_retries(const char* path, const char* mode) {
+    int attempt;
+    FILE* f = NULL;
+    for (attempt = 0; attempt < 8; ++attempt) {
+        f = fopen(path, mode);
+        if (f) {
+            return f;
+        }
+        spin_sleep_ms(2);
+    }
+    return NULL;
 }
 
 static void maybe_inject_compile_delay(void) {
@@ -181,6 +244,35 @@ static void maybe_inject_compile_delay(void) {
     start = clock();
     while (elapsed_ms(start, clock()) < (double)delay_ms) {
     }
+}
+
+static double autotune_estimate_candidate_ms(
+    double baseline_ms,
+    const pyc_kernel_desc* candidate,
+    pyc_objective_mode mode,
+    double pressure_score) {
+    double adjusted = baseline_ms;
+    double occupancy_bonus;
+    double pressure_penalty;
+    double mode_bias;
+    if (!candidate) {
+        return baseline_ms;
+    }
+    occupancy_bonus = (1.0 - candidate->estimated_occupancy) * 0.08;
+    pressure_penalty = (pressure_score > 0.0)
+        ? (((double)candidate->reg_pressure_class * pressure_score) * 0.005)
+        : 0.0;
+    mode_bias = mode == PYC_MODE_MEMORY_FIRST
+        ? ((double)candidate->shared_mem_bytes / (128.0 * 1024.0))
+        : 0.0;
+    adjusted = baseline_ms * (1.0 + occupancy_bonus + pressure_penalty + mode_bias);
+    if (candidate->tensor_core_eligible) {
+        adjusted *= 0.97;
+    }
+    if (adjusted <= 0.0) {
+        adjusted = 0.001;
+    }
+    return adjusted;
 }
 
 static pyc_compile_options default_compile_options(void) {
@@ -749,6 +841,99 @@ static int autotune_load_into_registry(
     return loaded;
 }
 
+typedef struct {
+    char op_key[PYC_KERNEL_OP_KEY_MAX];
+    int backend;
+    char symbol[PYC_KERNEL_SYMBOL_MAX];
+    double best_ms;
+} pyc_autotune_db_entry;
+
+static int parse_autotune_line(const char* line, pyc_autotune_db_entry* out) {
+    if (!line || !out) {
+        return -1;
+    }
+    if (sscanf(
+            line,
+            "%63[^|]|%d|%127[^|]|%lf",
+            out->op_key,
+            &out->backend,
+            out->symbol,
+            &out->best_ms) != 4) {
+        return -1;
+    }
+    if (out->best_ms <= 0.0) {
+        return -1;
+    }
+    return 0;
+}
+
+static int autotune_compact_db(const char* path) {
+    FILE* in;
+    FILE* out;
+    char line[512];
+    pyc_autotune_db_entry entries[PYC_AUTOTUNE_DB_ENTRY_MAX];
+    size_t entry_count = 0;
+    size_t i;
+
+    if (!path || path[0] == '\0') {
+        return -1;
+    }
+
+    in = fopen_with_retries(path, "r");
+    if (!in) {
+        return -1;
+    }
+
+    while (fgets(line, sizeof(line), in)) {
+        pyc_autotune_db_entry parsed;
+        int found = 0;
+        if (parse_autotune_line(line, &parsed) != 0) {
+            continue;
+        }
+        for (i = 0; i < entry_count; ++i) {
+            if (strcmp(entries[i].op_key, parsed.op_key) == 0 &&
+                entries[i].backend == parsed.backend &&
+                strcmp(entries[i].symbol, parsed.symbol) == 0) {
+                if (parsed.best_ms < entries[i].best_ms) {
+                    entries[i].best_ms = parsed.best_ms;
+                }
+                found = 1;
+                break;
+            }
+        }
+        if (!found && entry_count < PYC_AUTOTUNE_DB_ENTRY_MAX) {
+            entries[entry_count++] = parsed;
+        }
+    }
+    fclose(in);
+
+    if (entry_count == 0) {
+        return 0;
+    }
+
+    out = fopen_with_retries(path, "w");
+    if (!out) {
+        return -1;
+    }
+
+    for (i = 0; i < entry_count; ++i) {
+        if (fprintf(
+            out,
+            "%s|%d|%s|%.6f\n",
+            entries[i].op_key,
+            entries[i].backend,
+            entries[i].symbol,
+            entries[i].best_ms) < 0) {
+            fclose(out);
+            return -1;
+        }
+    }
+    if (fclose(out) != 0) {
+        return -1;
+    }
+    return 0;
+}
+
 static int autotune_persist_result(
     const char* path,
     const char* op_key,
@@ -759,13 +944,18 @@ static int autotune_persist_result(
     if (!path || !op_key || !symbol || best_ms <= 0.0) {
         return -1;
     }
-    f = fopen(path, "a");
+    f = fopen_with_retries(path, "a");
     if (!f) {
         return -1;
     }
-    fprintf(f, "%s|%d|%s|%.6f\n", op_key, (int)backend, symbol, best_ms);
-    fclose(f);
-    return 0;
+    if (fprintf(f, "%s|%d|%s|%.6f\n", op_key, (int)backend, symbol, best_ms) < 0) {
+        fclose(f);
+        return -1;
+    }
+    if (fclose(f) != 0) {
+        return -1;
+    }
+    return autotune_compact_db(path);
 }
 
 const char* pyc_status_string(pyc_status status) {
@@ -866,8 +1056,20 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         model->has_selected_kernel = cache_entry->has_selected_kernel;
         model->module_fingerprint = cache_entry->module_fingerprint;
         model->graph_break_count = cache_entry->graph_break_count;
+        model->graph_break_const_count = cache_entry->graph_break_const_count;
+        model->graph_break_gelu_count = cache_entry->graph_break_gelu_count;
+        model->graph_break_reduce_sum_count = cache_entry->graph_break_reduce_sum_count;
+        model->graph_break_layernorm_count = cache_entry->graph_break_layernorm_count;
+        model->graph_break_unknown_count = cache_entry->graph_break_unknown_count;
+        model->first_graph_break_op_id = cache_entry->first_graph_break_op_id;
+        strncpy(
+            model->first_graph_break_op_name,
+            cache_entry->first_graph_break_op_name,
+            sizeof(model->first_graph_break_op_name) - 1);
+        model->first_graph_break_op_name[sizeof(model->first_graph_break_op_name) - 1] = '\0';
         model->compilability_score = cache_entry->compilability_score;
         strncpy(model->graph_break_summary, cache_entry->graph_break_summary, sizeof(model->graph_break_summary) - 1);
+        model->graph_break_summary[sizeof(model->graph_break_summary) - 1] = '\0';
         model->compile_cache_hit = 1;
     } else {
         maybe_inject_compile_delay();
@@ -881,8 +1083,20 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
             return PYC_STATUS_COMPILE_FAILED;
         }
         model->graph_break_count = report.graph_break_count;
+        model->graph_break_const_count = report.graph_break_const_count;
+        model->graph_break_gelu_count = report.graph_break_gelu_count;
+        model->graph_break_reduce_sum_count = report.graph_break_reduce_sum_count;
+        model->graph_break_layernorm_count = report.graph_break_layernorm_count;
+        model->graph_break_unknown_count = report.graph_break_unknown_count;
+        model->first_graph_break_op_id = report.first_graph_break_op_id;
+        strncpy(
+            model->first_graph_break_op_name,
+            report.first_graph_break_op_name,
+            sizeof(model->first_graph_break_op_name) - 1);
+        model->first_graph_break_op_name[sizeof(model->first_graph_break_op_name) - 1] = '\0';
         model->compilability_score = report.compilability_score;
         strncpy(model->graph_break_summary, report.graph_break_summary, sizeof(model->graph_break_summary) - 1);
+        model->graph_break_summary[sizeof(model->graph_break_summary) - 1] = '\0';
         if (module_fingerprint(&model->module, &model->module_fingerprint) != 0) {
             free(model);
             return PYC_STATUS_COMPILE_FAILED;
@@ -955,10 +1169,23 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
                 model->has_selected_kernel,
                 model->module_fingerprint,
                 model->graph_break_count,
+                model->graph_break_const_count,
+                model->graph_break_gelu_count,
+                model->graph_break_reduce_sum_count,
+                model->graph_break_layernorm_count,
+                model->graph_break_unknown_count,
+                model->first_graph_break_op_id,
+                model->first_graph_break_op_name,
                 model->compilability_score,
                 model->graph_break_summary);
         }
     }
+
+    model->autotune_candidate_count = pyc_kernel_collect(
+        "matmul_fused",
+        model->backend,
+        model->autotune_candidates,
+        PYC_AUTOTUNE_CANDIDATE_MAX);
 
     if (init_cpu_workspace(model) != 0) {
         free(model);
@@ -975,7 +1202,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
     snprintf(
         model->decision_log,
         sizeof(model->decision_log),
-        "mode=%d budget=%zu pressure=%.6f kernel=%s score=%.3f util=%.3f det=%d cache_hit=%d compile_ms=%.3f budget_ms=%.3f budget_exceeded=%d graph_breaks=%zu compilability=%.3f autotune_loaded=%d",
+        "mode=%d budget=%zu pressure=%.6f kernel=%s score=%.3f util=%.3f det=%d cache_hit=%d compile_ms=%.3f budget_ms=%.3f budget_exceeded=%d graph_breaks=%zu break_first=%s@%d break_counts=%zu,%zu,%zu,%zu,%zu compilability=%.3f autotune_loaded=%d",
         (int)model->options.objective_mode,
         model->options.memory_budget_bytes,
         model->alloc_plan.pressure_score,
@@ -988,6 +1215,13 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         model->options.compile_budget_ms,
         model->compile_budget_exceeded,
         model->graph_break_count,
+        model->first_graph_break_op_name,
+        model->first_graph_break_op_id,
+        model->graph_break_const_count,
+        model->graph_break_gelu_count,
+        model->graph_break_reduce_sum_count,
+        model->graph_break_layernorm_count,
+        model->graph_break_unknown_count,
         model->compilability_score,
         model->autotune_loaded);
 
@@ -1134,18 +1368,48 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     if (autotune_ms <= 0.0) {
         autotune_ms = 0.001;
     }
-    if (!runtime_error && model->options.enable_autotune && model->has_selected_kernel) {
+    if (!runtime_error && model->options.enable_autotune) {
+        size_t candidate_index = 0;
+        pyc_kernel_desc candidate;
+        double candidate_ms = autotune_ms;
+
+        model->autotune_candidate_count = pyc_kernel_collect(
+            "matmul_fused",
+            model->backend,
+            model->autotune_candidates,
+            PYC_AUTOTUNE_CANDIDATE_MAX);
+
+        if (model->autotune_candidate_count > 0) {
+            if (model->run_count == 0) {
+                candidate_index = 0;
+            } else {
+                candidate_index = (model->run_count - 1) % model->autotune_candidate_count;
+            }
+            candidate = model->autotune_candidates[candidate_index];
+            candidate_ms = autotune_estimate_candidate_ms(
+                autotune_ms,
+                &candidate,
+                model->options.objective_mode,
+                stats.pressure_score);
+        } else if (model->has_selected_kernel) {
+            candidate = model->selected_kernel;
+            candidate_ms = autotune_ms;
+        } else {
+            memset(&candidate, 0, sizeof(candidate));
+            strncpy(candidate.symbol, "matmul_cpu_ref", sizeof(candidate.symbol) - 1);
+        }
+
         if (pyc_kernel_benchmark_update_symbol(
                 "matmul_fused",
                 model->backend,
-                model->selected_kernel.symbol,
-                autotune_ms) == 0) {
+                candidate.symbol,
+                candidate_ms) == 0) {
             if (autotune_persist_result(
                     model->autotune_db_path,
                     "matmul_fused",
                     model->backend,
-                    model->selected_kernel.symbol,
-                    autotune_ms) == 0) {
+                    candidate.symbol,
+                    candidate_ms) == 0) {
                 model->autotune_saved = 1;
             }
         }
@@ -1154,7 +1418,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     snprintf(
         model->decision_log,
         sizeof(model->decision_log),
-        "mode=%d rollback=%d rollback_count=%zu pressure=%.6f kernel=%s score=%.3f util=%.3f cuda_fallback=%d cuda_reason=%s contract=%d contract_reason=%s guard_miss=%zu fallback=%zu cache_hit=%d budget_exceeded=%d graph_breaks=%zu compilability=%.3f autotune_loaded=%d autotune_saved=%d fp=%llu",
+        "mode=%d rollback=%d rollback_count=%zu pressure=%.6f kernel=%s score=%.3f util=%.3f cuda_fallback=%d cuda_reason=%s contract=%d contract_reason=%s guard_miss=%zu fallback=%zu cache_hit=%d budget_exceeded=%d graph_breaks=%zu break_first=%s@%d break_counts=%zu,%zu,%zu,%zu,%zu compilability=%.3f autotune_loaded=%d autotune_saved=%d autotune_candidates=%zu fp=%llu",
         (int)model->options.objective_mode,
         (int)model->controller.last_rollback_reason,
         model->controller.rollback_count,
@@ -1171,9 +1435,17 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         model->compile_cache_hit,
         model->compile_budget_exceeded,
         model->graph_break_count,
+        model->first_graph_break_op_name,
+        model->first_graph_break_op_id,
+        model->graph_break_const_count,
+        model->graph_break_gelu_count,
+        model->graph_break_reduce_sum_count,
+        model->graph_break_layernorm_count,
+        model->graph_break_unknown_count,
         model->compilability_score,
         model->autotune_loaded,
         model->autotune_saved,
+        model->autotune_candidate_count,
         (unsigned long long)model->module_fingerprint);
 
     if (out_stats) {
@@ -1205,6 +1477,17 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         out_stats->guard_miss_count = model->guard_miss_count;
         out_stats->fallback_count = model->fallback_count;
         out_stats->graph_break_count = model->graph_break_count;
+        out_stats->graph_break_const_count = model->graph_break_const_count;
+        out_stats->graph_break_gelu_count = model->graph_break_gelu_count;
+        out_stats->graph_break_reduce_sum_count = model->graph_break_reduce_sum_count;
+        out_stats->graph_break_layernorm_count = model->graph_break_layernorm_count;
+        out_stats->graph_break_unknown_count = model->graph_break_unknown_count;
+        out_stats->first_graph_break_op_id = model->first_graph_break_op_id;
+        strncpy(
+            out_stats->first_graph_break_op_name,
+            model->first_graph_break_op_name,
+            sizeof(out_stats->first_graph_break_op_name) - 1);
+        out_stats->first_graph_break_op_name[sizeof(out_stats->first_graph_break_op_name) - 1] = '\0';
         out_stats->compilability_score = model->compilability_score;
         out_stats->autotune_loaded = model->autotune_loaded;
         out_stats->autotune_saved = model->autotune_saved;

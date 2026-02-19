@@ -1,12 +1,15 @@
 {
-  "run_id": "20260219T164800Z_opt5_full_v2",
   "cpu": {
-    "stem": "20260219T164800Z_opt5_full_v2__cpu",
-    "json": "latest/latest_cpu.json",
-    "metadata": "latest/latest_cpu.metadata.json",
-    "report": "latest/latest_cpu.md",
-    "svg": "latest/latest_cpu.svg",
-    "rows": [
+    "run_id": "20260219T164800Z_opt5_full_v2",
+    "created_utc": "2026-02-19T01:21:33.573737+00:00",
+    "host": "d9aff3ced886",
+    "device": "cpu",
+    "batch": 64,
+    "hidden": 2048,
+    "iters": 40,
+    "warmup": 10,
+    "metadata_path": "website/results/artifacts/json/20260219T164800Z_opt5_full_v2__cpu.metadata.json",
+    "adapters": [
       {
         "adapter": "xla",
         "display_name": "XLA",
@@ -73,12 +76,16 @@
     ]
   },
   "gpu": {
-    "stem": "20260219T164800Z_opt5_full_v2__gpu",
-    "json": "latest/latest_gpu.json",
-    "metadata": "latest/latest_gpu.metadata.json",
-    "report": "latest/latest_gpu.md",
-    "svg": "latest/latest_gpu.svg",
-    "rows": [
+    "run_id": "20260219T164800Z_opt5_full_v2",
+    "created_utc": "2026-02-19T01:24:24.672845+00:00",
+    "host": "d9aff3ced886",
+    "device": "cuda",
+    "batch": 64,
+    "hidden": 2048,
+    "iters": 40,
+    "warmup": 10,
+    "metadata_path": "website/results/artifacts/json/20260219T164800Z_opt5_full_v2__gpu.metadata.json",
+    "adapters": [
       {
         "adapter": "torch_eager",
         "display_name": "PyTorch Eager",

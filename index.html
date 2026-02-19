@@ -106,7 +106,7 @@ ctest --test-dir build --output-on-failure</code></pre>
 
       <h3>Latest Charts</h3>
       <p class="section-text">
-        Main charts are pinned to the explicit run files below so local verification and published output stay aligned.
+        Main charts are pinned to the published latest website artifacts so deploys are stable on GitHub Pages.
       </p>
       <p class="section-text">
         The gallery is sourced from <code>website/results/manifest.json</code> and now resolves paths from published site artifacts directly.
@@ -114,11 +114,11 @@ ctest --test-dir build --output-on-failure</code></pre>
 
       <div class="chart-grid">
         <figure>
-          <img id="latest-cpu-svg" src="./benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__cpu.svg" alt="Latest CPU benchmark chart" loading="lazy">
+          <img id="latest-cpu-svg" src="./website/results/artifacts/latest/latest_cpu.svg" alt="Latest CPU benchmark chart" loading="lazy">
           <figcaption>Latest CPU SVG</figcaption>
         </figure>
         <figure>
-          <img id="latest-gpu-svg" src="./benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__gpu.svg" alt="Latest GPU benchmark chart" loading="lazy">
+          <img id="latest-gpu-svg" src="./website/results/artifacts/latest/latest_gpu.svg" alt="Latest GPU benchmark chart" loading="lazy">
           <figcaption>Latest GPU SVG</figcaption>
         </figure>
       </div>

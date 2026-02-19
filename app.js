@@ -12,14 +12,14 @@
 
   var LATEST_BENCH = {
     runId: "20260219T164800Z_opt5_full_v2",
-    cpuSvg: "benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__cpu.svg",
-    gpuSvg: "benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__gpu.svg",
-    cpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__cpu.svg",
-    gpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__gpu.svg",
-    cpuJson: "benchmark/benchmarks/results/json/20260219T164800Z_opt5_full_v2__cpu.json",
-    gpuJson: "benchmark/benchmarks/results/json/20260219T164800Z_opt5_full_v2__gpu.json",
-    summaryJson: "benchmark/benchmarks/results/latest/latest_summary.json",
-    summaryJsonRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/benchmark/benchmarks/results/latest/latest_summary.json"
+    cpuSvg: "website/results/artifacts/latest/latest_cpu.svg",
+    gpuSvg: "website/results/artifacts/latest/latest_gpu.svg",
+    cpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/website/results/artifacts/latest/latest_cpu.svg",
+    gpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/website/results/artifacts/latest/latest_gpu.svg",
+    cpuJson: null,
+    gpuJson: null,
+    summaryJson: "website/results/latest-summary.json",
+    summaryJsonRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/website/results/latest-summary.json"
   };
 
   var releaseLink = document.getElementById("release-link");
@@ -37,10 +37,23 @@
   var latestGpuSvg = document.getElementById("latest-gpu-svg");
   var svgGallery = document.getElementById("svg-gallery");
 
+  function siteBaseHref() {
+    var origin = window.location.origin || "";
+    var pathname = window.location.pathname || "/";
+    var basePath = pathname;
+
+    if (!basePath.endsWith("/")) {
+      var slash = basePath.lastIndexOf("/");
+      var hasExt = slash >= 0 && basePath.slice(slash + 1).indexOf(".") !== -1;
+      basePath = hasExt ? basePath.slice(0, slash + 1) : basePath + "/";
+    }
+    return origin + basePath;
+  }
+
   function toHref(path) {
     if (!path) return "#";
     if (/^https?:\/\//i.test(path)) return path;
-    return new URL(path, window.location.href).toString();
+    return new URL(path, siteBaseHref()).toString();
   }
 
   function preferredTheme() {
@@ -254,6 +267,9 @@
   }
 
   function loadLatestStats() {
+    if (!LATEST_BENCH.cpuJson || !LATEST_BENCH.gpuJson) {
+      return;
+    }
     Promise.all([
       fetch(toHref(LATEST_BENCH.cpuJson)).then(function (resp) {
         if (!resp.ok) throw new Error("latest cpu json unavailable");

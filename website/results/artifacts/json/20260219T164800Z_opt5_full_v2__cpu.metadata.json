@@ -1,0 +1,26 @@
+{
+  "run_id": "20260219T164800Z_opt5_full_v2",
+  "tag": "cpu",
+  "created_utc": "2026-02-19T01:21:33.573737+00:00",
+  "host": "d9aff3ced886",
+  "os": "Linux-6.8.0-83-generic-x86_64-with-glibc2.35",
+  "python": "3.11.11",
+  "git_head": "unknown",
+  "git_dirty": 0,
+  "device": "cpu",
+  "batch": 64,
+  "hidden": 2048,
+  "iters": 40,
+  "warmup": 10,
+  "repeats": 3,
+  "adapters": [
+    "torch_eager",
+    "torch_compile",
+    "pyc",
+    "tvm",
+    "xla",
+    "tensorrt",
+    "glow"
+  ],
+  "required_native_adapters": []
+}
