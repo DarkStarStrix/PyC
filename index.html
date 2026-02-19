@@ -42,6 +42,23 @@ ctest --test-dir build -C Release --output-on-failure
     </section>
 
     <section>
+      <h2>Phase 6 Production Readiness</h2>
+      <p class="section-text">
+        PyC now includes a dedicated production contract suite for commercial rollout gates:
+        status/error contracts, decision-log observability, CUDA fallback/error semantics, and runtime rollback behavior.
+      </p>
+      <p class="section-text">
+        Latest local validation: <strong>23/23 compiler-next tests passing</strong>, including <strong>4/4 production-gate tests passing</strong>.
+      </p>
+      <p class="section-text">
+        Reference:
+        <a href="./docs/compiler-next/production-readiness.md" target="_blank" rel="noopener noreferrer">docs/compiler-next/production-readiness.md</a>
+      </p>
+      <pre><code>ctest --test-dir build --output-on-failure -R pyc_compiler_next_test_prod_
+ctest --test-dir build --output-on-failure</code></pre>
+    </section>
+
+    <section>
       <h2>Benchmark Publication</h2>
       <p id="results-status" class="status">Loading benchmark publication data...</p>
       <p class="section-text">
@@ -54,7 +71,7 @@ ctest --test-dir build -C Release --output-on-failure
         <a href="./website/results/latest-summary.json" target="_blank" rel="noopener noreferrer">latest-summary.json</a>
       </p>
 
-      <h3>Phase 4 CPU Summary</h3>
+      <h3>Latest CPU Summary</h3>
       <table>
         <thead>
           <tr>
@@ -69,7 +86,7 @@ ctest --test-dir build -C Release --output-on-failure
         <tbody id="cpu-results-body"></tbody>
       </table>
 
-      <h3>Phase 4 GPU Summary</h3>
+      <h3>Latest GPU Summary</h3>
       <table>
         <thead>
           <tr>
@@ -84,25 +101,26 @@ ctest --test-dir build -C Release --output-on-failure
         <tbody id="gpu-results-body"></tbody>
       </table>
 
-      <h3>Phase 4 Charts</h3>
+      <h3>Latest Charts</h3>
       <p class="section-text">
-        In this Phase 4 run, PyC on CPU-path reached 24.0459 ms mean latency, ahead of PyTorch Compile at 26.7237 ms and PyTorch Eager at 36.9971 ms for this benchmark shape.
+        Charts and tables on this page are now sourced from the canonical latest benchmark bundle generated under
+        <code>benchmark/benchmarks/results/latest/</code>.
       </p>
       <p class="section-text">
-        On GPU, PyC is still operating in proxy/fallback behavior at 25.5228 ms while native baselines sit in sub-millisecond territory (for example PyTorch Eager at 0.1154 ms). This is a kernel-dispatch maturity issue rather than a deterministic-rails issue.
+        This keeps the publication path deterministic: every benchmark run is standardized, latest CPU/GPU artifacts are re-rendered from JSON, and the website consumes those canonical files.
       </p>
       <p class="section-text">
-        Architecture decisions: keep deterministic compile/runtime contracts, explicit fallback counters, and policy-driven runtime controls first; then harden native CUDA kernels and utilization-aware scheduling. Broader goal: a production-grade AI compiler runtime that combines deterministic behavior with high GPU utilization and aggressive memory-backpressure control. More CUDA-focused tests are coming soon.
+        Architecture direction remains unchanged: deterministic compile/runtime contracts first, then deeper native CUDA kernel and scheduling optimization.
       </p>
 
       <div class="chart-grid">
         <figure>
-          <img id="latest-cpu-svg" src="./benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__cpu.svg" alt="Phase 4 CPU benchmark chart" loading="lazy">
-          <figcaption>Phase 4 CPU SVG</figcaption>
+          <img id="latest-cpu-svg" src="./benchmark/benchmarks/results/latest/latest_cpu.svg" alt="Latest CPU benchmark chart" loading="lazy">
+          <figcaption>Latest CPU SVG</figcaption>
         </figure>
         <figure>
-          <img id="latest-gpu-svg" src="./benchmark/benchmarks/results/remote_results/host89/images/20260218T023355Z_phase4_final__gpu.svg" alt="Phase 4 GPU benchmark chart" loading="lazy">
-          <figcaption>Phase 4 GPU SVG</figcaption>
+          <img id="latest-gpu-svg" src="./benchmark/benchmarks/results/latest/latest_gpu.svg" alt="Latest GPU benchmark chart" loading="lazy">
+          <figcaption>Latest GPU SVG</figcaption>
         </figure>
       </div>
 

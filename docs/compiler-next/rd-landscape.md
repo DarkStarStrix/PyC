@@ -111,7 +111,29 @@ Suggested mapping:
 
 This mapping is now reflected in `docs/compiler-next/innovation-backlog.md` and `docs/compiler-next/roadmap-phases.md`.
 
-## 8) Innovation Tracker Snapshot
+## 8) Phase 5 Translation (What Was Built and Why)
+
+Phase 5 implementation was prioritized around the highest-confidence pain points from the R&D review:
+
+1. Dispatch overhead and repeated-launch cost: added CUDA graph capture/replay for stable execution signatures to reduce launch-path tax.
+2. Opaque fallback behavior: expanded graph-break and fallback diagnostics (taxonomy + first-break metadata) so unsupported patterns are explicit and actionable.
+3. Real-world operator chains: extended native CUDA path coverage to matmul-centric chains with `add` and `relu` epilogues, which are common in AI inference paths.
+4. Promotion ambiguity: bound promotion to deterministic tests, benchmark metadata stamps, and compatibility checks rather than anecdotal speedup claims.
+
+Expected practical outcome:
+
+- Better repeat-run stability, clearer failure surfaces, and a tighter loop for performance iteration without losing determinism.
+
+## 9) High-Resolution Target for Next Iteration
+
+Given measured behavior, the next high-resolution target remains:
+
+1. Keep deterministic contracts strict (no silent wrong outputs, explicit reason-coded fallback).
+2. Reduce GPU dispatch overhead further via deeper fusion and persistent-kernel strategies.
+3. Improve arithmetic intensity on hot paths (matmul-activation families first).
+4. Maintain benchmark integrity with fixed protocol, variance gates, and stamped artifacts.
+
+## 10) Innovation Tracker Snapshot
 
 | ID | Item | Phase | KPI |
 |---|---|---|---|

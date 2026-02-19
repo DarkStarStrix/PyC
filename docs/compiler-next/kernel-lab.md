@@ -1,122 +1,66 @@
 # Kernel Lab CLI
 
-`Kernel/kernel_lab.py` is a mini lab CLI for prototyping, testing, and benchmarking kernel workflows.
+`Kernel/kernel_lab.py` is the kernel prototyping utility for compile/run/benchmark experiments under deterministic contracts.
 
-## Manifest-Driven Design
+## Manifest and Command Model
 
-Kernel definitions live in:
+Kernel definitions are declared in `Kernel/lab/kernels.json` with:
 
-- `Kernel/lab/kernels.json`
+- `name`, `source`, `description`, `tags`
+- `compile_cmd`, `run_cmd`
 
-Each entry supports:
+Template placeholders:
 
-- `name`
-- `source`
-- `description`
-- `tags`
-- `compile_cmd`
-- `run_cmd`
+- `{name}`, `{source}`, `{root}`, `{build_dir}`, `{nvcc}`
 
-Template variables supported in commands:
+This keeps kernel workflows declarative and reproducible across machines.
 
-- `{name}`
-- `{source}`
-- `{root}`
-- `{build_dir}`
-- `{nvcc}`
-
-## Commands
-
-Health/preflight check:
+## Core Commands
 
 ```bash
 python3 Kernel/kernel_lab.py doctor
-```
-
-List kernels:
-
-```bash
 python3 Kernel/kernel_lab.py list
-```
-
-Show one kernel definition:
-
-```bash
 python3 Kernel/kernel_lab.py show matrix_mult
-```
-
-Compile a kernel using manifest command:
-
-```bash
 python3 Kernel/kernel_lab.py compile matrix_mult
-```
-
-Run a kernel using manifest `run_cmd`:
-
-```bash
 python3 Kernel/kernel_lab.py run matrix_mult
-```
-
-Benchmark compile phase:
-
-```bash
-python3 Kernel/kernel_lab.py bench matrix_mult --phase compile --repeats 10 --warmup 2
-```
-
-Benchmark arbitrary prototype command:
-
-```bash
-python3 Kernel/kernel_lab.py bench-cmd sleep_test "python3 -c 'import time; time.sleep(0.01)'" --repeats 20 --warmup 3
-```
-
-Compare two benchmark JSON files:
-
-```bash
+python3 Kernel/kernel_lab.py bench matrix_mult --phase both --repeats 20 --warmup 5
+python3 Kernel/kernel_lab.py bench-cmd noop "python3 -c 'print(1)'" --repeats 10 --warmup 2
 python3 Kernel/kernel_lab.py compare Kernel/lab/results/a.json Kernel/lab/results/b.json
 ```
 
-## Outputs
+## Phase 5 Benchmark Protocol
 
-Benchmark outputs are written to:
+Use this protocol when validating new kernels for promotion:
 
-- `Kernel/lab/results/`
+1. Run `doctor` and fail fast on missing toolchains.
+2. Run warmup + timed repeats with fixed args and stable environment.
+3. Persist timestamped JSON in `Kernel/lab/results/`.
+4. Compare candidate vs baseline JSON before adopting kernel changes.
+5. Record fallback or toolchain gaps explicitly (never silent skip).
 
-Each run produces timestamped JSON suitable for comparison and tracking.
+## Deterministic Contracts
 
-## Notes
-
-- `nvcc` is required for CUDA `compile` and CUDA `bench --phase compile|both` operations.
-- Current default kernel entries are compile-focused (`run_cmd` empty).
-- Add `run_cmd` entries in `kernels.json` for executable kernel harnesses.
-- Use `--nvcc /path/to/nvcc` if `nvcc` is not in your `PATH`.
-
-## Deterministic Error Handling
-
-The CLI uses stable exit codes:
+Stable exit codes:
 
 - `0`: success
 - `2`: user input error
 - `3`: manifest/schema error
-- `4`: required toolchain missing (for example `nvcc`)
+- `4`: required toolchain missing
 - `5`: command execution failed
 
-Expected operational failures are reported as explicit errors (no traceback noise).
+Expected failures are returned as explicit actionable messages, not ambiguous tracebacks.
 
-## CUDA Toolkit / nvcc
+## CUDA Toolchain Notes
 
-### Linux/Windows
-
-Install NVIDIA CUDA Toolkit and ensure `nvcc` is on `PATH`, then verify:
+Linux/Windows with NVIDIA GPU:
 
 ```bash
 nvcc --version
 python3 Kernel/kernel_lab.py doctor
 ```
 
-### macOS
+macOS Apple Silicon:
 
-Modern macOS does not support NVIDIA CUDA toolchain on Apple Silicon, so `nvcc` is typically unavailable.
-On macOS hosts, use:
-
-- `bench-cmd` for command-prototyping and workflow validation.
-- remote Linux/Windows CUDA machine for real CUDA kernel compile/run benchmarks.
+- `nvcc` is typically unavailable.
+- Use `bench-cmd` locally for orchestration checks.
+- Run compile/run CUDA benchmarks on a remote Linux GPU host and sync results back.
