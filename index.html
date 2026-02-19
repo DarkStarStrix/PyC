@@ -17,6 +17,9 @@
       PyC is a C/CMake compiler runtime project focused on reproducible CI, memory-backpressure control, and policy-driven execution decisions.
       This page publishes latest release downloads and benchmark evidence generated in-repo.
     </p>
+    <p class="subtext">
+      Caveat: PyC itself is lightweight, but real workflows still depend on external runtimes/toolchains such as CUDA drivers/toolkit, GPU vendor libraries, and framework adapters.
+    </p>
 
     <section>
       <h2>Release</h2>
@@ -108,9 +111,6 @@ ctest --test-dir build --output-on-failure</code></pre>
       <p class="section-text">
         Main charts are pinned to the published latest website artifacts so deploys are stable on GitHub Pages.
       </p>
-      <p class="section-text">
-        The gallery is sourced from <code>website/results/manifest.json</code> and now resolves paths from published site artifacts directly.
-      </p>
 
       <div class="chart-grid">
         <figure>
@@ -122,9 +122,6 @@ ctest --test-dir build --output-on-failure</code></pre>
           <figcaption>Latest GPU SVG</figcaption>
         </figure>
       </div>
-
-      <h3>All SVG Snapshots</h3>
-      <div id="svg-gallery" class="svg-gallery"></div>
     </section>
 
     <section>

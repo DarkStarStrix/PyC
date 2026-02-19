@@ -35,7 +35,6 @@
   var gpuBody = document.getElementById("gpu-results-body");
   var latestCpuSvg = document.getElementById("latest-cpu-svg");
   var latestGpuSvg = document.getElementById("latest-gpu-svg");
-  var svgGallery = document.getElementById("svg-gallery");
 
   function siteBaseHref() {
     var origin = window.location.origin || "";
@@ -87,12 +86,6 @@
         window.localStorage.setItem("pyc-theme", next);
       } catch (e) {}
     });
-  }
-
-  function assetHref(path) {
-    if (!path) return "#";
-    if (/^https?:\/\//i.test(path)) return path;
-    return toHref(path);
   }
 
   function findAsset(assets, os) {
@@ -196,100 +189,11 @@
     }
   }
 
-  function renderSvgGallery(entries) {
-    if (!svgGallery) return;
-    svgGallery.innerHTML = "";
-    if (!entries.length) {
-      var empty = document.createElement("p");
-      empty.textContent = "No SVG artifacts found.";
-      svgGallery.appendChild(empty);
-      return;
-    }
-
-    entries.forEach(function (entry) {
-      var card = document.createElement("figure");
-      card.className = "svg-preview";
-
-      var item = document.createElement("a");
-      item.href = assetHref(entry.published);
-      item.target = "_blank";
-      item.rel = "noopener noreferrer";
-
-      var img = document.createElement("img");
-      img.src = assetHref(entry.published);
-      img.alt = entry.source;
-      img.loading = "lazy";
-      img.onerror = function () {
-        card.remove();
-      };
-
-      var label = document.createElement("figcaption");
-      label.textContent = captionFromSource(entry.source);
-
-      item.appendChild(img);
-      card.appendChild(item);
-      card.appendChild(label);
-      svgGallery.appendChild(card);
-    });
-  }
-
-  function captionFromSource(source) {
-    var file = String(source || "").split("/").pop().replace(/\.svg$/i, "");
-    if (!file) return "Chart";
-    return file.replace(/__/g, " | ").replace(/_/g, " ");
-  }
-
-  function adaptersToRows(payload) {
-    var rows = [];
-    if (!payload || !payload.adapters) return rows;
-
-    Object.keys(payload.adapters).forEach(function (key) {
-      var entry = payload.adapters[key];
-      var latency = entry && entry.latency_ms ? entry.latency_ms : {};
-      if (!entry || entry.status !== "ok") return;
-      rows.push({
-        adapter: key,
-        display_name: entry.display_name || key,
-        mode: entry.mode || "unknown",
-        mean_ms: latency.mean,
-        p50_ms: latency.p50,
-        p95_ms: latency.p95,
-        throughput_tokens_per_sec: entry.throughput_tokens_per_sec
-      });
-    });
-
-    rows.sort(function (a, b) {
-      if (a.mean_ms === undefined || a.mean_ms === null) return 1;
-      if (b.mean_ms === undefined || b.mean_ms === null) return -1;
-      return a.mean_ms - b.mean_ms;
-    });
-    return rows;
-  }
-
-  function loadLatestStats() {
-    if (!LATEST_BENCH.cpuJson || !LATEST_BENCH.gpuJson) {
-      return;
-    }
-    Promise.all([
-      fetch(toHref(LATEST_BENCH.cpuJson)).then(function (resp) {
-        if (!resp.ok) throw new Error("latest cpu json unavailable");
-        return resp.json();
-      }),
-      fetch(toHref(LATEST_BENCH.gpuJson)).then(function (resp) {
-        if (!resp.ok) throw new Error("latest gpu json unavailable");
-        return resp.json();
-      })
-    ])
-      .then(function (payload) {
-        var cpuRows = adaptersToRows(payload[0]);
-        var gpuRows = adaptersToRows(payload[1]);
-        renderRows(cpuBody, cpuRows);
-        renderRows(gpuBody, gpuRows);
-      })
-      .catch(function () {
-        renderRows(cpuBody, []);
-        renderRows(gpuBody, []);
-      });
+  function summaryRows(section) {
+    if (!section) return [];
+    if (Array.isArray(section.rows)) return section.rows;
+    if (Array.isArray(section.adapters)) return section.adapters;
+    return [];
   }
 
   function loadRelease() {
@@ -332,84 +236,43 @@
   }
 
   function loadPublishedResults() {
-    Promise.all([
-      fetch(toHref("website/results/manifest.json"))
+    fetch(toHref(LATEST_BENCH.summaryJson))
       .then(function (resp) {
-        if (!resp.ok) throw new Error("local manifest unavailable");
+        if (!resp.ok) throw new Error("local latest summary unavailable");
         return resp.json();
       })
       .catch(function () {
-        return fetch("https://raw.githubusercontent.com/DarkStarStrix/PyC/main/website/results/manifest.json")
-          .then(function (resp) {
-            if (!resp.ok) throw new Error("remote manifest unavailable");
-            return resp.json();
-          });
-      }),
-      fetch(toHref(LATEST_BENCH.summaryJson))
-        .then(function (resp) {
-          if (!resp.ok) throw new Error("local latest summary unavailable");
+        return fetch(LATEST_BENCH.summaryJsonRemote).then(function (resp) {
+          if (!resp.ok) throw new Error("remote latest summary unavailable");
           return resp.json();
-        })
-        .catch(function () {
-          return fetch(LATEST_BENCH.summaryJsonRemote).then(function (resp) {
-            if (!resp.ok) throw new Error("remote latest summary unavailable");
-            return resp.json();
-          });
-        })
-        .catch(function () {
-          return {};
-        })
-    ])
-      .then(function (payload) {
-        var manifest = payload[0] || {};
-        var latestSummary = payload[1] || {};
+        });
+      })
+      .then(function (latestSummary) {
+        latestSummary = latestSummary || {};
         var latestRun =
           latestSummary.run_id ||
           (latestSummary.cpu && latestSummary.cpu.run_id) ||
           (latestSummary.gpu && latestSummary.gpu.run_id) ||
           LATEST_BENCH.runId;
-        var total = manifest.counts && typeof manifest.counts.total === "number" ? manifest.counts.total : 0;
-        var imageCount = manifest.counts && typeof manifest.counts.images === "number" ? manifest.counts.images : 0;
-        var metadataCount = manifest.counts && typeof manifest.counts.metadata === "number" ? manifest.counts.metadata : 0;
-
-        if (latestSummary.cpu && Array.isArray(latestSummary.cpu.rows)) {
-          renderRows(cpuBody, latestSummary.cpu.rows);
-        } else if (latestSummary.cpu && Array.isArray(latestSummary.cpu.adapters)) {
-          renderRows(cpuBody, latestSummary.cpu.adapters);
-        }
-        if (latestSummary.gpu && Array.isArray(latestSummary.gpu.rows)) {
-          renderRows(gpuBody, latestSummary.gpu.rows);
-        } else if (latestSummary.gpu && Array.isArray(latestSummary.gpu.adapters)) {
-          renderRows(gpuBody, latestSummary.gpu.adapters);
-        }
+        var cpuRows = summaryRows(latestSummary.cpu);
+        var gpuRows = summaryRows(latestSummary.gpu);
+        renderRows(cpuBody, cpuRows);
+        renderRows(gpuBody, gpuRows);
 
         resultsStatus.textContent =
           "Latest benchmark run: " + latestRun +
-          " | published artifacts: " +
-          total +
-          " (" + imageCount + " SVG, " + metadataCount + " metadata JSON)";
-
-        var seen = {};
-        var svgs = (manifest.artifacts || [])
-          .filter(function (entry) {
-            if (!entry || entry.kind !== "image_svg" || !entry.published) return false;
-            if (seen[entry.published]) return false;
-            seen[entry.published] = 1;
-            return true;
-          })
-          .sort(function (a, b) {
-            return String(b.source || "").localeCompare(String(a.source || ""));
-          });
-        renderSvgGallery(svgs);
+          " | CPU adapters: " + cpuRows.length +
+          " | GPU adapters: " + gpuRows.length;
       })
       .catch(function () {
-        resultsStatus.textContent = "Latest benchmark run: " + LATEST_BENCH.runId + " (manifest unavailable).";
+        renderRows(cpuBody, []);
+        renderRows(gpuBody, []);
+        resultsStatus.textContent = "Latest benchmark run: " + LATEST_BENCH.runId + " (summary unavailable).";
       });
   }
 
   initThemeToggle();
   renderPinnedLatestCharts();
-  loadLatestStats();
   loadRelease();
   loadPublishedResults();
 })();
