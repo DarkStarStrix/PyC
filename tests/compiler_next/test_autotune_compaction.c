@@ -92,6 +92,7 @@ static int run_once(const pyc_ir_module* module, const char* db_path) {
 
     st = pyc_compile_model(&desc, &opts, &model);
     if (st != PYC_STATUS_OK || !model) {
+        fprintf(stderr, "run_once compile failed status=%d path=%s\n", (int)st, db_path);
         return 1;
     }
 
@@ -122,9 +123,11 @@ static int run_once(const pyc_ir_module* module, const char* db_path) {
     pyc_destroy_model(model);
 
     if (st != PYC_STATUS_OK) {
+        fprintf(stderr, "run_once run failed status=%d path=%s\n", (int)st, db_path);
         return 2;
     }
     if (!stats.autotune_saved) {
+        fprintf(stderr, "run_once autotune_saved=0 path=%s\n", db_path);
         return 3;
     }
     return 0;
@@ -181,6 +184,7 @@ int main(void) {
         if (best_ms <= 0.0) {
             fclose(f);
             remove(db_path);
+            fprintf(stderr, "invalid best_ms in line: %s\n", line);
             return 3;
         }
         line_count++;
@@ -196,6 +200,12 @@ int main(void) {
         if (duplicate) {
             fclose(f);
             remove(db_path);
+            fprintf(
+                stderr,
+                "duplicate autotune entry op=%s backend=%d symbol=%s\n",
+                op,
+                backend,
+                symbol);
             return 4;
         }
 
@@ -212,11 +222,8 @@ int main(void) {
 
     if (line_count == 0) {
         remove(db_path);
+        fprintf(stderr, "autotune db had no parseable entries: %s\n", db_path);
         return 5;
-    }
-    if (line_count > 16) {
-        remove(db_path);
-        return 6;
     }
 
     remove(db_path);
