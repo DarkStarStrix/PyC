@@ -342,6 +342,83 @@ Add epilogue modes supported in parsing/execution:
 | `PYC_CUDA_ENABLE_GRAPH_REPLAY` | controls graph replay attempt (default enabled) |
 | `PYC_CUDA_ASSUME_STATIC_RHS=1` | enables static RHS optimization in native matmul pipeline |
 
+## Inference Design
+
+PyC inference is designed as a deterministic, warmup-then-steady-state path where compile and allocation decisions are made once and reused.
+
+### Inference Objectives
+
+1. deterministic outputs and reason-coded fallbacks
+2. stable memory profile after warmup (no unbounded allocator drift)
+3. low dispatch overhead through static execution signatures and replay
+4. explicit observability for latency, throughput, guard misses, and graph breaks
+
+### Execution Modes
+
+Inference currently uses three practical operating modes in benchmarks and profiling:
+
+1. `eager`: direct framework/runtime execution baseline
+2. `compiled+ATEN`: compiled graph with fallback-capable operator path
+3. `arena`: compiled path with static forward-pass buffer reuse plan
+
+The architecture target is simple: keep eager-level numerical behavior, but move steady-state service traffic to compiled modes where memory and dispatch are more predictable.
+
+### Compile-Time to Inference-Time Contract
+
+```mermaid
+sequenceDiagram
+    participant I as Init/Warmup
+    participant C as pyc_compile_model
+    participant P as Pass + Alloc + Kernel Plan
+    participant R as pyc_run_model
+    participant D as Dispatch (CUDA/CPU)
+    participant S as Stats + Decision Log
+
+    I->>C: Build model + options (strict/deterministic)
+    C->>P: Produce pass report, alloc plan, kernel choice
+    P-->>I: Persist compile artifacts (cache + autotune state)
+    I->>R: Warmup iterations
+    R->>D: Execute native path or explicit fallback
+    D->>S: Record timings, fallback reason, pressure, guards
+    S-->>R: Stable counters for serving loop
+```
+
+Contract expectation:
+
+1. compile/graph-build counters increment during initialization only
+2. inference loop reuses compiled artifacts and selected kernels
+3. deterministic guard checks fail loud with explicit reasons, not silent drift
+
+### Memory and Backpressure Strategy
+
+Inference memory behavior is governed by the allocator planner and runtime rails:
+
+1. compile-time liveness windows produce a reusable offset plan
+2. arena mode reuses forward buffers across iterations
+3. pressure score drives objective mode policy (`MEMORY_FIRST`, `BALANCED`, `UTILIZATION_FIRST`)
+4. rematerialization is explicit and counted when budget pressure exceeds thresholds
+
+Expected steady-state property:
+
+- after warmup, allocation deltas should flatline for fixed-shape traffic
+
+### Concurrency and Serving Rails
+
+For multi-request inference, the serving objective is p95/p99 stability, not only p50 speed.
+
+1. synchronize timing boundaries around measured windows
+2. run fixed concurrency sweeps (for example 4 and 8 requests)
+3. compare p50/p95/p99, throughput, and allocation delta together
+4. prefer operating points with stable tails and deterministic memory behavior
+
+### Practical Deployment Caveat
+
+PyC is lightweight as a binary/library footprint, but production inference still depends on external runtime stacks:
+
+1. CUDA toolkit + compatible NVIDIA driver/GPU for native CUDA acceleration
+2. host toolchain and math libraries required by selected backend path
+3. deterministic CI and test gates to prevent fallback/regression drift
+
 ## Observability and Deterministic Contracts
 
 ### Decision Log Contract
