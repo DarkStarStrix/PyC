@@ -1,0 +1,237 @@
+{
+  "status": "ok",
+  "meta": {
+    "device": "cuda",
+    "dtype": "torch.float16",
+    "hidden": 1024,
+    "batch": 16,
+    "seq_len": 128,
+    "warmup": 30,
+    "requests_per_worker": 120,
+    "concurrency_levels": [
+      4,
+      8
+    ],
+    "modes": [
+      "eager",
+      "compiled_aten",
+      "arena"
+    ],
+    "compile_mode": "default",
+    "inductor_gemm_backends": "ATEN",
+    "allow_tf32": false,
+    "use_inplace_residual": false
+  },
+  "results": [
+    {
+      "mode": "eager",
+      "concurrency": 4,
+      "requests_per_worker": 120,
+      "total_requests": 480,
+      "wall_time_sec": 0.2665,
+      "throughput_requests_per_sec": 1801.24,
+      "throughput_tokens_per_sec": 3688936.87,
+      "latency_ms": {
+        "p50": 1.8897,
+        "p95": 3.2932,
+        "p99": 3.3079,
+        "mean": 2.206,
+        "min": 1.6086,
+        "max": 4.319
+      },
+      "memory_pre": {
+        "allocated_bytes": 67647488,
+        "reserved_bytes": 270532608,
+        "peak_allocated_bytes": 67647488,
+        "allocation_events": 1334,
+        "segment_alloc_events": 19
+      },
+      "memory_post": {
+        "allocated_bytes": 101726208,
+        "reserved_bytes": 270532608,
+        "peak_allocated_bytes": 202390016,
+        "allocation_events": 6618,
+        "segment_alloc_events": 19
+      },
+      "allocation_event_delta": 5284,
+      "segment_alloc_event_delta": 0,
+      "memory_stable": false,
+      "compile_applied": false
+    },
+    {
+      "mode": "eager",
+      "concurrency": 8,
+      "requests_per_worker": 120,
+      "total_requests": 960,
+      "wall_time_sec": 0.506,
+      "throughput_requests_per_sec": 1897.15,
+      "throughput_tokens_per_sec": 3885353.16,
+      "latency_ms": {
+        "p50": 4.1548,
+        "p95": 4.562,
+        "p99": 4.8759,
+        "mean": 4.1445,
+        "min": 3.2656,
+        "max": 5.8043
+      },
+      "memory_pre": {
+        "allocated_bytes": 186660864,
+        "reserved_bytes": 765460480,
+        "peak_allocated_bytes": 186660864,
+        "allocation_events": 9280,
+        "segment_alloc_events": 53
+      },
+      "memory_post": {
+        "allocated_bytes": 254818304,
+        "reserved_bytes": 765460480,
+        "peak_allocated_bytes": 489699840,
+        "allocation_events": 19848,
+        "segment_alloc_events": 53
+      },
+      "allocation_event_delta": 10568,
+      "segment_alloc_event_delta": 0,
+      "memory_stable": false,
+      "compile_applied": false
+    },
+    {
+      "mode": "compiled_aten",
+      "concurrency": 4,
+      "requests_per_worker": 120,
+      "total_requests": 480,
+      "wall_time_sec": 0.2899,
+      "throughput_requests_per_sec": 1655.52,
+      "throughput_tokens_per_sec": 3390506.83,
+      "latency_ms": {
+        "p50": 2.1664,
+        "p95": 2.6192,
+        "p99": 3.5204,
+        "mean": 2.2723,
+        "min": 0.6953,
+        "max": 30.5198
+      },
+      "memory_pre": {
+        "allocated_bytes": 272119808,
+        "reserved_bytes": 941621248,
+        "peak_allocated_bytes": 272119808,
+        "allocation_events": 20852,
+        "segment_alloc_events": 66
+      },
+      "memory_post": {
+        "allocated_bytes": 306198528,
+        "reserved_bytes": 1004535808,
+        "peak_allocated_bytes": 390084608,
+        "allocation_events": 23736,
+        "segment_alloc_events": 69
+      },
+      "allocation_event_delta": 2884,
+      "segment_alloc_event_delta": 3,
+      "memory_stable": false,
+      "compile_applied": true
+    },
+    {
+      "mode": "compiled_aten",
+      "concurrency": 8,
+      "requests_per_worker": 120,
+      "total_requests": 960,
+      "wall_time_sec": 0.5575,
+      "throughput_requests_per_sec": 1722.03,
+      "throughput_tokens_per_sec": 3526709.28,
+      "latency_ms": {
+        "p50": 4.17,
+        "p95": 7.0699,
+        "p99": 9.742,
+        "mean": 4.3512,
+        "min": 0.8245,
+        "max": 13.0942
+      },
+      "memory_pre": {
+        "allocated_bytes": 391133184,
+        "reserved_bytes": 1323302912,
+        "peak_allocated_bytes": 391133184,
+        "allocation_events": 25198,
+        "segment_alloc_events": 93
+      },
+      "memory_post": {
+        "allocated_bytes": 459290624,
+        "reserved_bytes": 1491075072,
+        "peak_allocated_bytes": 622868480,
+        "allocation_events": 30966,
+        "segment_alloc_events": 101
+      },
+      "allocation_event_delta": 5768,
+      "segment_alloc_event_delta": 8,
+      "memory_stable": false,
+      "compile_applied": true
+    },
+    {
+      "mode": "arena",
+      "concurrency": 4,
+      "requests_per_worker": 120,
+      "total_requests": 480,
+      "wall_time_sec": 0.2513,
+      "throughput_requests_per_sec": 1910.3,
+      "throughput_tokens_per_sec": 3912288.2,
+      "latency_ms": {
+        "p50": 1.6249,
+        "p95": 3.0671,
+        "p99": 3.0711,
+        "mean": 2.0835,
+        "min": 0.6909,
+        "max": 3.0763
+      },
+      "memory_pre": {
+        "allocated_bytes": 451034112,
+        "reserved_bytes": 754974720,
+        "peak_allocated_bytes": 451034112,
+        "allocation_events": 31023,
+        "segment_alloc_events": 115
+      },
+      "memory_post": {
+        "allocated_bytes": 451034112,
+        "reserved_bytes": 754974720,
+        "peak_allocated_bytes": 451034112,
+        "allocation_events": 31023,
+        "segment_alloc_events": 115
+      },
+      "allocation_event_delta": 0,
+      "segment_alloc_event_delta": 0,
+      "memory_stable": true,
+      "compile_applied": false
+    },
+    {
+      "mode": "arena",
+      "concurrency": 8,
+      "requests_per_worker": 120,
+      "total_requests": 960,
+      "wall_time_sec": 0.5052,
+      "throughput_requests_per_sec": 1900.27,
+      "throughput_tokens_per_sec": 3891756.01,
+      "latency_ms": {
+        "p50": 4.2197,
+        "p95": 4.4899,
+        "p99": 4.9838,
+        "mean": 4.1886,
+        "min": 2.3138,
+        "max": 5.7986
+      },
+      "memory_pre": {
+        "allocated_bytes": 467811328,
+        "reserved_bytes": 1040187392,
+        "peak_allocated_bytes": 467811328,
+        "allocation_events": 31125,
+        "segment_alloc_events": 140
+      },
+      "memory_post": {
+        "allocated_bytes": 467811328,
+        "reserved_bytes": 1040187392,
+        "peak_allocated_bytes": 467811328,
+        "allocation_events": 31125,
+        "segment_alloc_events": 140
+      },
+      "allocation_event_delta": 0,
+      "segment_alloc_event_delta": 0,
+      "memory_stable": true,
+      "compile_applied": false
+    }
+  ]
+}
