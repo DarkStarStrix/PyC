@@ -1,8 +1,8 @@
 {
   "title": "PyC Inference Validation Portal",
-  "updated_utc": "2026-02-20T01:36:28Z",
+  "updated_utc": "2026-02-20T06:00:00Z",
   "primary_json": "../benchmark/benchmarks/results/json/20260220T013628Z__concurrency_4_8_rtx3090.json",
-  "primary_svg": "../benchmark/benchmarks/results/images/20260220T013628Z__concurrency_4_8_rtx3090.svg",
+  "primary_svg": "../benchmark/benchmarks/results/images/20260220T060000Z__inference_stats_focus.svg",
   "paper_context": {
     "workload": "RTX 3090 concurrent encoder-style inference, FP16, fixed shape, deterministic rails",
     "goal": "Pick the correct stability-performance operating point under load, not just maximize median speed.",
@@ -14,29 +14,19 @@
   },
   "svgs": [
     {
-      "label": "Concurrency tails (RTX 3090, c=4/8)",
-      "path": "../benchmark/benchmarks/results/images/20260220T013628Z__concurrency_4_8_rtx3090.svg",
-      "caption": "Primary latency-tail comparison used for operating-point selection."
+      "label": "Inference latency + stability stats (requested table)",
+      "path": "../benchmark/benchmarks/results/images/20260220T060000Z__inference_stats_focus.svg",
+      "caption": "Single focused plot for arena, compiled+ATEN, and eager at concurrency 4 and 8."
     },
     {
-      "label": "CPU comparison (opt5 full v2)",
-      "path": "../benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__cpu.svg",
-      "caption": "Latest standardized CPU adapter comparison currently published."
-    },
-    {
-      "label": "GPU comparison (opt5 full v2)",
-      "path": "../benchmark/benchmarks/results/images/20260219T164800Z_opt5_full_v2__gpu.svg",
-      "caption": "Latest standardized GPU adapter comparison currently published."
-    },
-    {
-      "label": "PySpy flamegraph (steady-state, newest)",
+      "label": "PySpy flamegraph (steady-state)",
       "path": "../benchmark/benchmarks/results/profiles/ground_truth/host86_ground_truth_tuned3_nopyload/pyspy_flame_steadyish_xlong.svg",
-      "caption": "Newest Python-side steady-state profile used to inspect dispatch/load overhead."
+      "caption": "CPU-side runtime profile for steady-state execution and dispatch behavior."
     },
     {
-      "label": "Nsight kernel flame (newest tuned3 run)",
+      "label": "Nsight kernel flamegraph (tuned3)",
       "path": "../benchmark/benchmarks/results/profiles/ground_truth/host86_ground_truth_tuned3_nopyload/nsys_kernel_flame.svg",
-      "caption": "Newest GPU kernel timeline flame from tuned3 profile run."
+      "caption": "GPU timeline flamegraph showing kernel launch/runtime behavior."
     }
   ],
   "markdown_reports": [
