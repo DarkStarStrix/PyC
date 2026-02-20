@@ -7,6 +7,10 @@ on:
       - "index.html"
       - "styles.css"
       - "app.js"
+      - "inference-site/**"
+      - "website/results/**"
+      - "benchmark/benchmarks/results/**"
+      - "docs/compiler-next/**"
       - ".github/workflows/deploy-site.yml"
   workflow_dispatch:
 
@@ -29,7 +33,18 @@ jobs:
       - name: Prepare site artifact
         run: |
           mkdir -p site
+          touch site/.nojekyll
           cp index.html styles.css app.js site/
+          cp -R inference-site site/inference-site
+
+          mkdir -p site/website
+          cp -R website/results site/website/results
+
+          mkdir -p site/benchmark/benchmarks
+          cp -R benchmark/benchmarks/results site/benchmark/benchmarks/results
+
+          mkdir -p site/docs
+          cp -R docs/compiler-next site/docs/compiler-next
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
