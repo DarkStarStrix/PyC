@@ -5,6 +5,7 @@ option(PYC_BUILD_BENCHMARKS "Build benchmark targets" OFF)
 option(PYC_BUILD_COMPILER_NEXT "Build next-generation compiler stack (experimental)" ON)
 option(PYC_BUILD_COMPILER_NEXT_TESTS "Build next-generation compiler smoke tests" ON)
 option(PYC_ENABLE_CUDA_RUNTIME "Enable CUDA runtime backend when CUDA toolkit is available" ON)
+option(PYC_BUILD_EXPERIMENTAL "Compatibility no-op for legacy configure flows" OFF)
 
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
 set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")

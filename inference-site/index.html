@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PyC Inference Reports</title>
+  <link rel="stylesheet" href="./inference.css">
+</head>
+<body>
+  <main class="page">
+    <header class="top">
+      <p class="eyebrow">PyC Inference</p>
+      <div class="actions">
+        <a class="back-link" href="../index.html">Back to main site</a>
+        <button id="theme-toggle" type="button" class="theme-toggle" aria-label="Toggle color theme">Switch Theme</button>
+      </div>
+    </header>
+
+    <h1>Inference Stats, SVGs, and Reports</h1>
+    <p class="lead">
+      This page is dedicated to inference validation artifacts from the repository: concurrency latency stats, memory stability evidence,
+      profiler SVGs, and markdown reports.
+    </p>
+    <p id="manifest-status" class="status">Loading inference manifest...</p>
+
+    <section>
+      <h2>Executive Narrative</h2>
+      <p class="muted" id="paper-workload"></p>
+      <h3>Abstract</h3>
+      <p id="paper-abstract" class="paper-text"></p>
+      <h3>Method</h3>
+      <ul id="paper-notes" class="points"></ul>
+      <h3>Interpretation</h3>
+      <p id="paper-interpretation" class="paper-text"></p>
+    </section>
+
+    <section>
+      <h2>Latest Inference Run</h2>
+      <p class="muted" id="latest-source"></p>
+      <table>
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th>Concurrency</th>
+            <th>p50 (ms)</th>
+            <th>p95 (ms)</th>
+            <th>p99 (ms)</th>
+            <th>Tokens/s</th>
+            <th>allocΔ</th>
+            <th>Stable</th>
+          </tr>
+        </thead>
+        <tbody id="inference-table-body"></tbody>
+      </table>
+      <ul id="quick-points" class="points"></ul>
+      <p class="muted" id="primary-links"></p>
+    </section>
+
+    <section>
+      <h2>SVG Gallery</h2>
+      <p class="muted">Updated charts and newest flamegraphs used to explain the runtime behavior.</p>
+      <div id="svg-gallery" class="gallery"></div>
+    </section>
+
+    <section>
+      <h2>Markdown Reports</h2>
+      <p class="muted">Click any report to expand inline. Raw file links are preserved for direct inspection.</p>
+      <div id="report-list" class="reports"></div>
+    </section>
+
+    <section>
+      <h2>Raw JSON Artifacts</h2>
+      <div id="json-list" class="json-list"></div>
+    </section>
+  </main>
+
+  <script src="./inference.js"></script>
+</body>
+</html>

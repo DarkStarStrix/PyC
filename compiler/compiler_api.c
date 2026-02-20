@@ -1074,7 +1074,9 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
     } else {
         maybe_inject_compile_delay();
         pyc_pass_pipeline_default(&pipeline);
-        if (!model->options.enable_fusion) {
+        if (!model->options.enable_fusion || model->backend == PYC_BACKEND_CUDA) {
+            /* CUDA runtime executes explicit op chains; disabling fusion here avoids
+               dropping add/activation semantics until fused-op lowering is explicit. */
             pipeline.config.fusion = 0;
         }
 
