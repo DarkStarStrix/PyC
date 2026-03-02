@@ -1,0 +1,3 @@
+[workspace]
+members = ["vortex_core"]
+resolver = "2"
