@@ -1,0 +1,60 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "pyc"
+version = "0.1.0"
+description = "PyC — Unified HPC Toolchain: compiler, async runtime, CUTLASS kernels, SciML inference"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT OR Apache-2.0" }
+keywords = ["hpc", "cuda", "cutlass", "compiler", "machine-learning", "sciml"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Hardware",
+]
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "pydantic>=2.0",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+inference = [
+    "biopython>=1.85",
+    "scikit-learn>=1.4",
+    "scipy>=1.12",
+    "pandas>=2.0",
+    "plotly>=5.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio",
+    "black",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+pyc = "pyc.cli:main"
+
+[tool.maturin]
+# Build the Rust vortex_core as a Python extension module
+manifest-path   = "runtime/Cargo.toml"
+module-name     = "pyc._vortex_core"
+features        = ["python_ext"]
+python-source   = "python"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
