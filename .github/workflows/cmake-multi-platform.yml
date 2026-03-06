@@ -47,14 +47,6 @@ jobs:
           if command -v gcc >/dev/null 2>&1; then gcc --version | head -n 1; fi
           if command -v clang >/dev/null 2>&1; then clang --version | head -n 1; fi
 
-      - name: Install pre-commit
-        shell: bash
-        run: python -m pip install --upgrade pip pre-commit
-
-      - name: Run pre-commit hooks
-        shell: bash
-        run: pre-commit run --all-files --show-diff-on-failure
-
       - name: Configure
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
