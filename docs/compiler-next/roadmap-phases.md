@@ -396,7 +396,7 @@ Reliability-first mapping (new):
 
 Primary reliability target:
 
-- `docs/compiler-next/compile-runtime-reliability-spec.md`  
+- `docs/compiler-next/compile-runtime-reliability-spec.md`
 section: **High-Resolution Target Pain Point**.
 
 Promotion rule:

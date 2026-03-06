@@ -21,6 +21,7 @@ typedef struct pyc_compiled_model {
     pyc_ir_module module;
     pyc_backend backend;
     pyc_compile_options options;
+    pyc_distributed_runtime* distributed_runtime;
     pyc_alloc_plan alloc_plan;
     pyc_kernel_desc selected_kernel;
     pyc_kernel_selection_trace kernel_trace;
@@ -131,8 +132,20 @@ static uint64_t build_compile_cache_key(
     key = hash_u64(key, (uint64_t)options->deterministic_strict);
     key = hash_u64(key, (uint64_t)options->cache_mode);
     key = hash_u64(key, (uint64_t)(options->compile_budget_ms * 1000.0));
+    key = hash_u64(key, (uint64_t)options->distributed.enabled);
+    key = hash_u64(key, (uint64_t)options->distributed.backend);
+    key = hash_u64(key, (uint64_t)options->distributed.strategy);
+    key = hash_u64(key, (uint64_t)options->distributed.world_size);
+    key = hash_u64(key, (uint64_t)options->distributed.rank);
+    key = hash_u64(key, (uint64_t)options->distributed.local_rank);
     if (options->autotune_db_path && options->autotune_db_path[0] != '\0') {
         key = fnv1a64(options->autotune_db_path, strlen(options->autotune_db_path)) ^ key;
+    }
+    if (options->distributed.backend_path && options->distributed.backend_path[0] != '\0') {
+        key = fnv1a64(options->distributed.backend_path, strlen(options->distributed.backend_path)) ^ key;
+    }
+    if (options->distributed.config_json && options->distributed.config_json[0] != '\0') {
+        key = fnv1a64(options->distributed.config_json, strlen(options->distributed.config_json)) ^ key;
     }
     return key;
 }
@@ -289,7 +302,48 @@ static pyc_compile_options default_compile_options(void) {
     o.cache_mode = PYC_COMPILE_CACHE_IN_MEMORY;
     o.autotune_db_path = NULL;
     pyc_runtime_rails_default(&o.rails);
+    o.distributed.enabled = 0;
+    o.distributed.backend = PYC_DIST_BACKEND_NONE;
+    o.distributed.strategy = PYC_DIST_STRATEGY_NONE;
+    o.distributed.world_size = 1;
+    o.distributed.rank = 0;
+    o.distributed.local_rank = 0;
+    o.distributed.backend_path = NULL;
+    o.distributed.config_json = NULL;
     return o;
+}
+
+static void sanitize_distributed_options(pyc_distributed_options* dist) {
+    if (!dist) {
+        return;
+    }
+    if (!(dist->enabled == 0 || dist->enabled == 1)) {
+        dist->enabled = 0;
+    }
+    if (dist->backend < PYC_DIST_BACKEND_NONE || dist->backend > PYC_DIST_BACKEND_CUSTOM) {
+        dist->backend = PYC_DIST_BACKEND_NONE;
+    }
+    if (dist->strategy < PYC_DIST_STRATEGY_NONE || dist->strategy > PYC_DIST_STRATEGY_3D) {
+        dist->strategy = PYC_DIST_STRATEGY_NONE;
+    }
+    if (dist->world_size <= 0) {
+        dist->world_size = 1;
+    }
+    if (dist->rank < 0 || dist->rank >= dist->world_size) {
+        dist->rank = 0;
+    }
+    if (dist->local_rank < 0) {
+        dist->local_rank = 0;
+    }
+    if (!dist->enabled) {
+        dist->backend = PYC_DIST_BACKEND_NONE;
+        dist->strategy = PYC_DIST_STRATEGY_NONE;
+        dist->world_size = 1;
+        dist->rank = 0;
+        dist->local_rank = 0;
+        dist->backend_path = NULL;
+        dist->config_json = NULL;
+    }
 }
 
 static void sanitize_runtime_rails(pyc_runtime_rails* rails) {
@@ -362,6 +416,17 @@ static void release_cpu_workspace(pyc_compiled_model* model) {
         model->cpu_workspace[i] = NULL;
         model->cpu_workspace_bytes[i] = 0;
     }
+}
+
+static void release_model_resources(pyc_compiled_model* model) {
+    if (!model) {
+        return;
+    }
+    if (model->distributed_runtime) {
+        pyc_distributed_runtime_destroy(model->distributed_runtime);
+        model->distributed_runtime = NULL;
+    }
+    release_cpu_workspace(model);
 }
 
 static int init_cpu_workspace(pyc_compiled_model* model) {
@@ -1011,6 +1076,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         model->options.cache_mode = options->cache_mode;
         model->options.autotune_db_path = options->autotune_db_path;
         model->options.rails = options->rails;
+        model->options.distributed = options->distributed;
     }
     if (model->options.cache_mode != PYC_COMPILE_CACHE_DISABLED &&
         model->options.cache_mode != PYC_COMPILE_CACHE_IN_MEMORY) {
@@ -1025,16 +1091,35 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         model->deterministic_contract_enforced = 1;
     }
     sanitize_runtime_rails(&model->options.rails);
+    sanitize_distributed_options(&model->options.distributed);
     if (model->options.objective_mode < PYC_MODE_BALANCED ||
         model->options.objective_mode > PYC_MODE_UTILIZATION_FIRST) {
         model->options.objective_mode = PYC_MODE_BALANCED;
     }
     resolve_autotune_db_path(&model->options, model->autotune_db_path, sizeof(model->autotune_db_path));
 
+    if (model->options.distributed.enabled) {
+        if (!model->options.distributed.backend_path || model->options.distributed.backend_path[0] == '\0') {
+            free(model);
+            return PYC_STATUS_INVALID_ARGUMENT;
+        }
+        model->distributed_runtime = pyc_distributed_runtime_init(
+            model->options.distributed.backend_path,
+            model->options.distributed.config_json,
+            model->options.distributed.world_size,
+            model->options.distributed.rank,
+            model->options.distributed.local_rank);
+        if (!model->distributed_runtime) {
+            free(model);
+            return PYC_STATUS_COMPILE_FAILED;
+        }
+    }
+
     pyc_alloc_plan_init(&model->alloc_plan);
     pyc_runtime_controller_init(&model->controller, model->options.objective_mode);
     pyc_cuda_dispatch_trace_init(&model->cuda_trace);
     if (module_fingerprint(desc->module, &source_fingerprint) != 0) {
+        release_model_resources(model);
         free(model);
         return PYC_STATUS_COMPILE_FAILED;
     }
@@ -1081,6 +1166,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         }
 
         if (pyc_pass_pipeline_run(&pipeline, &model->module, &report) != 0 || report.errors) {
+            release_model_resources(model);
             free(model);
             return PYC_STATUS_COMPILE_FAILED;
         }
@@ -1100,6 +1186,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         strncpy(model->graph_break_summary, report.graph_break_summary, sizeof(model->graph_break_summary) - 1);
         model->graph_break_summary[sizeof(model->graph_break_summary) - 1] = '\0';
         if (module_fingerprint(&model->module, &model->module_fingerprint) != 0) {
+            release_model_resources(model);
             free(model);
             return PYC_STATUS_COMPILE_FAILED;
         }
@@ -1133,6 +1220,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
                         &model->alloc_plan,
                         model->options.objective_mode,
                         model->options.memory_budget_bytes) != 0) {
+                    release_model_resources(model);
                     free(model);
                     return PYC_STATUS_COMPILE_FAILED;
                 }
@@ -1190,6 +1278,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         PYC_AUTOTUNE_CANDIDATE_MAX);
 
     if (init_cpu_workspace(model) != 0) {
+        release_model_resources(model);
         free(model);
         return PYC_STATUS_COMPILE_FAILED;
     }
@@ -1509,7 +1598,21 @@ const char* pyc_model_last_decision_log(const pyc_compiled_model* model) {
     return model->decision_log;
 }
 
+const pyc_collective_comm* pyc_model_distributed_comm(const pyc_compiled_model* model) {
+    if (!model || !model->distributed_runtime) {
+        return NULL;
+    }
+    return pyc_distributed_runtime_comm_const(model->distributed_runtime);
+}
+
+pyc_comm_handle_t pyc_model_distributed_comm_handle(const pyc_compiled_model* model) {
+    if (!model || !model->distributed_runtime) {
+        return NULL;
+    }
+    return pyc_distributed_runtime_handle(model->distributed_runtime);
+}
+
 void pyc_destroy_model(pyc_compiled_model* model) {
-    release_cpu_workspace(model);
+    release_model_resources(model);
     free(model);
 }

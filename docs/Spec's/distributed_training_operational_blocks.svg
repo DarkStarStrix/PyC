@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700">
+  <rect width="100%" height="100%" fill="#f8fafc"/>
+  <text x="40" y="48" font-size="34" font-family="Arial, sans-serif" fill="#0f172a">PyC Distributed Training Operational Blocks</text>
+  <text x="40" y="78" font-size="16" font-family="Arial, sans-serif" fill="#334155">DDP-first implementation in scripts/train.py</text>
+
+  <rect x="40" y="120" width="230" height="100" rx="12" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="58" y="158" font-size="20" font-family="Arial, sans-serif" fill="#1e3a8a">1) Control Plane</text>
+  <text x="58" y="184" font-size="14" font-family="Arial, sans-serif" fill="#1e3a8a">CLI + rank/world init</text>
+
+  <rect x="320" y="120" width="230" height="100" rx="12" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="338" y="158" font-size="20" font-family="Arial, sans-serif" fill="#14532d">2) Data Engine</text>
+  <text x="338" y="184" font-size="14" font-family="Arial, sans-serif" fill="#14532d">tokenize + dataloader</text>
+
+  <rect x="600" y="120" width="250" height="100" rx="12" fill="#fef3c7" stroke="#d97706"/>
+  <text x="618" y="158" font-size="20" font-family="Arial, sans-serif" fill="#7c2d12">3) Transfer Engine</text>
+  <text x="618" y="184" font-size="14" font-family="Arial, sans-serif" fill="#7c2d12">pinned memory + H2D</text>
+
+  <rect x="900" y="120" width="250" height="100" rx="12" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="918" y="158" font-size="20" font-family="Arial, sans-serif" fill="#7f1d1d">4) Compute Engine</text>
+  <text x="918" y="184" font-size="14" font-family="Arial, sans-serif" fill="#7f1d1d">forward/backward/step</text>
+
+  <rect x="1200" y="120" width="250" height="100" rx="12" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="1218" y="158" font-size="20" font-family="Arial, sans-serif" fill="#4c1d95">5) Comm Engine</text>
+  <text x="1218" y="184" font-size="14" font-family="Arial, sans-serif" fill="#4c1d95">DDP overlap/all-reduce</text>
+
+  <rect x="520" y="330" width="540" height="130" rx="14" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="548" y="374" font-size="24" font-family="Arial, sans-serif" fill="#0c4a6e">6) Metrics + Artifact Sink</text>
+  <text x="548" y="404" font-size="15" font-family="Arial, sans-serif" fill="#0c4a6e">run_config.json | train_metrics.json | gpu_telemetry.csv</text>
+  <text x="548" y="426" font-size="15" font-family="Arial, sans-serif" fill="#0c4a6e">summary.md | summary.svg</text>
+
+  <line x1="270" y1="170" x2="320" y2="170" stroke="#0f172a" stroke-width="3"/>
+  <line x1="550" y1="170" x2="600" y2="170" stroke="#0f172a" stroke-width="3"/>
+  <line x1="850" y1="170" x2="900" y2="170" stroke="#0f172a" stroke-width="3"/>
+  <line x1="1150" y1="170" x2="1200" y2="170" stroke="#0f172a" stroke-width="3"/>
+
+  <line x1="725" y1="220" x2="790" y2="330" stroke="#0f172a" stroke-width="3"/>
+  <line x1="1025" y1="220" x2="920" y2="330" stroke="#0f172a" stroke-width="3"/>
+
+  <text x="40" y="620" font-size="15" font-family="Arial, sans-serif" fill="#475569">Operational principle: keep CPU and GPU stages overlapped while minimizing synchronization stalls.</text>
+  <text x="40" y="646" font-size="15" font-family="Arial, sans-serif" fill="#475569">Backend selection is portable: auto -> NCCL on CUDA, Gloo on CPU. RCCL maps to NCCL for torch backend name compatibility.</text>
+</svg>

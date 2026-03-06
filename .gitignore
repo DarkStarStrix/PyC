@@ -38,3 +38,16 @@ venv/
 Thumbs.db
 *.swp
 *.swo
+
+# Local IDE state
+.idea/
+
+# Local benchmark artifacts and synced remote outputs
+benchmark/remote_results/
+benchmark/benchmarks/results/
+website/results/
+website/logs/
+
+# Local secrets
+.env
+.env.*

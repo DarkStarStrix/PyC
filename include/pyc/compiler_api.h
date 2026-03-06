@@ -5,6 +5,8 @@
 #include <stdint.h>
 
 #include "pyc/ir.h"
+#include "pyc/collective_comm.h"
+#include "pyc/distributed_runtime.h"
 #include "pyc/kernel_registry.h"
 #include "pyc/optimizer_policy.h"
 #include "pyc/runtime_control.h"
@@ -31,6 +33,34 @@ typedef enum {
     PYC_COMPILE_CACHE_IN_MEMORY = 1
 } pyc_compile_cache_mode;
 
+typedef enum {
+    PYC_DIST_BACKEND_NONE = 0,
+    PYC_DIST_BACKEND_NCCL = 1,
+    PYC_DIST_BACKEND_RCCL = 2,
+    PYC_DIST_BACKEND_MPI = 3,
+    PYC_DIST_BACKEND_CUSTOM = 4
+} pyc_distributed_backend;
+
+typedef enum {
+    PYC_DIST_STRATEGY_NONE = 0,
+    PYC_DIST_STRATEGY_DATA_PARALLEL = 1,
+    PYC_DIST_STRATEGY_TENSOR_PARALLEL = 2,
+    PYC_DIST_STRATEGY_PIPELINE_PARALLEL = 3,
+    PYC_DIST_STRATEGY_ZERO = 4,
+    PYC_DIST_STRATEGY_3D = 5
+} pyc_distributed_strategy;
+
+typedef struct {
+    int enabled;
+    pyc_distributed_backend backend;
+    pyc_distributed_strategy strategy;
+    int world_size;
+    int rank;
+    int local_rank;
+    const char* backend_path;
+    const char* config_json;
+} pyc_distributed_options;
+
 typedef struct {
     int enable_fusion;
     int enable_memory_reuse;
@@ -43,6 +73,7 @@ typedef struct {
     pyc_compile_cache_mode cache_mode;
     const char* autotune_db_path;
     pyc_runtime_rails rails;
+    pyc_distributed_options distributed;
 } pyc_compile_options;
 
 typedef struct {
@@ -100,6 +131,8 @@ const char* pyc_status_string(pyc_status status);
 pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_options* options, pyc_compiled_model** out_model);
 pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, size_t input_count, pyc_tensor* outputs, size_t output_count, pyc_run_stats* out_stats);
 const char* pyc_model_last_decision_log(const pyc_compiled_model* model);
+const pyc_collective_comm* pyc_model_distributed_comm(const pyc_compiled_model* model);
+pyc_comm_handle_t pyc_model_distributed_comm_handle(const pyc_compiled_model* model);
 void pyc_destroy_model(pyc_compiled_model* model);
 
 #ifdef __cplusplus

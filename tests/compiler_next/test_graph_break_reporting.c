@@ -92,13 +92,25 @@ int main(void) {
         pyc_destroy_model(model);
         return 3;
     }
-    if (stats.compilability_score >= 1.0) {
+    if (stats.graph_break_reduce_sum_count == 0) {
         pyc_destroy_model(model);
         return 4;
     }
-    if (strstr(stats.graph_break_summary, "reduce_sum") == NULL) {
+    if (stats.first_graph_break_op_id < 0) {
         pyc_destroy_model(model);
         return 5;
+    }
+    if (strstr(stats.first_graph_break_op_name, "reduce0") == NULL) {
+        pyc_destroy_model(model);
+        return 6;
+    }
+    if (stats.compilability_score >= 1.0) {
+        pyc_destroy_model(model);
+        return 7;
+    }
+    if (strstr(stats.graph_break_summary, "reduce_sum") == NULL) {
+        pyc_destroy_model(model);
+        return 8;
     }
 
     pyc_destroy_model(model);

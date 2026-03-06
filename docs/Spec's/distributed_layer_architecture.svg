@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1100 1400" width="1100" height="1400">
+
+  <defs>
+    <style>
+      text { font-family: 'Liberation Sans', 'DejaVu Sans', Arial, Helvetica, sans-serif; }
+      .mono { font-family: 'Liberation Mono', 'DejaVu Sans Mono', 'Courier New', monospace; }
+    </style>
+
+    <!-- Gradients -->
+    <linearGradient id="g_py" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="g_strat" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#5b21b6"/>
+    </linearGradient>
+    <linearGradient id="g_cabi" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0891b2"/>
+      <stop offset="100%" stop-color="#0e7490"/>
+    </linearGradient>
+    <linearGradient id="g_back" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="g_topo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="g_comp" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#dc2626"/>
+      <stop offset="100%" stop-color="#991b1b"/>
+    </linearGradient>
+    <linearGradient id="g_rt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#374151"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+
+    <!-- Arrow markers -->
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0,10 3.5,0 7" fill="#475569"/>
+    </marker>
+    <marker id="arr_amb" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0,10 3.5,0 7" fill="#d97706"/>
+    </marker>
+
+    <!-- Shadow -->
+    <filter id="sh">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000025"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1100" height="1400" fill="#f8fafc"/>
+
+  <!-- ─── TITLE ─────────────────────────────────────────── -->
+  <text x="550" y="42" text-anchor="middle" font-size="21" font-weight="bold" fill="#0f172a">
+    PyC / Nexa_Vortex — Distributed Training Layer
+  </text>
+  <text x="550" y="62" text-anchor="middle" font-size="13" fill="#64748b">
+    Hardware-Agnostic Architecture  ·  Strategy / Mechanism Separation
+  </text>
+  <line x1="60" y1="74" x2="1040" y2="74" stroke="#cbd5e1" stroke-width="1.5"/>
+
+  <!-- ─── LAYER 4: PYTHON SDK ────────────────────────────── -->
+  <rect x="60" y="84" width="980" height="108" rx="10" fill="url(#g_py)" filter="url(#sh)"/>
+  <text x="550" y="108" text-anchor="middle" font-size="10" font-weight="bold" fill="#bfdbfe" letter-spacing="2">LAYER 4 — USER-FACING API</text>
+  <text x="550" y="128" text-anchor="middle" font-size="17" font-weight="bold" fill="#ffffff">Python SDK  ·  pyc.distributed</text>
+
+  <rect x="88"  y="142" width="160" height="36" rx="6" fill="#1e40af"/>
+  <text x="168" y="165" text-anchor="middle" font-size="12" fill="#bfdbfe" class="mono">dist.init(strategy=…)</text>
+
+  <rect x="262" y="142" width="160" height="36" rx="6" fill="#1e40af"/>
+  <text x="342" y="165" text-anchor="middle" font-size="12" fill="#bfdbfe" class="mono">pyc.compile(model, opts)</text>
+
+  <rect x="436" y="142" width="160" height="36" rx="6" fill="#1e40af"/>
+  <text x="516" y="165" text-anchor="middle" font-size="12" fill="#bfdbfe" class="mono">dist.optimizer_step()</text>
+
+  <rect x="610" y="142" width="160" height="36" rx="6" fill="#1e40af"/>
+  <text x="690" y="165" text-anchor="middle" font-size="12" fill="#bfdbfe" class="mono">model.backward(loss)</text>
+
+  <rect x="784" y="142" width="248" height="36" rx="6" fill="#1e40af"/>
+  <text x="908" y="165" text-anchor="middle" font-size="12" fill="#bfdbfe" class="mono">dist.destroy()  /  dist.barrier()</text>
+
+  <!-- arrow -->
+  <line x1="550" y1="192" x2="550" y2="210" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ─── LAYER 3: PARALLELISM STRATEGY ─────────────────── -->
+  <rect x="60" y="212" width="980" height="148" rx="10" fill="url(#g_strat)" filter="url(#sh)"/>
+  <text x="550" y="236" text-anchor="middle" font-size="10" font-weight="bold" fill="#ddd6fe" letter-spacing="2">LAYER 3 — PARALLELISM STRATEGY ENGINE</text>
+  <text x="550" y="256" text-anchor="middle" font-size="17" font-weight="bold" fill="#ffffff">ParallelismStrategy  (Abstract Interface)</text>
+  <text x="550" y="274" text-anchor="middle" font-size="12" fill="#c4b5fd">shard_model()  ·  pre_forward()  ·  post_backward()  ·  optimizer_step()</text>
+
+  <rect x="82"  y="284" width="164" height="62" rx="7" fill="#4c1d95"/>
+  <text x="164" y="308" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">DataParallel</text>
+  <text x="164" y="326" text-anchor="middle" font-size="10" fill="#c4b5fd">AllReduce gradients</text>
+  <text x="164" y="340" text-anchor="middle" font-size="10" fill="#c4b5fd">Simple / DDP pattern</text>
+
+  <rect x="258" y="284" width="164" height="62" rx="7" fill="#4c1d95"/>
+  <text x="340" y="308" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">TensorParallel</text>
+  <text x="340" y="326" text-anchor="middle" font-size="10" fill="#c4b5fd">Megatron-style sharding</text>
+  <text x="340" y="340" text-anchor="middle" font-size="10" fill="#c4b5fd">intra-node NVLink</text>
+
+  <rect x="434" y="284" width="164" height="62" rx="7" fill="#4c1d95"/>
+  <text x="516" y="308" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">PipelineParallel</text>
+  <text x="516" y="326" text-anchor="middle" font-size="10" fill="#c4b5fd">1F1B micro-batch</text>
+  <text x="516" y="340" text-anchor="middle" font-size="10" fill="#c4b5fd">Send / Recv P2P</text>
+
+  <rect x="610" y="284" width="164" height="62" rx="7" fill="#4c1d95"/>
+  <text x="692" y="308" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">ZeRO (1 / 2 / 3)</text>
+  <text x="692" y="326" text-anchor="middle" font-size="10" fill="#c4b5fd">RS + AG decomposition</text>
+  <text x="692" y="340" text-anchor="middle" font-size="10" fill="#c4b5fd">Shard params / grads / opt</text>
+
+  <rect x="786" y="284" width="252" height="62" rx="7" fill="#3b0764"/>
+  <text x="912" y="308" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">3D Parallel (TP x PP x DP)</text>
+  <text x="912" y="326" text-anchor="middle" font-size="10" fill="#c4b5fd">NVLink inner  /  IB outer</text>
+  <text x="912" y="340" text-anchor="middle" font-size="10" fill="#c4b5fd">Composite strategy</text>
+
+  <!-- arrow -->
+  <line x1="550" y1="360" x2="550" y2="378" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ─── LAYER 2: COLLECTIVE COMM C-ABI ────────────────── -->
+  <rect x="60" y="380" width="980" height="132" rx="10" fill="url(#g_cabi)" filter="url(#sh)"/>
+  <text x="550" y="404" text-anchor="middle" font-size="10" font-weight="bold" fill="#a5f3fc" letter-spacing="2">LAYER 2 — HARDWARE-AGNOSTIC C-ABI INTERFACE</text>
+  <text x="550" y="424" text-anchor="middle" font-size="17" font-weight="bold" fill="#ffffff">CollectiveComm  ·  pyc_collective_comm</text>
+  <text x="550" y="442" text-anchor="middle" font-size="12" fill="#a5f3fc">Struct of function pointers  —  callable from C  ·  Rust FFI  ·  Python ctypes</text>
+
+  <rect x="82"  y="454" width="130" height="44" rx="6" fill="#0e7490"/>
+  <text x="147" y="472" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" class="mono">AllReduce</text>
+  <text x="147" y="489" text-anchor="middle" font-size="10" fill="#a5f3fc">op=SUM|AVG|MAX</text>
+
+  <rect x="224" y="454" width="130" height="44" rx="6" fill="#0e7490"/>
+  <text x="289" y="472" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" class="mono">AllGather</text>
+  <text x="289" y="489" text-anchor="middle" font-size="10" fill="#a5f3fc">count x world_size</text>
+
+  <rect x="366" y="454" width="148" height="44" rx="6" fill="#0e7490"/>
+  <text x="440" y="472" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" class="mono">ReduceScatter</text>
+  <text x="440" y="489" text-anchor="middle" font-size="10" fill="#a5f3fc">ZeRO-2/3 grad sync</text>
+
+  <rect x="526" y="454" width="130" height="44" rx="6" fill="#0e7490"/>
+  <text x="591" y="472" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" class="mono">Broadcast</text>
+  <text x="591" y="489" text-anchor="middle" font-size="10" fill="#a5f3fc">root_rank -&gt; all</text>
+
+  <rect x="668" y="454" width="130" height="44" rx="6" fill="#0e7490"/>
+  <text x="733" y="472" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" class="mono">Send / Recv</text>
+  <text x="733" y="489" text-anchor="middle" font-size="10" fill="#a5f3fc">pipeline P2P</text>
+
+  <rect x="810" y="454" width="228" height="44" rx="6" fill="#155e75"/>
+  <text x="924" y="472" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" class="mono">Barrier  /  create_comm</text>
+  <text x="924" y="489" text-anchor="middle" font-size="10" fill="#a5f3fc">checkpoint sync  ·  lifecycle</text>
+
+  <!-- arrow -->
+  <line x1="550" y1="512" x2="550" y2="530" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ─── LAYER 1: BACKENDS ──────────────────────────────── -->
+  <rect x="60" y="532" width="980" height="200" rx="10" fill="url(#g_back)" filter="url(#sh)"/>
+  <text x="550" y="556" text-anchor="middle" font-size="10" font-weight="bold" fill="#a7f3d0" letter-spacing="2">LAYER 1 — COMMUNICATION BACKENDS  (runtime-loaded .so)</text>
+  <text x="550" y="576" text-anchor="middle" font-size="17" font-weight="bold" fill="#ffffff">CommBackend Implementations</text>
+
+  <!-- NCCL -->
+  <rect x="82" y="590" width="290" height="128" rx="8" fill="#065f46"/>
+  <text x="227" y="614" text-anchor="middle" font-size="14" font-weight="bold" fill="#6ee7b7">NCCLBackend</text>
+  <text x="227" y="630" text-anchor="middle" font-size="11" fill="#a7f3d0">NVIDIA NVLink · NVSwitch · InfiniBand</text>
+  <line x1="100" y1="637" x2="354" y2="637" stroke="#047857" stroke-width="1"/>
+  <text x="100" y="653" font-size="10" fill="#6ee7b7">+ Ring / Tree / NVLS algorithm selection</text>
+  <text x="100" y="668" font-size="10" fill="#6ee7b7">+ Simple / LL / LL128 protocol auto-select</text>
+  <text x="100" y="683" font-size="10" fill="#6ee7b7">+ GPUDirect RDMA  ·  Multi-channel SMs</text>
+  <text x="100" y="698" font-size="10" fill="#6ee7b7">+ NVSwitch multicast (3x AllReduce speedup)</text>
+  <text x="100" y="713" font-size="10" fill="#6ee7b7">+ Per-peer multi-QP InfiniBand channels</text>
+
+  <!-- RCCL -->
+  <rect x="394" y="590" width="240" height="128" rx="8" fill="#065f46"/>
+  <text x="514" y="614" text-anchor="middle" font-size="14" font-weight="bold" fill="#6ee7b7">RCCLBackend</text>
+  <text x="514" y="630" text-anchor="middle" font-size="11" fill="#a7f3d0">AMD Infinity Fabric · RDMA</text>
+  <line x1="412" y1="637" x2="616" y2="637" stroke="#047857" stroke-width="1"/>
+  <text x="412" y="653" font-size="10" fill="#6ee7b7">+ RCCL API mirrors NCCL</text>
+  <text x="412" y="668" font-size="10" fill="#6ee7b7">+ hipStream_t stream param</text>
+  <text x="412" y="683" font-size="10" fill="#6ee7b7">+ ROCm topology detection</text>
+  <text x="412" y="698" font-size="10" fill="#6ee7b7">+ Same C-ABI — zero changes above</text>
+
+  <!-- MPI -->
+  <rect x="656" y="590" width="382" height="128" rx="8" fill="#065f46"/>
+  <text x="847" y="614" text-anchor="middle" font-size="14" font-weight="bold" fill="#6ee7b7">MPIBackend</text>
+  <text x="847" y="630" text-anchor="middle" font-size="11" fill="#a7f3d0">CPU · Generic Ethernet · Heterogeneous</text>
+  <line x1="674" y1="637" x2="1020" y2="637" stroke="#047857" stroke-width="1"/>
+  <text x="674" y="653" font-size="10" fill="#6ee7b7">+ MPI_Allreduce / MPI_Allgather / MPI_Scatter</text>
+  <text x="674" y="668" font-size="10" fill="#6ee7b7">+ MPI-xCCL: routes to NCCL/RCCL/HCCL by rank</text>
+  <text x="674" y="683" font-size="10" fill="#6ee7b7">+ Fallback for CPU nodes / mixed clusters</text>
+  <text x="674" y="698" font-size="10" fill="#6ee7b7">+ Same C-ABI — zero changes above</text>
+
+  <!-- arrow -->
+  <line x1="550" y1="732" x2="550" y2="750" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ─── TOPOLOGY REGISTRY ──────────────────────────────── -->
+  <!-- Dashed side connector -->
+  <line x1="62" y1="820" x2="62" y2="680" stroke="#d97706" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arr_amb)"/>
+  <text transform="rotate(-90,28,820)" x="-980" y="28" font-size="10" font-weight="bold" fill="#d97706" letter-spacing="1">QUERIES ALL LAYERS</text>
+
+  <rect x="60" y="752" width="980" height="136" rx="10" fill="url(#g_topo)" filter="url(#sh)"/>
+  <text x="550" y="776" text-anchor="middle" font-size="10" font-weight="bold" fill="#fef3c7" letter-spacing="2">CROSS-CUTTING — TOPOLOGY REGISTRY</text>
+  <text x="550" y="796" text-anchor="middle" font-size="17" font-weight="bold" fill="#ffffff">TopologyRegistry  ·  Cluster Graph G = (V, E)</text>
+  <text x="550" y="814" text-anchor="middle" font-size="12" fill="#fef3c7">Auto-detected at init  ·  Queried by all layers for topology-aware decisions</text>
+
+  <rect x="82"  y="824" width="178" height="50" rx="6" fill="#92400e"/>
+  <text x="171" y="844" text-anchor="middle" font-size="11" font-weight="bold" fill="#fef3c7">NVLink Edge Weights</text>
+  <text x="171" y="860" text-anchor="middle" font-size="10" fill="#fde68a">bandwidth_gbps · latency_us</text>
+
+  <rect x="272" y="824" width="178" height="50" rx="6" fill="#92400e"/>
+  <text x="361" y="844" text-anchor="middle" font-size="11" font-weight="bold" fill="#fef3c7">InfiniBand Fabric</text>
+  <text x="361" y="860" text-anchor="middle" font-size="10" fill="#fde68a">RDMA capable · switch hops</text>
+
+  <rect x="462" y="824" width="178" height="50" rx="6" fill="#92400e"/>
+  <text x="551" y="844" text-anchor="middle" font-size="11" font-weight="bold" fill="#fef3c7">NUMA Domains</text>
+  <text x="551" y="860" text-anchor="middle" font-size="10" fill="#fde68a">GPU to CPU socket affinity</text>
+
+  <rect x="652" y="824" width="178" height="50" rx="6" fill="#92400e"/>
+  <text x="741" y="844" text-anchor="middle" font-size="11" font-weight="bold" fill="#fef3c7">Algorithm Selector</text>
+  <text x="741" y="860" text-anchor="middle" font-size="10" fill="#fde68a">Ring / Tree / NVLS by msg size</text>
+
+  <rect x="842" y="824" width="196" height="50" rx="6" fill="#78350f"/>
+  <text x="940" y="844" text-anchor="middle" font-size="11" font-weight="bold" fill="#fef3c7">Sources: NVML · NCCL XML</text>
+  <text x="940" y="860" text-anchor="middle" font-size="10" fill="#fde68a">ibnetdiscover · MPI rank info</text>
+
+  <!-- arrow -->
+  <line x1="550" y1="888" x2="550" y2="906" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ─── PyC COMPILER ───────────────────────────────────── -->
+  <rect x="60" y="908" width="980" height="112" rx="10" fill="url(#g_comp)" filter="url(#sh)"/>
+  <text x="550" y="932" text-anchor="middle" font-size="10" font-weight="bold" fill="#fecaca" letter-spacing="2">EXISTING — PyC COMPILER LAYER (EXTENDED)</text>
+  <text x="550" y="952" text-anchor="middle" font-size="17" font-weight="bold" fill="#ffffff">PyC Compiler  ·  IR  ·  Pass Manager  ·  CUTLASS Kernels</text>
+
+  <rect x="82"  y="964" width="210" height="42" rx="6" fill="#991b1b"/>
+  <text x="187" y="990" text-anchor="middle" font-size="11" fill="#fecaca" class="mono">collective_comm.h  (NEW)</text>
+
+  <rect x="304" y="964" width="210" height="42" rx="6" fill="#991b1b"/>
+  <text x="409" y="990" text-anchor="middle" font-size="11" fill="#fecaca" class="mono">pyc_load_comm_backend()</text>
+
+  <rect x="526" y="964" width="210" height="42" rx="6" fill="#991b1b"/>
+  <text x="631" y="990" text-anchor="middle" font-size="11" fill="#fecaca" class="mono">pyc_distributed_options</text>
+
+  <rect x="748" y="964" width="290" height="42" rx="6" fill="#7f1d1d"/>
+  <text x="893" y="990" text-anchor="middle" font-size="11" fill="#fecaca" class="mono">CUTLASS GEMM · Conv2d · Attn</text>
+
+  <!-- arrow -->
+  <line x1="550" y1="1020" x2="550" y2="1038" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ─── NEXA_VORTEX RUNTIME ────────────────────────────── -->
+  <rect x="60" y="1040" width="980" height="186" rx="10" fill="url(#g_rt)" filter="url(#sh)"/>
+  <text x="550" y="1064" text-anchor="middle" font-size="10" font-weight="bold" fill="#9ca3af" letter-spacing="2">EXISTING — NEXA_VORTEX RUNTIME (EXTENDED)</text>
+  <text x="550" y="1084" text-anchor="middle" font-size="17" font-weight="bold" fill="#ffffff">Vortex Runtime  ·  Per-Node Execution Engine  (Rust)</text>
+
+  <!-- pipeline.rs -->
+  <rect x="82" y="1098" width="184" height="114" rx="7" fill="#1f2937"/>
+  <text x="174" y="1118" text-anchor="middle" font-size="12" font-weight="bold" fill="#f9fafb" class="mono">pipeline.rs</text>
+  <line x1="100" y1="1124" x2="248" y2="1124" stroke="#374151" stroke-width="1"/>
+  <text x="100" y="1140" font-size="10" fill="#9ca3af">+ HostPrep -&gt; H2D -&gt; Kernel</text>
+  <text x="100" y="1155" font-size="10" fill="#60a5fa">+ CommStep  (NEW)</text>
+  <text x="100" y="1170" font-size="10" fill="#9ca3af">+ D2H -&gt; async conveyor</text>
+  <text x="100" y="1185" font-size="10" fill="#9ca3af">+ compute-comm overlap</text>
+  <text x="100" y="1200" font-size="10" fill="#9ca3af">+ 1F1B micro-batch sched</text>
+
+  <!-- distributed.rs -->
+  <rect x="278" y="1098" width="184" height="114" rx="7" fill="#1f2937"/>
+  <text x="370" y="1118" text-anchor="middle" font-size="12" font-weight="bold" fill="#f9fafb" class="mono">distributed.rs</text>
+  <line x1="296" y1="1124" x2="444" y2="1124" stroke="#374151" stroke-width="1"/>
+  <text x="296" y="1140" font-size="10" fill="#60a5fa">+ FFI -&gt; pyc_collective_comm</text>
+  <text x="296" y="1155" font-size="10" fill="#9ca3af">+ Safe Rust wrappers</text>
+  <text x="296" y="1170" font-size="10" fill="#9ca3af">+ DistributedComm struct</text>
+  <text x="296" y="1185" font-size="10" fill="#60a5fa">+ NEW module</text>
+
+  <!-- allocator.rs -->
+  <rect x="474" y="1098" width="184" height="114" rx="7" fill="#1f2937"/>
+  <text x="566" y="1118" text-anchor="middle" font-size="12" font-weight="bold" fill="#f9fafb" class="mono">allocator.rs</text>
+  <line x1="492" y1="1124" x2="640" y2="1124" stroke="#374151" stroke-width="1"/>
+  <text x="492" y="1140" font-size="10" fill="#9ca3af">+ NUMA-local pinned alloc</text>
+  <text x="492" y="1155" font-size="10" fill="#9ca3af">+ Gradient accum buffer</text>
+  <text x="492" y="1170" font-size="10" fill="#60a5fa">+ Comm buffer pool  (NEW)</text>
+  <text x="492" y="1185" font-size="10" fill="#9ca3af">+ memory_budget_bytes</text>
+
+  <!-- hw_profile.rs -->
+  <rect x="670" y="1098" width="184" height="114" rx="7" fill="#1f2937"/>
+  <text x="762" y="1118" text-anchor="middle" font-size="12" font-weight="bold" fill="#f9fafb" class="mono">hw_profile.rs</text>
+  <line x1="688" y1="1124" x2="836" y2="1124" stroke="#374151" stroke-width="1"/>
+  <text x="688" y="1140" font-size="10" fill="#9ca3af">+ GPU capability detect</text>
+  <text x="688" y="1155" font-size="10" fill="#9ca3af">+ NUMA node mapping</text>
+  <text x="688" y="1170" font-size="10" fill="#9ca3af">+ NVLink peer graph</text>
+  <text x="688" y="1185" font-size="10" fill="#9ca3af">+ feeds TopologyRegistry</text>
+
+  <!-- cpu_dispatch.rs -->
+  <rect x="866" y="1098" width="172" height="114" rx="7" fill="#1f2937"/>
+  <text x="952" y="1118" text-anchor="middle" font-size="12" font-weight="bold" fill="#f9fafb" class="mono">cpu_dispatch.rs</text>
+  <line x1="884" y1="1124" x2="1020" y2="1124" stroke="#374151" stroke-width="1"/>
+  <text x="884" y="1140" font-size="10" fill="#9ca3af">+ Lock-free SPMC queue</text>
+  <text x="884" y="1155" font-size="10" fill="#9ca3af">+ crossbeam channel</text>
+  <text x="884" y="1170" font-size="10" fill="#9ca3af">+ Work-stealing sched</text>
+  <text x="884" y="1185" font-size="10" fill="#9ca3af">+ Intra-node dispatch</text>
+
+  <!-- ─── LEGEND ──────────────────────────────────────────── -->
+  <rect x="60" y="1244" width="980" height="134" rx="10" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="550" y="1268" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">Legend</text>
+
+  <rect x="90"  y="1280" width="14" height="14" rx="3" fill="#3b82f6"/>
+  <text x="112" y="1292" font-size="12" fill="#374151">New module / file</text>
+
+  <rect x="90"  y="1304" width="14" height="14" rx="3" fill="#059669"/>
+  <text x="112" y="1316" font-size="12" fill="#374151">Runtime-loaded backend (.so)</text>
+
+  <rect x="90"  y="1328" width="14" height="14" rx="3" fill="#7c3aed"/>
+  <text x="112" y="1340" font-size="12" fill="#374151">Parallelism strategy (Python)</text>
+
+  <rect x="320" y="1280" width="14" height="14" rx="3" fill="#374151"/>
+  <text x="342" y="1292" font-size="12" fill="#374151">Existing Vortex module (extended)</text>
+
+  <rect x="320" y="1304" width="14" height="14" rx="3" fill="#dc2626"/>
+  <text x="342" y="1316" font-size="12" fill="#374151">Existing PyC compiler (extended)</text>
+
+  <rect x="320" y="1328" width="14" height="14" rx="3" fill="#d97706"/>
+  <text x="342" y="1340" font-size="12" fill="#374151">Cross-cutting concern (queries all layers)</text>
+
+  <line x1="580" y1="1262" x2="580" y2="1360" stroke="#e2e8f0" stroke-width="1.5"/>
+
+  <text x="598" y="1280" font-size="12" font-weight="bold" fill="#0f172a">Core Invariant:</text>
+  <text x="598" y="1298" font-size="12" fill="#374151">Higher layers only call downward through defined interfaces.</text>
+  <text x="598" y="1316" font-size="12" fill="#374151">No layer reaches across or upward.</text>
+  <text x="598" y="1334" font-size="12" fill="#374151">Strategy never touches hardware directly.</text>
+  <text x="598" y="1352" font-size="12" fill="#374151">Backend never knows which strategy is active.</text>
+
+  <!-- ─── FOOTER ─────────────────────────────────────────── -->
+  <line x1="60" y1="1386" x2="1040" y2="1386" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="550" y="1396" text-anchor="middle" font-size="11" fill="#94a3b8">
+    PyC / Nexa_Vortex Distributed Training Layer Spec  ·  Manus AI  ·  2026-03-04
+  </text>
+
+</svg>

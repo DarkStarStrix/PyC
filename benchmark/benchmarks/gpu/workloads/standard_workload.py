@@ -29,8 +29,13 @@ def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmu
     if device == "cuda":
         torch.cuda.manual_seed_all(7)
 
+    def full_device_sync() -> None:
+        if device == "cuda":
+            torch.cuda.synchronize()
+
     dtype = torch.float16 if device == "cuda" else torch.float32
 
+    setup_start = time.perf_counter()
     model = torch.nn.Sequential(
         torch.nn.Linear(hidden, hidden * 4),
         torch.nn.GELU(),
@@ -42,6 +47,7 @@ def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmu
             model = torch.compile(model, mode="max-autotune")
         except Exception:
             return {"status": "unavailable", "reason": "torch.compile not available"}
+    setup_ms = (time.perf_counter() - setup_start) * 1000.0
 
     x = torch.randn(batch, hidden, device=device, dtype=dtype)
 
@@ -52,18 +58,30 @@ def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmu
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
 
+    first_step_ms = 0.0
+    with torch.no_grad():
+        full_device_sync()
+        first_start = time.perf_counter()
+        y = model(x)
+        z = y @ y.transpose(-1, -2)
+        _ = z.mean()
+        full_device_sync()
+        first_end = time.perf_counter()
+        full_device_sync()
+        first_step_ms = (first_end - first_start) * 1000.0
+
     total = warmup + iters
     with torch.no_grad():
         for i in range(total):
-            if device == "cuda":
-                torch.cuda.synchronize()
+            full_device_sync()
             start = time.perf_counter()
             y = model(x)
             z = y @ y.transpose(-1, -2)
             _ = z.mean()
-            if device == "cuda":
-                torch.cuda.synchronize()
-            elapsed = (time.perf_counter() - start) * 1000.0
+            full_device_sync()
+            end = time.perf_counter()
+            full_device_sync()
+            elapsed = (end - start) * 1000.0
             if i >= warmup:
                 times_ms.append(elapsed)
 
@@ -71,8 +89,11 @@ def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmu
         peak_mem = int(torch.cuda.max_memory_allocated())
 
     mean_ms = statistics.mean(times_ms)
+    p50_ms = percentile(times_ms, 50)
+    p95_ms = percentile(times_ms, 95)
     tokens = batch * hidden
     throughput = (tokens / mean_ms) * 1000.0
+    compile_overhead_ms = max(0.0, first_step_ms - p50_ms)
 
     return {
         "status": "ok",
@@ -85,10 +106,16 @@ def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmu
         "warmup": warmup,
         "latency_ms": {
             "mean": round(mean_ms, 4),
-            "p50": round(percentile(times_ms, 50), 4),
-            "p95": round(percentile(times_ms, 95), 4),
+            "p50": round(p50_ms, 4),
+            "p95": round(p95_ms, 4),
             "min": round(min(times_ms), 4),
             "max": round(max(times_ms), 4),
+        },
+        "startup_ms": {
+            "setup": round(setup_ms, 4),
+            "first_step": round(first_step_ms, 4),
+            "total": round(setup_ms + first_step_ms, 4),
+            "compile_overhead_estimate": round(compile_overhead_ms, 4),
         },
         "throughput_tokens_per_sec": round(throughput, 2),
         "peak_memory_bytes": peak_mem,

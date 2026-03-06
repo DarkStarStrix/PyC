@@ -40,7 +40,7 @@ __shared__ char shared_input[1024];
 __shared__ int shared_token_count;
 
 // Enhanced tokenization kernel with better pattern matching
-__global__ void enhanced_tokenize_kernel(const char* input, size_t input_length, 
+__global__ void enhanced_tokenize_kernel(const char* input, size_t input_length,
                                        EnhancedTokenGPU* tokens, int* token_count,
                                        bool enable_comments, bool enable_preprocessing) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -157,11 +157,11 @@ __global__ void enhanced_matrix_mult_kernel(float* a, float* b, float* c,
                                           int m, int n, int k,
                                           bool use_shared_memory) {
     // ... existing matrix multiplication code ...
-    
+
     // Add shared memory optimization
     __shared__ float shared_a[16][16];
     __shared__ float shared_b[16][16];
-    
+
     // ... implement block matrix multiplication ...
 }
 
@@ -175,7 +175,7 @@ void optimize_kernel_launch(dim3* blocks, dim3* threads, size_t shared_memory_si
     cudaGetDevice(&device);
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, device);
-    
+
     // Optimize launch configuration based on device properties
     // ... implementation ...
 }
@@ -246,4 +246,3 @@ int main() {
     return 0;
 }
 // Compile with nvcc -o kernel kernel.cu
-

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PyC Results Insights</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="container">
+    <header class="site-header">
+      <div class="top-bar">
+        <p class="eyebrow">PyC Compiler Runtime</p>
+        <button id="theme-toggle" type="button" class="theme-toggle" aria-label="Toggle color theme">Switch Theme</button>
+      </div>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="./index.html">Main</a>
+        <a class="active" href="./results-insights.html">Results Insights</a>
+        <a href="./inference-site/index.html">Inference Portal</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <p class="hero-kicker">Live campaign signal</p>
+      <h1>Distributed performance readout with throughput, communication, and idle-gap decomposition.</h1>
+      <p class="hero-copy">
+        This page tracks the most recent campaign runs and exposes where time is spent in the execution loop.
+        The objective is simple: keep compute dominant while minimizing communication and idle fractions.
+      </p>
+      <p id="run-status" class="status">Loading distributed run summary...</p>
+      <div id="kpi-grid" class="kpi-grid"></div>
+    </section>
+
+    <section class="flow">
+      <h2>Key Visuals</h2>
+      <p class="section-text">
+        All visuals below are sourced from published artifacts in this repository and refreshed by the site publish pipeline.
+      </p>
+      <div class="chart-grid chart-grid-wide">
+        <figure>
+          <img id="latest-dist-summary" src="" alt="Latest run summary chart" loading="lazy">
+          <figcaption>Latest run summary SVG</figcaption>
+        </figure>
+        <figure>
+          <img id="latest-dist-throughput" src="" alt="Latest distributed throughput chart" loading="lazy">
+          <figcaption>Distributed throughput ranking (recent runs)</figcaption>
+        </figure>
+        <figure>
+          <img id="latest-dist-pipeline" src="" alt="Latest distributed pipeline breakdown chart" loading="lazy">
+          <figcaption>Latest run stage breakdown: compute, comm, idle, and H2D</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="flow">
+      <h2>Compiler Adapter Baseline</h2>
+      <p class="section-text">
+        Adapter-level benchmark summaries are shown for CPU and GPU paths to anchor distributed campaign interpretation.
+      </p>
+      <h3>CPU</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Mode</th>
+            <th>Mean (ms)</th>
+            <th>P50 (ms)</th>
+            <th>P95 (ms)</th>
+            <th>Throughput</th>
+          </tr>
+        </thead>
+        <tbody id="cpu-body"></tbody>
+      </table>
+
+      <h3>GPU</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Mode</th>
+            <th>Mean (ms)</th>
+            <th>P50 (ms)</th>
+            <th>P95 (ms)</th>
+            <th>Throughput</th>
+          </tr>
+        </thead>
+        <tbody id="gpu-body"></tbody>
+      </table>
+    </section>
+
+    <section class="flow">
+      <h2>Recent Distributed Runs</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>World</th>
+            <th>Samples/s</th>
+            <th>Tokens/s</th>
+            <th>Comm (ms)</th>
+            <th>Idle (ms)</th>
+          </tr>
+        </thead>
+        <tbody id="dist-body"></tbody>
+      </table>
+      <p class="section-text">
+        Raw files:
+        <a href="./website/results/manifest.json" target="_blank" rel="noopener noreferrer">manifest.json</a> |
+        <a href="./website/results/latest-summary.json" target="_blank" rel="noopener noreferrer">latest-summary.json</a> |
+        <a href="./website/results/distributed-latest.json" target="_blank" rel="noopener noreferrer">distributed-latest.json</a>
+      </p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      function preferredTheme() {
+        try {
+          var s = window.localStorage.getItem("pyc-theme");
+          if (s === "light" || s === "dark") return s;
+        } catch (e) {}
+        return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+
+      function applyTheme(theme) {
+        var t = theme === "dark" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+        var b = document.getElementById("theme-toggle");
+        if (b) b.textContent = t === "dark" ? "Light Mode" : "Dark Mode";
+      }
+
+      function initTheme() {
+        applyTheme(preferredTheme());
+        var b = document.getElementById("theme-toggle");
+        if (!b) return;
+        b.addEventListener("click", function () {
+          var n = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+          applyTheme(n);
+          try { window.localStorage.setItem("pyc-theme", n); } catch (e) {}
+        });
+      }
+
+      function fmt(v, d) {
+        return typeof v === "number" ? v.toFixed(d) : "-";
+      }
+
+      function setRows(id, rows, cols) {
+        var body = document.getElementById(id);
+        body.innerHTML = "";
+        if (!rows || !rows.length) {
+          body.innerHTML = "<tr><td colspan=\"" + cols + "\">No rows available.</td></tr>";
+          return;
+        }
+        body.innerHTML = rows.map(function (r) {
+          return "<tr>" +
+            "<td>" + (r.display_name || r.adapter || r.run_id || "-") + "</td>" +
+            "<td>" + (r.mode || r.world_size || "-") + "</td>" +
+            "<td>" + fmt(r.mean_ms !== undefined ? r.mean_ms : r.samples_per_sec, 2) + "</td>" +
+            "<td>" + fmt(r.p50_ms !== undefined ? r.p50_ms : r.tokens_per_sec, 2) + "</td>" +
+            "<td>" + fmt(r.p95_ms !== undefined ? r.p95_ms : r.comm_time_ms_mean, 4) + "</td>" +
+            "<td>" + fmt(r.throughput_tokens_per_sec !== undefined ? r.throughput_tokens_per_sec : r.idle_gap_ms_mean, 4) + "</td>" +
+            "</tr>";
+        }).join("");
+      }
+
+      function setImage(id, path, fallback) {
+        var img = document.getElementById(id);
+        if (!img) return;
+        if (path) img.src = "./" + path;
+        img.onerror = function () {
+          if (fallback) img.src = fallback;
+        };
+      }
+
+      Promise.all([
+        fetch("./website/results/latest-summary.json", { cache: "no-store" }).then(function (r) { return r.json(); }),
+        fetch("./website/results/distributed-latest.json", { cache: "no-store" }).then(function (r) { return r.json(); })
+      ]).then(function (all) {
+        var latestSummary = all[0] || {};
+        var distPayload = all[1] || {};
+        var latest = distPayload.latest || {};
+        var visuals = distPayload.visuals || {};
+
+        setRows("cpu-body", (latestSummary.cpu && latestSummary.cpu.adapters) || [], 6);
+        setRows("gpu-body", (latestSummary.gpu && latestSummary.gpu.adapters) || [], 6);
+
+        var runs = (distPayload.runs || []).map(function (r) {
+          return {
+            run_id: r.run_id,
+            world_size: r.world_size,
+            samples_per_sec: r.samples_per_sec,
+            tokens_per_sec: r.tokens_per_sec,
+            comm_time_ms_mean: r.comm_time_ms_mean,
+            idle_gap_ms_mean: r.idle_gap_ms_mean
+          };
+        });
+        setRows("dist-body", runs, 6);
+
+        document.getElementById("run-status").textContent =
+          "Latest distributed run: " + (latest.run_id || "unknown") +
+          " | world size: " + (latest.world_size || "-") +
+          " | tokens/s: " + fmt(latest.tokens_per_sec, 2) +
+          " | comm ms: " + fmt(latest.comm_time_ms_mean, 4);
+
+        var grid = document.getElementById("kpi-grid");
+        grid.innerHTML =
+          "<div class='kpi'><p class='label'>Samples/s</p><p class='value'>" + fmt(latest.samples_per_sec, 2) + "</p></div>" +
+          "<div class='kpi'><p class='label'>Tokens/s</p><p class='value'>" + fmt(latest.tokens_per_sec, 2) + "</p></div>" +
+          "<div class='kpi'><p class='label'>GPU Util Mean</p><p class='value'>" + fmt(latest.gpu_util_mean, 2) + "%</p></div>" +
+          "<div class='kpi'><p class='label'>Compute (ms)</p><p class='value'>" + fmt(latest.compute_time_ms_mean, 4) + "</p></div>" +
+          "<div class='kpi'><p class='label'>Comm (ms)</p><p class='value'>" + fmt(latest.comm_time_ms_mean, 4) + "</p></div>" +
+          "<div class='kpi'><p class='label'>Idle (ms)</p><p class='value'>" + fmt(latest.idle_gap_ms_mean, 4) + "</p></div>";
+
+        var latestSummarySvg = latest.published && latest.published.summary_svg ? latest.published.summary_svg : null;
+        setImage("latest-dist-summary", latestSummarySvg, "./website/results/artifacts/images/latest_distributed_pipeline.svg");
+        setImage("latest-dist-throughput", visuals.throughput_svg, "./website/results/artifacts/images/latest_distributed_throughput.svg");
+        setImage("latest-dist-pipeline", visuals.pipeline_svg, "./website/results/artifacts/images/latest_distributed_pipeline.svg");
+      }).catch(function () {
+        document.getElementById("run-status").textContent = "Failed to load results payloads.";
+      });
+
+      initTheme();
+    })();
+  </script>
+</body>
+</html>

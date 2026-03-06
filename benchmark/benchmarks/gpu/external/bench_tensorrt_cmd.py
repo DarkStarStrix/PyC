@@ -80,6 +80,7 @@ def main() -> int:
                 "throughput_tokens_per_sec": round(throughput, 2),
                 "peak_memory_bytes": 0,
                 "note": "TensorRT is CUDA-only; executed deterministic torch.compile proxy on CPU.",
+                "samples_ms": [round(v, 4) for v in samples],
             }
         )
 
@@ -115,15 +116,20 @@ def main() -> int:
 
     samples = []
     total = warmup + iters
+    def full_cuda_sync() -> None:
+        torch.cuda.synchronize()
+
     with torch.no_grad():
         for i in range(total):
-            torch.cuda.synchronize()
+            full_cuda_sync()
             start = time.perf_counter()
             y = trt_mod(x)
             z = y @ y.transpose(-1, -2)
             _ = z.mean()
-            torch.cuda.synchronize()
-            elapsed = (time.perf_counter() - start) * 1000.0
+            full_cuda_sync()
+            end = time.perf_counter()
+            full_cuda_sync()
+            elapsed = (end - start) * 1000.0
             if i >= warmup:
                 samples.append(elapsed)
 
@@ -150,6 +156,7 @@ def main() -> int:
             "throughput_tokens_per_sec": round(throughput, 2),
             "peak_memory_bytes": int(torch.cuda.max_memory_allocated()),
             "note": note,
+            "samples_ms": [round(v, 4) for v in samples],
         }
     )
 

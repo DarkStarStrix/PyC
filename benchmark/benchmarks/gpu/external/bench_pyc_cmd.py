@@ -22,6 +22,10 @@ def main() -> int:
     hidden = int(os.environ.get("BENCH_HIDDEN", "2048"))
     iters = int(os.environ.get("BENCH_ITERS", "80"))
     warmup = int(os.environ.get("BENCH_WARMUP", "20"))
+    if device == "cuda" and os.environ.get("PYC_CUDA_ASSUME_STATIC_RHS") is None:
+        # The benchmark workload uses a stable RHS (weight) tensor across iterations.
+        # Opt in by default to avoid redundant RHS device copies in this controlled path.
+        os.environ["PYC_CUDA_ASSUME_STATIC_RHS"] = "1"
     cfg = [
         "cmake",
         "-S",

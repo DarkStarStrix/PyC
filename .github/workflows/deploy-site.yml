@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     paths:
       - "index.html"
+      - "results-insights.html"
       - "styles.css"
       - "app.js"
       - "inference-site/**"
@@ -35,7 +36,7 @@ jobs:
         run: |
           mkdir -p site
           touch site/.nojekyll
-          cp index.html styles.css app.js site/
+          cp index.html results-insights.html styles.css app.js site/
           cp -R inference-site site/inference-site
 
           mkdir -p site/website

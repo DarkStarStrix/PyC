@@ -201,19 +201,19 @@ Exit: deterministic pass/fail behavior across Linux/macOS/Windows CI.
 
 ## Evidence References
 
-1. PyTorch `torch.compile` troubleshooting (compile times, graph breaks, guards/recompiles):  
+1. PyTorch `torch.compile` troubleshooting (compile times, graph breaks, guards/recompiles):
    https://docs.pytorch.org/docs/main/user_guide/torch_compiler/torch.compiler_troubleshooting.html
-2. PyTorch common graph breaks (data-dependent control flow and `.item` class):  
+2. PyTorch common graph breaks (data-dependent control flow and `.item` class):
    https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/compile/programming_model.common_graph_breaks.html
-3. PyTorch recompilation guide (guard failures and mitigation context):  
+3. PyTorch recompilation guide (guard failures and mitigation context):
    https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/compile/programming_model.recompilation.html
-4. PyTorch compile API behavior (guard failures, recompile limit fallback):  
+4. PyTorch compile API behavior (guard failures, recompile limit fallback):
    https://docs.pytorch.org/docs/stable/generated/torch.compile.html
-5. PyTorch compile-time caching guides (cold-start mitigation mechanics):  
+5. PyTorch compile-time caching guides (cold-start mitigation mechanics):
    https://docs.pytorch.org/tutorials/recipes/torch_compile_caching_tutorial.html
-6. Windows `torch.compile` setup guidance (MSVC/toolchain requirements):  
+6. Windows `torch.compile` setup guidance (MSVC/toolchain requirements):
    https://docs.pytorch.org/tutorials/unstable/inductor_windows.html
-7. Representative correctness issue class examples from PyTorch tracker:  
-   https://github.com/pytorch/pytorch/issues/155690  
-   https://github.com/pytorch/pytorch/issues/162722  
+7. Representative correctness issue class examples from PyTorch tracker:
+   https://github.com/pytorch/pytorch/issues/155690
+   https://github.com/pytorch/pytorch/issues/162722
    https://github.com/pytorch/pytorch/issues/164701

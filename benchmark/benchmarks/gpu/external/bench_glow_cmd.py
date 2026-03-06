@@ -37,6 +37,9 @@ def main() -> int:
     device = "cuda" if device_req == "cuda" else "cpu"
     dtype = torch.float16 if device == "cuda" else torch.float32
     torch.manual_seed(7)
+    def full_device_sync() -> None:
+        if device == "cuda":
+            torch.cuda.synchronize()
 
     model = torch.nn.Sequential(
         torch.nn.Linear(hidden, hidden * 4),
@@ -49,15 +52,15 @@ def main() -> int:
     total = warmup + iters
     with torch.no_grad():
         for i in range(total):
-            if device == "cuda":
-                torch.cuda.synchronize()
+            full_device_sync()
             start = time.perf_counter()
             y = model(x)
             z = y @ y.transpose(-1, -2)
             _ = z.mean()
-            if device == "cuda":
-                torch.cuda.synchronize()
-            elapsed = (time.perf_counter() - start) * 1000.0
+            full_device_sync()
+            end = time.perf_counter()
+            full_device_sync()
+            elapsed = (end - start) * 1000.0
             if i >= warmup:
                 samples.append(elapsed)
 
@@ -86,6 +89,7 @@ def main() -> int:
             "throughput_tokens_per_sec": round(throughput, 2),
             "peak_memory_bytes": peak_mem,
             "note": "Glow runtime is not linked in this environment; this is a deterministic proxy workload.",
+            "samples_ms": [round(v, 4) for v in samples],
         }
     )
 

@@ -16,8 +16,6 @@
     gpuSvg: "website/results/artifacts/latest/latest_gpu.svg",
     cpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/website/results/artifacts/latest/latest_cpu.svg",
     gpuSvgRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/website/results/artifacts/latest/latest_gpu.svg",
-    cpuJson: null,
-    gpuJson: null,
     summaryJson: "website/results/latest-summary.json",
     summaryJsonRemote: "https://raw.githubusercontent.com/DarkStarStrix/PyC/main/website/results/latest-summary.json"
   };
@@ -31,10 +29,16 @@
   var themeToggle = document.getElementById("theme-toggle");
 
   var resultsStatus = document.getElementById("results-status");
+  var distributedStatus = document.getElementById("distributed-status");
   var cpuBody = document.getElementById("cpu-results-body");
   var gpuBody = document.getElementById("gpu-results-body");
   var latestCpuSvg = document.getElementById("latest-cpu-svg");
   var latestGpuSvg = document.getElementById("latest-gpu-svg");
+
+  var distSummaryMain = document.getElementById("latest-dist-summary-main");
+  var distThroughputMain = document.getElementById("latest-dist-throughput-main");
+  var distPipelineMain = document.getElementById("latest-dist-pipeline-main");
+  var distKpiGrid = document.getElementById("dist-kpi-grid");
 
   function siteBaseHref() {
     var origin = window.location.origin || "";
@@ -118,6 +122,7 @@
   }
 
   function renderReleaseAssets(assets) {
+    if (!assetList) return;
     assetList.innerHTML = "";
     if (!assets.length) {
       var empty = document.createElement("li");
@@ -144,6 +149,7 @@
   }
 
   function renderRows(tbody, rows) {
+    if (!tbody) return;
     tbody.innerHTML = "";
     if (!rows || !rows.length) {
       var tr = document.createElement("tr");
@@ -174,19 +180,21 @@
     });
   }
 
-  function renderPinnedLatestCharts() {
-    if (latestCpuSvg) {
-      latestCpuSvg.src = toHref(LATEST_BENCH.cpuSvg);
-      latestCpuSvg.onerror = function () {
-        latestCpuSvg.src = LATEST_BENCH.cpuSvgRemote;
-      };
+  function setImageWithFallback(img, src, fallback) {
+    if (!img) return;
+    if (src) {
+      img.src = toHref(src);
     }
-    if (latestGpuSvg) {
-      latestGpuSvg.src = toHref(LATEST_BENCH.gpuSvg);
-      latestGpuSvg.onerror = function () {
-        latestGpuSvg.src = LATEST_BENCH.gpuSvgRemote;
-      };
-    }
+    img.onerror = function () {
+      if (fallback) {
+        img.src = fallback;
+      }
+    };
+  }
+
+  function renderBaselineCharts() {
+    setImageWithFallback(latestCpuSvg, LATEST_BENCH.cpuSvg, LATEST_BENCH.cpuSvgRemote);
+    setImageWithFallback(latestGpuSvg, LATEST_BENCH.gpuSvg, LATEST_BENCH.gpuSvgRemote);
   }
 
   function summaryRows(section) {
@@ -197,6 +205,7 @@
   }
 
   function loadRelease() {
+    if (!releaseLink || !status) return;
     fetch(api)
       .then(function (resp) {
         if (!resp.ok) throw new Error("Failed to fetch release");
@@ -206,24 +215,9 @@
         releaseLink.href = release.html_url;
         status.textContent = "Latest release: " + release.tag_name;
         renderReleaseAssets(release.assets || []);
-        setLink(
-          linuxLink,
-          findAsset(release.assets || [], "linux"),
-          defaultDownloadLinks.linux || release.html_url,
-          "pyc-linux-x86_64.tar.gz"
-        );
-        setLink(
-          macosLink,
-          findAsset(release.assets || [], "macos"),
-          defaultDownloadLinks.macos || release.html_url,
-          "pyc-macos-arm64.tar.gz"
-        );
-        setLink(
-          windowsLink,
-          findAsset(release.assets || [], "windows"),
-          defaultDownloadLinks.windows || release.html_url,
-          "pyc-windows-x86_64.zip"
-        );
+        setLink(linuxLink, findAsset(release.assets || [], "linux"), defaultDownloadLinks.linux || release.html_url, "pyc-linux-x86_64.tar.gz");
+        setLink(macosLink, findAsset(release.assets || [], "macos"), defaultDownloadLinks.macos || release.html_url, "pyc-macos-arm64.tar.gz");
+        setLink(windowsLink, findAsset(release.assets || [], "windows"), defaultDownloadLinks.windows || release.html_url, "pyc-windows-x86_64.zip");
       })
       .catch(function () {
         status.textContent = "Release metadata unavailable. Direct download links are still active.";
@@ -236,13 +230,13 @@
   }
 
   function loadPublishedResults() {
-    fetch(toHref(LATEST_BENCH.summaryJson))
+    fetch(toHref(LATEST_BENCH.summaryJson), { cache: "no-store" })
       .then(function (resp) {
         if (!resp.ok) throw new Error("local latest summary unavailable");
         return resp.json();
       })
       .catch(function () {
-        return fetch(LATEST_BENCH.summaryJsonRemote).then(function (resp) {
+        return fetch(LATEST_BENCH.summaryJsonRemote, { cache: "no-store" }).then(function (resp) {
           if (!resp.ok) throw new Error("remote latest summary unavailable");
           return resp.json();
         });
@@ -259,20 +253,72 @@
         renderRows(cpuBody, cpuRows);
         renderRows(gpuBody, gpuRows);
 
-        resultsStatus.textContent =
-          "Latest benchmark run: " + latestRun +
-          " | CPU adapters: " + cpuRows.length +
-          " | GPU adapters: " + gpuRows.length;
+        if (resultsStatus) {
+          resultsStatus.textContent =
+            "Latest baseline run: " + latestRun +
+            " | CPU adapters: " + cpuRows.length +
+            " | GPU adapters: " + gpuRows.length;
+        }
       })
       .catch(function () {
         renderRows(cpuBody, []);
         renderRows(gpuBody, []);
-        resultsStatus.textContent = "Latest benchmark run: " + LATEST_BENCH.runId + " (summary unavailable).";
+        if (resultsStatus) {
+          resultsStatus.textContent = "Baseline adapter summary unavailable.";
+        }
+      });
+  }
+
+  function renderDistKpis(latest) {
+    if (!distKpiGrid || !latest) return;
+    distKpiGrid.innerHTML =
+      "<div class='kpi'><p class='label'>Samples/s</p><p class='value'>" + fmt(latest.samples_per_sec, 2) + "</p></div>" +
+      "<div class='kpi'><p class='label'>Tokens/s</p><p class='value'>" + fmt(latest.tokens_per_sec, 2) + "</p></div>" +
+      "<div class='kpi'><p class='label'>GPU Util Mean</p><p class='value'>" + fmt(latest.gpu_util_mean, 2) + "%</p></div>" +
+      "<div class='kpi'><p class='label'>Compute (ms)</p><p class='value'>" + fmt(latest.compute_time_ms_mean, 4) + "</p></div>" +
+      "<div class='kpi'><p class='label'>Comm (ms)</p><p class='value'>" + fmt(latest.comm_time_ms_mean, 4) + "</p></div>" +
+      "<div class='kpi'><p class='label'>Idle (ms)</p><p class='value'>" + fmt(latest.idle_gap_ms_mean, 4) + "</p></div>";
+  }
+
+  function loadDistributedInsights() {
+    fetch(toHref("website/results/distributed-latest.json"), { cache: "no-store" })
+      .then(function (resp) {
+        if (!resp.ok) throw new Error("local distributed summary unavailable");
+        return resp.json();
+      })
+      .then(function (payload) {
+        var latest = payload && payload.latest ? payload.latest : null;
+        var visuals = payload && payload.visuals ? payload.visuals : {};
+        if (!latest) {
+          if (distributedStatus) distributedStatus.textContent = "Distributed training insights unavailable.";
+          return;
+        }
+
+        if (distributedStatus) {
+          distributedStatus.textContent =
+            "Latest distributed run: " + (latest.run_id || "unknown") +
+            " | world size: " + (latest.world_size || "-") +
+            " | samples/s: " + fmt(latest.samples_per_sec, 2) +
+            " | tokens/s: " + fmt(latest.tokens_per_sec, 2) +
+            " | comm ms: " + fmt(latest.comm_time_ms_mean, 4) +
+            " | idle ms: " + fmt(latest.idle_gap_ms_mean, 4);
+        }
+
+        renderDistKpis(latest);
+
+        var summarySvg = latest.published && latest.published.summary_svg ? latest.published.summary_svg : null;
+        setImageWithFallback(distSummaryMain, summarySvg, "./website/results/artifacts/images/latest_distributed_pipeline.svg");
+        setImageWithFallback(distThroughputMain, visuals.throughput_svg, "./website/results/artifacts/images/latest_distributed_throughput.svg");
+        setImageWithFallback(distPipelineMain, visuals.pipeline_svg, "./website/results/artifacts/images/latest_distributed_pipeline.svg");
+      })
+      .catch(function () {
+        if (distributedStatus) distributedStatus.textContent = "Distributed training insights unavailable.";
       });
   }
 
   initThemeToggle();
-  renderPinnedLatestCharts();
+  renderBaselineCharts();
   loadRelease();
   loadPublishedResults();
+  loadDistributedInsights();
 })();

@@ -6,6 +6,7 @@ option(PYC_BUILD_COMPILER_NEXT "Build next-generation compiler stack (experiment
 option(PYC_BUILD_COMPILER_NEXT_TESTS "Build next-generation compiler smoke tests" ON)
 option(PYC_ENABLE_CUDA_RUNTIME "Enable CUDA runtime backend when CUDA toolkit is available" ON)
 option(PYC_BUILD_EXPERIMENTAL "Compatibility no-op for legacy configure flows" OFF)
+option(PYC_BUILD_DISTRIBUTED_SCAFFOLD "Build distributed communication scaffold (loader + stub backend)" OFF)
 
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
 set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")
@@ -51,6 +52,8 @@ if(PYC_BUILD_COMPILER_NEXT)
       "${CMAKE_SOURCE_DIR}/compiler/runtime/kernel_registry.c"
       "${CMAKE_SOURCE_DIR}/compiler/runtime/runtime_control.c"
       "${CMAKE_SOURCE_DIR}/compiler/runtime/cuda_backend.c"
+      "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_loader.c"
+      "${CMAKE_SOURCE_DIR}/compiler/runtime/distributed_runtime.c"
   )
 
   add_library(pyc_compiler_next STATIC ${PYC_COMPILER_NEXT_SOURCES})
@@ -73,6 +76,9 @@ if(PYC_BUILD_COMPILER_NEXT)
   find_package(OpenMP COMPONENTS C)
   if(OpenMP_C_FOUND)
     target_link_libraries(pyc_compiler_next PUBLIC OpenMP::OpenMP_C)
+  endif()
+  if(NOT WIN32)
+    target_link_libraries(pyc_compiler_next PRIVATE ${CMAKE_DL_LIBS})
   endif()
 
   if(PYC_ENABLE_CUDA_RUNTIME)
@@ -102,12 +108,52 @@ if(PYC_BUILD_COMPILER_NEXT)
     else()
       target_compile_options(pyc_compiler_next_bench PRIVATE -O3)
     endif()
+
+    if(PYC_BUILD_DISTRIBUTED_SCAFFOLD)
+      add_executable(pyc_distributed_comm_bench
+          "${CMAKE_SOURCE_DIR}/benchmark/benchmarks/distributed/workloads/pyc_distributed_comm_bench.c"
+      )
+      target_include_directories(pyc_distributed_comm_bench PRIVATE "${CMAKE_SOURCE_DIR}/include")
+      target_link_libraries(pyc_distributed_comm_bench PRIVATE pyc_compiler_next)
+      target_compile_features(pyc_distributed_comm_bench PRIVATE c_std_11)
+      if(MSVC)
+        target_compile_options(pyc_distributed_comm_bench PRIVATE /O2)
+      else()
+        target_compile_options(pyc_distributed_comm_bench PRIVATE -O3)
+      endif()
+    endif()
   endif()
 
   add_library(pyc_ai_bridge STATIC "${CMAKE_SOURCE_DIR}/AI/ai_bridge.c")
   target_include_directories(pyc_ai_bridge PUBLIC "${CMAKE_SOURCE_DIR}/include")
   target_link_libraries(pyc_ai_bridge PUBLIC pyc_compiler_next)
   target_compile_features(pyc_ai_bridge PUBLIC c_std_11)
+
+  if(PYC_BUILD_DISTRIBUTED_SCAFFOLD)
+    add_library(pyc_comm_backend_stub SHARED
+        "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_stub.c"
+    )
+    target_include_directories(pyc_comm_backend_stub PUBLIC "${CMAKE_SOURCE_DIR}/include")
+    target_compile_features(pyc_comm_backend_stub PUBLIC c_std_11)
+
+    add_library(pyc_comm_backend_nccl SHARED
+        "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_nccl.c"
+    )
+    target_include_directories(pyc_comm_backend_nccl PUBLIC "${CMAKE_SOURCE_DIR}/include")
+    target_compile_features(pyc_comm_backend_nccl PUBLIC c_std_11)
+
+    add_library(pyc_comm_backend_rccl SHARED
+        "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_rccl.c"
+    )
+    target_include_directories(pyc_comm_backend_rccl PUBLIC "${CMAKE_SOURCE_DIR}/include")
+    target_compile_features(pyc_comm_backend_rccl PUBLIC c_std_11)
+
+    add_library(pyc_comm_backend_mpi SHARED
+        "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_mpi.c"
+    )
+    target_include_directories(pyc_comm_backend_mpi PUBLIC "${CMAKE_SOURCE_DIR}/include")
+    target_compile_features(pyc_comm_backend_mpi PUBLIC c_std_11)
+  endif()
 
   if(PYC_BUILD_COMPILER_NEXT_TESTS)
     set(PYC_COMPILER_NEXT_TEST_TARGETS "")
@@ -161,6 +207,35 @@ if(PYC_BUILD_COMPILER_NEXT)
     target_compile_features(pyc_compiler_next_test_ai_bridge PRIVATE c_std_11)
     add_test(NAME pyc_compiler_next_test_ai_bridge COMMAND pyc_compiler_next_test_ai_bridge)
     list(APPEND PYC_COMPILER_NEXT_TEST_TARGETS pyc_compiler_next_test_ai_bridge)
+
+    if(PYC_BUILD_DISTRIBUTED_SCAFFOLD)
+      add_library(pyc_comm_backend_invalid SHARED
+          "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_invalid.c"
+      )
+      target_compile_features(pyc_comm_backend_invalid PUBLIC c_std_11)
+
+      add_executable(
+          pyc_compiler_next_test_collective_comm_loader
+          "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_collective_comm_loader.c"
+      )
+      target_include_directories(pyc_compiler_next_test_collective_comm_loader PRIVATE "${CMAKE_SOURCE_DIR}/include")
+      target_link_libraries(pyc_compiler_next_test_collective_comm_loader PRIVATE pyc_compiler_next)
+      target_compile_features(pyc_compiler_next_test_collective_comm_loader PRIVATE c_std_11)
+      target_compile_definitions(
+          pyc_compiler_next_test_collective_comm_loader
+          PRIVATE
+              PYC_TEST_STUB_BACKEND_PATH="$<TARGET_FILE:pyc_comm_backend_stub>"
+              PYC_TEST_NCCL_BACKEND_PATH="$<TARGET_FILE:pyc_comm_backend_nccl>"
+              PYC_TEST_RCCL_BACKEND_PATH="$<TARGET_FILE:pyc_comm_backend_rccl>"
+              PYC_TEST_MPI_BACKEND_PATH="$<TARGET_FILE:pyc_comm_backend_mpi>"
+              PYC_TEST_INVALID_BACKEND_PATH="$<TARGET_FILE:pyc_comm_backend_invalid>"
+      )
+      add_test(
+          NAME pyc_compiler_next_test_collective_comm_loader
+          COMMAND pyc_compiler_next_test_collective_comm_loader
+      )
+      list(APPEND PYC_COMPILER_NEXT_TEST_TARGETS pyc_compiler_next_test_collective_comm_loader)
+    endif()
 
     if(PYC_COMPILER_NEXT_TEST_TARGETS)
       add_custom_target(pyc_compiler_next_tests DEPENDS ${PYC_COMPILER_NEXT_TEST_TARGETS})
