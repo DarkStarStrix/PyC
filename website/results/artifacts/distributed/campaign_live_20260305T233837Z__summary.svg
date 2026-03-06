@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="380" viewBox="0 0 980 380">
+<rect width="100%" height="100%" fill="#f8fafc"/>
+<text x="24" y="38" font-size="24" font-family="Arial, sans-serif" fill="#0f172a">PYC Distributed Training Summary</text>
+<text x="24" y="60" font-size="12" font-family="Arial, sans-serif" fill="#334155">run_id=campaign_live_20260305T233837Z mode=nexa_vortex dist=ddp backend=nccl</text>
+<text x="24" y="115" font-size="14" font-family="Arial, sans-serif" fill="#0f172a">samples/s</text>
+<rect x="250" y="95" width="8" height="24" rx="4" fill="#0ea5e9"/>
+<text x="266" y="112" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">2291.2819</text>
+<text x="24" y="175" font-size="14" font-family="Arial, sans-serif" fill="#0f172a">steps/s</text>
+<rect x="250" y="155" width="1" height="24" rx="4" fill="#0ea5e9"/>
+<text x="259" y="172" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">286.4102</text>
+<text x="24" y="235" font-size="14" font-family="Arial, sans-serif" fill="#0f172a">tokens/s</text>
+<rect x="250" y="215" width="680" height="24" rx="4" fill="#0ea5e9"/>
+<text x="938" y="232" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">189303.8743</text>
+<text x="24" y="295" font-size="14" font-family="Arial, sans-serif" fill="#0f172a">GPU util mean</text>
+<rect x="250" y="275" width="0" height="24" rx="4" fill="#0ea5e9"/>
+<text x="258" y="292" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">28.4200</text>
+</svg>

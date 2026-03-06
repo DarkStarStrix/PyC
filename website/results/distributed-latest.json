@@ -1,0 +1,219 @@
+{
+  "latest": {
+    "run_id": "campaign_full_20260306T000425Z",
+    "timestamp_utc": "2026-03-06T00:04:39.891676+00:00",
+    "mode": "nexa_vortex",
+    "dist": "ddp",
+    "backend": "nccl",
+    "world_size": 8,
+    "model_name": "distilbert-base-uncased",
+    "dataset_name": "ag_news",
+    "train_runtime_sec": 55.6958,
+    "samples_per_sec": 2154.5621,
+    "steps_per_sec": 269.3203,
+    "tokens_per_sec": 178008.1993,
+    "eval_loss": 0.186266,
+    "loss_final": 0.256069,
+    "gpu_util_mean": 28.4856,
+    "gpu_util_p95": 65.0,
+    "h2d_time_ms_mean": 0.0779,
+    "compute_time_ms_mean": 15.2453,
+    "comm_time_ms_mean": 0.6829,
+    "idle_gap_ms_mean": 1.5741,
+    "idle_gap_ms_p95": 0.1459,
+    "paths": {
+      "run_dir": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z",
+      "summary_md": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/summary.md",
+      "summary_svg": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/summary.svg",
+      "metrics_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/train_metrics.json",
+      "run_config_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/run_config.json",
+      "gpu_telemetry_csv": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/gpu_telemetry.csv"
+    },
+    "published": {
+      "summary_svg": "website/results/artifacts/distributed/campaign_full_20260306T000425Z__summary.svg",
+      "metrics_json": "website/results/artifacts/distributed/campaign_full_20260306T000425Z__metrics.json"
+    }
+  },
+  "runs": [
+    {
+      "run_id": "campaign_livecheck_20260306T003758Z",
+      "timestamp_utc": "2026-03-06T00:38:05.692029+00:00",
+      "mode": "nexa_vortex",
+      "dist": "ddp",
+      "backend": "nccl",
+      "world_size": 1,
+      "model_name": "distilbert-base-uncased",
+      "dataset_name": "ag_news",
+      "train_runtime_sec": 15.844,
+      "samples_per_sec": 315.5767,
+      "steps_per_sec": 39.4471,
+      "tokens_per_sec": 29101.2255,
+      "eval_loss": 0.319241,
+      "loss_final": 0.082397,
+      "gpu_util_mean": 2.1875,
+      "gpu_util_p95": 23.0,
+      "h2d_time_ms_mean": 0.0737,
+      "compute_time_ms_mean": 13.7176,
+      "comm_time_ms_mean": 0.0,
+      "idle_gap_ms_mean": 3.9947,
+      "idle_gap_ms_p95": 0.1257,
+      "paths": {
+        "run_dir": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_livecheck_20260306T003758Z",
+        "summary_md": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_livecheck_20260306T003758Z/summary.md",
+        "summary_svg": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_livecheck_20260306T003758Z/summary.svg",
+        "metrics_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_livecheck_20260306T003758Z/train_metrics.json",
+        "run_config_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_livecheck_20260306T003758Z/run_config.json",
+        "gpu_telemetry_csv": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_livecheck_20260306T003758Z/gpu_telemetry.csv"
+      },
+      "published": {
+        "summary_svg": "website/results/artifacts/distributed/campaign_livecheck_20260306T003758Z__summary.svg",
+        "metrics_json": "website/results/artifacts/distributed/campaign_livecheck_20260306T003758Z__metrics.json"
+      }
+    },
+    {
+      "run_id": "campaign_rerun3_20260306T003221Z",
+      "timestamp_utc": "2026-03-06T00:32:29.654312+00:00",
+      "mode": "nexa_vortex",
+      "dist": "ddp",
+      "backend": "nccl",
+      "world_size": 1,
+      "model_name": "distilbert-base-uncased",
+      "dataset_name": "ag_news",
+      "train_runtime_sec": 40.7572,
+      "samples_per_sec": 490.7107,
+      "steps_per_sec": 61.3388,
+      "tokens_per_sec": 41898.0604,
+      "eval_loss": 0.201228,
+      "loss_final": 0.328766,
+      "gpu_util_mean": 3.5592,
+      "gpu_util_p95": 43.0,
+      "h2d_time_ms_mean": 0.0722,
+      "compute_time_ms_mean": 10.9129,
+      "comm_time_ms_mean": 0.0,
+      "idle_gap_ms_mean": 1.086,
+      "idle_gap_ms_p95": 0.125,
+      "paths": {
+        "run_dir": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_rerun3_20260306T003221Z",
+        "summary_md": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_rerun3_20260306T003221Z/summary.md",
+        "summary_svg": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_rerun3_20260306T003221Z/summary.svg",
+        "metrics_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_rerun3_20260306T003221Z/train_metrics.json",
+        "run_config_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_rerun3_20260306T003221Z/run_config.json",
+        "gpu_telemetry_csv": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_rerun3_20260306T003221Z/gpu_telemetry.csv"
+      },
+      "published": {
+        "summary_svg": "website/results/artifacts/distributed/campaign_rerun3_20260306T003221Z__summary.svg",
+        "metrics_json": "website/results/artifacts/distributed/campaign_rerun3_20260306T003221Z__metrics.json"
+      }
+    },
+    {
+      "run_id": "campaign_full_20260306T000425Z",
+      "timestamp_utc": "2026-03-06T00:04:39.891676+00:00",
+      "mode": "nexa_vortex",
+      "dist": "ddp",
+      "backend": "nccl",
+      "world_size": 8,
+      "model_name": "distilbert-base-uncased",
+      "dataset_name": "ag_news",
+      "train_runtime_sec": 55.6958,
+      "samples_per_sec": 2154.5621,
+      "steps_per_sec": 269.3203,
+      "tokens_per_sec": 178008.1993,
+      "eval_loss": 0.186266,
+      "loss_final": 0.256069,
+      "gpu_util_mean": 28.4856,
+      "gpu_util_p95": 65.0,
+      "h2d_time_ms_mean": 0.0779,
+      "compute_time_ms_mean": 15.2453,
+      "comm_time_ms_mean": 0.6829,
+      "idle_gap_ms_mean": 1.5741,
+      "idle_gap_ms_p95": 0.1459,
+      "paths": {
+        "run_dir": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z",
+        "summary_md": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/summary.md",
+        "summary_svg": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/summary.svg",
+        "metrics_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/train_metrics.json",
+        "run_config_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/run_config.json",
+        "gpu_telemetry_csv": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_full_20260306T000425Z/gpu_telemetry.csv"
+      },
+      "published": {
+        "summary_svg": "website/results/artifacts/distributed/campaign_full_20260306T000425Z__summary.svg",
+        "metrics_json": "website/results/artifacts/distributed/campaign_full_20260306T000425Z__metrics.json"
+      }
+    },
+    {
+      "run_id": "campaign_stable_20260306T000153Z",
+      "timestamp_utc": "2026-03-06T00:02:08.333480+00:00",
+      "mode": "nexa_vortex",
+      "dist": "ddp",
+      "backend": "nccl",
+      "world_size": 8,
+      "model_name": "distilbert-base-uncased",
+      "dataset_name": "ag_news",
+      "train_runtime_sec": 34.5195,
+      "samples_per_sec": 1738.1486,
+      "steps_per_sec": 217.3845,
+      "tokens_per_sec": 144861.9407,
+      "eval_loss": 0.238709,
+      "loss_final": 0.023407,
+      "gpu_util_mean": 25.5588,
+      "gpu_util_p95": 66.0,
+      "h2d_time_ms_mean": 0.0761,
+      "compute_time_ms_mean": 17.3532,
+      "comm_time_ms_mean": 0.9353,
+      "idle_gap_ms_mean": 3.1611,
+      "idle_gap_ms_p95": 0.1239,
+      "paths": {
+        "run_dir": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_stable_20260306T000153Z",
+        "summary_md": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_stable_20260306T000153Z/summary.md",
+        "summary_svg": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_stable_20260306T000153Z/summary.svg",
+        "metrics_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_stable_20260306T000153Z/train_metrics.json",
+        "run_config_json": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_stable_20260306T000153Z/run_config.json",
+        "gpu_telemetry_csv": "benchmark/remote_results/runpod_h100_8x/campaign_v5/campaign_stable_20260306T000153Z/gpu_telemetry.csv"
+      },
+      "published": {
+        "summary_svg": "website/results/artifacts/distributed/campaign_stable_20260306T000153Z__summary.svg",
+        "metrics_json": "website/results/artifacts/distributed/campaign_stable_20260306T000153Z__metrics.json"
+      }
+    },
+    {
+      "run_id": "campaign_live_20260305T233837Z",
+      "timestamp_utc": "2026-03-05T23:38:51.650069+00:00",
+      "mode": "nexa_vortex",
+      "dist": "ddp",
+      "backend": "nccl",
+      "world_size": 8,
+      "model_name": "distilbert-base-uncased",
+      "dataset_name": "ag_news",
+      "train_runtime_sec": 52.3724,
+      "samples_per_sec": 2291.2819,
+      "steps_per_sec": 286.4102,
+      "tokens_per_sec": 189303.8743,
+      "eval_loss": 0.186537,
+      "loss_final": 0.255463,
+      "gpu_util_mean": 28.42,
+      "gpu_util_p95": 63.0,
+      "h2d_time_ms_mean": 0.0855,
+      "compute_time_ms_mean": 14.6285,
+      "comm_time_ms_mean": 0.6477,
+      "idle_gap_ms_mean": 0.4476,
+      "idle_gap_ms_p95": 0.4215,
+      "paths": {
+        "run_dir": "benchmark/remote_results/runpod_h100_8x/campaign_v4/campaign_live_20260305T233837Z",
+        "summary_md": "benchmark/remote_results/runpod_h100_8x/campaign_v4/campaign_live_20260305T233837Z/summary.md",
+        "summary_svg": "benchmark/remote_results/runpod_h100_8x/campaign_v4/campaign_live_20260305T233837Z/summary.svg",
+        "metrics_json": "benchmark/remote_results/runpod_h100_8x/campaign_v4/campaign_live_20260305T233837Z/train_metrics.json",
+        "run_config_json": "benchmark/remote_results/runpod_h100_8x/campaign_v4/campaign_live_20260305T233837Z/run_config.json",
+        "gpu_telemetry_csv": "benchmark/remote_results/runpod_h100_8x/campaign_v4/campaign_live_20260305T233837Z/gpu_telemetry.csv"
+      },
+      "published": {
+        "summary_svg": "website/results/artifacts/distributed/campaign_live_20260305T233837Z__summary.svg",
+        "metrics_json": "website/results/artifacts/distributed/campaign_live_20260305T233837Z__metrics.json"
+      }
+    }
+  ],
+  "notes": "Latest successful distributed runs from RunPod H100 campaign artifacts.",
+  "visuals": {
+    "throughput_svg": "website/results/artifacts/images/latest_distributed_throughput.svg",
+    "pipeline_svg": "website/results/artifacts/images/latest_distributed_pipeline.svg"
+  }
+}

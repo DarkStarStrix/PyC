@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="320" viewBox="0 0 980 320">
+<rect width="100%" height="100%" fill="#f8fafc"/>
+<text x="28" y="38" font-size="24" font-family="Arial, sans-serif" fill="#0f172a">Latest Distributed Pipeline Breakdown</text>
+<text x="28" y="62" font-size="12" font-family="Arial, sans-serif" fill="#475569">run_id=campaign_full_20260306T000425Z model=distilbert-base-uncased dataset=ag_news</text>
+<text x="28" y="110" font-size="13" font-family="Arial, sans-serif" fill="#0f172a">Compute</text>
+<rect x="220" y="96" width="620" height="18" rx="4" fill="#0f4f8a"/>
+<text x="850" y="110" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">15.2453 ms</text>
+<text x="28" y="158" font-size="13" font-family="Arial, sans-serif" fill="#0f172a">Comm</text>
+<rect x="220" y="144" width="27" height="18" rx="4" fill="#d97706"/>
+<text x="257" y="158" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">0.6829 ms</text>
+<text x="28" y="206" font-size="13" font-family="Arial, sans-serif" fill="#0f172a">Idle</text>
+<rect x="220" y="192" width="64" height="18" rx="4" fill="#b91c1c"/>
+<text x="294" y="206" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">1.5741 ms</text>
+<text x="28" y="254" font-size="13" font-family="Arial, sans-serif" fill="#0f172a">H2D</text>
+<rect x="220" y="240" width="3" height="18" rx="4" fill="#0f766e"/>
+<text x="233" y="254" font-size="12" font-family="Arial, sans-serif" fill="#1f2937">0.0779 ms</text>
+</svg>
