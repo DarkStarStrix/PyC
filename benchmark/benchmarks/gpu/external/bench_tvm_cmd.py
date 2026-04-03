@@ -31,17 +31,17 @@ def main() -> int:
         return emit({"status": "unavailable", "reason": "TVM not installed; install TVM or change TVM_BENCH_CMD"})
 
     device = os.environ.get("BENCH_DEVICE", "cuda")
+    task = os.environ.get("BENCH_TASK", "mlp").strip() or "mlp"
     batch = int(os.environ.get("BENCH_BATCH", "64"))
     hidden = int(os.environ.get("BENCH_HIDDEN", "2048"))
+    m = int(os.environ.get("BENCH_M", str(batch)))
+    k = int(os.environ.get("BENCH_K", str(hidden)))
+    n = int(os.environ.get("BENCH_N", str(hidden)))
     iters = int(os.environ.get("BENCH_ITERS", "80"))
     warmup = int(os.environ.get("BENCH_WARMUP", "20"))
     use_cublas = os.environ.get("TVM_USE_CUBLAS", "1").strip() not in {"0", "false", "False"}
     use_fp16_cuda = os.environ.get("TVM_CUDA_FP16", "1").strip() not in {"0", "false", "False"}
     np.random.seed(7)
-
-    x_shape = (batch, hidden)
-    w1_shape = (hidden * 4, hidden)
-    w2_shape = (hidden, hidden * 4)
 
     if device == "cuda":
         cuda_enabled = bool(tvm.runtime.enabled("cuda"))
@@ -55,32 +55,40 @@ def main() -> int:
                         f"(runtime_enabled={cuda_enabled}, device_exist={bool(dev.exist)})"
                     ),
                 }
-            )
+        )
         target = "cuda -libs=cublas,cudnn" if use_cublas else "cuda"
-        if use_cublas:
-            try:
-                from tvm.relay.op.contrib.cublas import partition_for_cublas
-
-                mod = partition_for_cublas(mod)
-                note_parts.append("cublas_partition=on")
-            except Exception as exc:  # noqa: BLE001
-                note_parts.append(f"cublas_partition=off:{exc}")
     else:
         dev = tvm.cpu(0)
         target = "llvm"
 
     def build_graph(active_dtype: str):
-        x = relay.var("x", shape=x_shape, dtype=active_dtype)
-        w1 = relay.var("w1", shape=w1_shape, dtype=active_dtype)
-        w2 = relay.var("w2", shape=w2_shape, dtype=active_dtype)
-        y = relay.nn.dense(x, w1)
-        # Relay API varies across TVM builds; use relu for portability in baseline harness.
-        y = relay.nn.relu(y)
-        y = relay.nn.dense(y, w2)
-        out = relay.mean(y)
-        if active_dtype == "float16":
-            out = relay.cast(out, "float32")
-        mod_local = tvm.IRModule.from_expr(relay.Function([x, w1, w2], out))
+        if task == "gemm":
+            x = relay.var("x", shape=(m, k), dtype=active_dtype)
+            w = relay.var("w", shape=(n, k), dtype=active_dtype)
+            out = relay.nn.dense(x, w)
+            mod_local = tvm.IRModule.from_expr(relay.Function([x, w], out))
+            params_local = {"w": np.random.randn(n, k).astype(active_dtype)}
+            x_local = np.random.randn(m, k).astype(active_dtype)
+        else:
+            x_shape = (batch, hidden)
+            w1_shape = (hidden * 4, hidden)
+            w2_shape = (hidden, hidden * 4)
+            x = relay.var("x", shape=x_shape, dtype=active_dtype)
+            w1 = relay.var("w1", shape=w1_shape, dtype=active_dtype)
+            w2 = relay.var("w2", shape=w2_shape, dtype=active_dtype)
+            y = relay.nn.dense(x, w1)
+            # Relay API varies across TVM builds; use relu for portability in baseline harness.
+            y = relay.nn.relu(y)
+            y = relay.nn.dense(y, w2)
+            out = relay.mean(y)
+            if active_dtype == "float16":
+                out = relay.cast(out, "float32")
+            mod_local = tvm.IRModule.from_expr(relay.Function([x, w1, w2], out))
+            params_local = {
+                "w1": np.random.randn(*w1_shape).astype(active_dtype),
+                "w2": np.random.randn(*w2_shape).astype(active_dtype),
+            }
+            x_local = np.random.randn(*x_shape).astype(active_dtype)
         if device == "cuda" and use_cublas:
             try:
                 from tvm.relay.op.contrib.cublas import partition_for_cublas
@@ -90,11 +98,6 @@ def main() -> int:
             except Exception as exc:  # noqa: BLE001
                 note_parts.append(f"cublas_partition=off:{exc}")
 
-        params_local = {
-            "w1": np.random.randn(*w1_shape).astype(active_dtype),
-            "w2": np.random.randn(*w2_shape).astype(active_dtype),
-        }
-        x_local = np.random.randn(*x_shape).astype(active_dtype)
         return mod_local, params_local, x_local
 
     candidate_dtypes = ["float16", "float32"] if (device == "cuda" and use_fp16_cuda) else ["float32"]
@@ -145,12 +148,17 @@ def main() -> int:
             "status": "ok",
             "backend": "tvm",
             "mode": "native",
+            "task": task,
             "device": "cpu" if target == "llvm" else "cuda",
             "requested_device": device,
             "batch": batch,
             "hidden": hidden,
+            "m": m,
+            "k": k,
+            "n": n,
             "iters": iters,
             "warmup": warmup,
+            "shape": {"m": m, "k": k, "n": n} if task == "gemm" else {"batch": batch, "hidden": hidden},
             "latency_ms": {
                 "mean": round(mean_ms, 4),
                 "p50": round(percentile(samples, 50), 4),
@@ -158,9 +166,11 @@ def main() -> int:
                 "min": round(min(samples), 4),
                 "max": round(max(samples), 4),
             },
-            "throughput_tokens_per_sec": round(throughput, 2),
+            "throughput_tokens_per_sec": round(throughput, 2) if task != "gemm" else 0.0,
+            "throughput_flops_per_sec": round((2 * m * k * n / mean_ms) * 1000.0, 2) if task == "gemm" else 0.0,
+            "throughput_tflops_per_sec": round(((2 * m * k * n / mean_ms) * 1000.0) / 1.0e12, 4) if task == "gemm" else 0.0,
             "peak_memory_bytes": 0,
-            "note": "; ".join(note_parts),
+            "note": "; ".join(note_parts) + (" GEMM task" if task == "gemm" else ""),
             "samples_ms": [round(v, 4) for v in samples],
         }
     )

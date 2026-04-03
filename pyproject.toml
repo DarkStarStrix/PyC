@@ -46,7 +46,7 @@ pyc = "pyc.cli:main"
 
 [tool.maturin]
 # Build the Rust vortex_core as a Python extension module
-manifest-path   = "runtime/Cargo.toml"
+manifest-path   = "src/runtime/Cargo.toml"
 module-name     = "pyc._vortex_core"
 features        = ["python_ext"]
 python-source   = "python"

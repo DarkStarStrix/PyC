@@ -15,9 +15,9 @@ def main() -> int:
     cmake_text = cmake_path.read_text(encoding="utf-8").replace('\\\\', '/')
 
     source_roots = [
-        root / "Core" / "C_Files",
-        root / "compiler",
-        root / "AI",
+        root / "src" / "core" / "C_Files",
+        root / "src" / "compiler",
+        root / "src" / "compiler" / "ai",
         root / "tests" / "compiler_next",
     ]
 

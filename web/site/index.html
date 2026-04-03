@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PyC Platform</title>
+  <link rel="stylesheet" href="./assets/css/site.css">
+</head>
+<body>
+  <main class="container">
+    <header class="site-header">
+      <div class="top-bar">
+        <p class="eyebrow">PyC Compiler Runtime</p>
+        <button id="theme-toggle" type="button" class="theme-toggle" aria-label="Toggle color theme">Switch Theme</button>
+      </div>
+      <nav class="site-nav" aria-label="Primary">
+        <a class="active" href="./index.html">Main</a>
+        <a href="./results-insights.html">Results Insights</a>
+        <a href="./inference/index.html">Inference Portal</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <p class="hero-kicker">Production compiler rails for ML systems</p>
+      <h1>Distributed training with deterministic controls, measurable throughput, and visible bottleneck telemetry.</h1>
+      <p class="hero-copy">
+        PyC packages compiler-next contracts, runtime fallbacks, and benchmark publication into a single operational loop.
+        CPU orchestration and GPU execution are intentionally split, then rejoined through instrumentation so performance changes are explainable.
+      </p>
+      <div class="hero-cta">
+        <a id="release-link" class="cta primary" href="#" target="_blank" rel="noopener noreferrer">Latest release</a>
+        <a class="cta" href="./results-insights.html">Open results hub</a>
+        <a class="cta" href="./inference/index.html">Open inference portal</a>
+      </div>
+      <p id="status" class="status">Loading release metadata...</p>
+    </section>
+
+    <section class="flow">
+      <h2>Operational Flow</h2>
+      <p class="section-text">
+        Runtime stages are coordinated as a conveyor: host-side preprocessing, pinned-memory transfer, GPU compute, communication sync,
+        then telemetry publication. This keeps throughput high while preserving deterministic rollback behavior.
+      </p>
+      <div class="pill-row">
+        <span class="pill">Pinned host memory staging</span>
+        <span class="pill">Async H2D dispatch</span>
+        <span class="pill">NCCL synchronized gradient flow</span>
+        <span class="pill">Artifact publication pipeline</span>
+      </div>
+    </section>
+
+    <section class="flow">
+      <h2>Install and Validate</h2>
+      <pre><code>cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
+cmake --build build --parallel
+ctest --test-dir build -C Release --output-on-failure
+./build/pyc</code></pre>
+      <p class="section-text">Binary downloads:</p>
+      <ul class="downloads">
+        <li>Linux: <a id="download-linux" href="https://github.com/DarkStarStrix/PyC/releases/latest/download/pyc-linux-x86_64.tar.gz">pyc-linux-x86_64.tar.gz</a></li>
+        <li>macOS: <a id="download-macos" href="https://github.com/DarkStarStrix/PyC/releases/latest/download/pyc-macos-arm64.tar.gz">pyc-macos-arm64.tar.gz</a></li>
+        <li>Windows: <a id="download-windows" href="https://github.com/DarkStarStrix/PyC/releases/latest/download/pyc-windows-x86_64.zip">pyc-windows-x86_64.zip</a></li>
+      </ul>
+    </section>
+
+    <section class="flow">
+      <h2>Latest Distributed Evidence</h2>
+      <p id="distributed-status" class="status">Loading distributed training insights...</p>
+      <div class="kpi-grid" id="dist-kpi-grid"></div>
+
+      <div class="chart-grid chart-grid-wide">
+        <figure>
+          <img id="latest-dist-summary-main" src="" alt="Latest distributed run summary chart" loading="lazy">
+          <figcaption>Latest campaign summary</figcaption>
+        </figure>
+        <figure>
+          <img id="latest-dist-throughput-main" src="" alt="Latest distributed throughput chart" loading="lazy">
+          <figcaption>Distributed throughput comparison</figcaption>
+        </figure>
+        <figure>
+          <img id="latest-dist-pipeline-main" src="" alt="Latest distributed pipeline breakdown chart" loading="lazy">
+          <figcaption>Latest pipeline breakdown</figcaption>
+        </figure>
+      </div>
+
+      <p class="section-text">
+        Published artifacts:
+        <a href="./results/manifest.json" target="_blank" rel="noopener noreferrer">manifest.json</a>
+        |
+        <a href="./results/latest-summary.json" target="_blank" rel="noopener noreferrer">latest-summary.json</a>
+        |
+        <a href="./results/distributed-latest.json" target="_blank" rel="noopener noreferrer">distributed-latest.json</a>
+      </p>
+    </section>
+
+    <section class="flow">
+      <h2>Compiler Adapter Baseline</h2>
+      <p id="results-status" class="status">Loading benchmark publication data...</p>
+      <h3>CPU Adapter Summary</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Mode</th>
+            <th>Mean (ms)</th>
+            <th>P50 (ms)</th>
+            <th>P95 (ms)</th>
+            <th>Throughput</th>
+          </tr>
+        </thead>
+        <tbody id="cpu-results-body"></tbody>
+      </table>
+
+      <h3>GPU Adapter Summary</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Mode</th>
+            <th>Mean (ms)</th>
+            <th>P50 (ms)</th>
+            <th>P95 (ms)</th>
+            <th>Throughput</th>
+          </tr>
+        </thead>
+        <tbody id="gpu-results-body"></tbody>
+      </table>
+
+      <div class="chart-grid">
+        <figure>
+          <img id="latest-cpu-svg" src="./results/artifacts/latest/latest_cpu.svg" alt="Latest CPU benchmark chart" loading="lazy">
+          <figcaption>CPU baseline snapshot</figcaption>
+        </figure>
+        <figure>
+          <img id="latest-gpu-svg" src="./results/artifacts/latest/latest_gpu.svg" alt="Latest GPU benchmark chart" loading="lazy">
+          <figcaption>GPU baseline snapshot</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="flow">
+      <h2>Release Assets</h2>
+      <ul id="asset-list" class="asset-list"></ul>
+    </section>
+  </main>
+  <script type="module" src="./assets/js/main.js"></script>
+</body>
+</html>

@@ -27,12 +27,17 @@ The next-generation compiler scaffolding is available behind `PYC_BUILD_COMPILER
 
 ## Repository Layout
 
-- `Core/C_Files/`: C sources.
-- `Core/Header_Files/`: C headers.
+- `src/core/C_Files/`: C sources.
+- `src/core/Header_Files/`: C headers.
 - `.github/workflows/cmake-multi-platform.yml`: canonical CI workflow.
+- `src/compiler/`: compiler-next implementation stack, including passes, runtime rails, and the AI bridge layer.
 - `benchmark/`: benchmark harness and workloads.
-- `AI/`: linked AI bridge layer that applies optimization-policy contracts to compiler-next options.
+- `kernels/`: isolated kernel lab tooling plus nested CUDA prototype families and Ada staging.
 - `docs/`: project docs, benchmarking, build/CI, performance reports.
+- `artifacts/`: generated/demo bundles that should not live loose at the repo root.
+- `examples/`: standalone educational and exploratory examples grouped by language/topic.
+- `tools/`: internal utilities and legacy developer-facing entrypoints that are not vendored dependencies.
+- `web/site/`: static website, inference portal, and published site-facing results data.
 
 ## Build
 
@@ -80,7 +85,7 @@ It runs on Ubuntu, macOS, and Windows, and performs:
 3. OS-specific smoke test for `pyc`
 4. Non-fatal `ctest`
 
-CI also enforces source coverage for active C sources (`Core/C_Files`, `compiler`, `AI`, `tests/compiler_next`): if a `.c` file is not referenced by `CMakeLists.txt`, the suite fails.
+CI also enforces source coverage for active C sources (`src/core/C_Files`, `src/compiler`, `tests/compiler_next`): if a `.c` file is not referenced by `CMakeLists.txt`, the suite fails.
 
 ## Build Efficiency
 
@@ -104,7 +109,7 @@ Outputs:
 
 - `benchmark/benchmarks/results/json/latest_core.json`
 - `benchmark/benchmarks/results/reports/latest_core.md`
-- `docs/performance-results.md`
+- `docs/reports/performance-results.md`
 
 Publish website-ready benchmark artifacts:
 
@@ -114,9 +119,9 @@ python3 scripts/publish_site_results.py
 
 Published output:
 
-- `website/results/manifest.json`
-- `website/results/latest-summary.json`
-- `website/results/artifacts/**` (SVG + metadata JSON)
+- `web/site/results/manifest.json`
+- `web/site/results/latest-summary.json`
+- `web/site/results/artifacts/**` (SVG + metadata JSON)
 
 ## How To Use PyC
 
@@ -146,7 +151,7 @@ cmake --build build --parallel --target pyc_core
 ```
 
 2. In your C/C++ project:
-- Add include path: `Core/Header_Files/`
+- Add include path: `src/core/Header_Files/`
 - Link static library: `build/libpyc_core.a` (or platform-equivalent)
 
 Use `pyc_foundation` only when downstream compatibility requires it.
@@ -185,7 +190,7 @@ Assets are published per OS:
 
 Static download page for end users:
 
-- `index.html` (uses `styles.css` and `app.js` at repo root)
+- `web/site/index.html`
 
 When published with GitHub Pages, this page auto-detects OS and links the latest release asset.
 
@@ -194,15 +199,27 @@ When published with GitHub Pages, this page auto-detects OS and links the latest
 For real GPU testing on rented Linux machines:
 
 1. Provision Ubuntu + NVIDIA GPU host.
-2. Run setup script:
+2. Prebuild and reuse the bootstrap image:
+   ```bash
+   bash infra/build_bootstrap_image.sh
+   INSTALL_SYSTEM_DEPS=0 bash infra/run_bootstrap_image.sh
+   ```
+3. Run setup script if the host still needs toolchain validation:
    ```bash
    bash scripts/setup_cuda_remote_ubuntu.sh
    source .venv/bin/activate
    ```
-3. Run standardized suite:
+4. Run standardized suite:
    ```bash
    python3 benchmark/benchmarks/gpu/run_gpu_suite.py --device cuda --tag gpu_baseline
    ```
+
+For kernel-level Ada work, use the kernel lab and benchmark-matrix path:
+
+```bash
+python3 kernels/lab/kernel_lab.py bench-suite --dry-run --tag ada
+python3 benchmark/benchmarks/gpu/run_gemm_suite.py --matrix-file benchmark/benchmarks/gpu/configs/ada_fp32_gemm_shapes.json --dry-run
+```
 
 Detailed guide:
 
@@ -226,13 +243,13 @@ Start at `docs/README.md`.
 
 Key docs:
 
-- `docs/project-status.md`
-- `docs/build-and-ci.md`
-- `docs/benchmarking.md`
-- `docs/results.md`
-- `docs/perf-report.md`
-- `docs/performance-results.md`
-- `REPO_RULES.md`
+- `docs/reports/project-status.md`
+- `docs/reference/build-and-ci.md`
+- `docs/reference/benchmarking.md`
+- `docs/reports/results.md`
+- `docs/reports/perf-report.md`
+- `docs/reports/performance-results.md`
+- `docs/reference/repository-rules.md`
 - `docs/compiler-next/runtime-integration-spec.md`
 
 ## Community

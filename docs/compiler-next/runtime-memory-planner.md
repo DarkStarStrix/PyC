@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The runtime allocator in `compiler/runtime/runtime_allocator.c` builds a reusable buffer plan from tensor lifetime intervals.
+The runtime allocator in `src/compiler/runtime/runtime_allocator.c` builds a reusable buffer plan from tensor lifetime intervals.
 
 ## Inputs
 

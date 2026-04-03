@@ -69,10 +69,60 @@ static void build_matmul_module(pyc_ir_module* m, int batch, int hidden) {
     pyc_ir_add_op(m, &out);
 }
 
+static void build_gemm_module(pyc_ir_module* m, int m_dim, int k_dim, int n_dim) {
+    pyc_ir_op lhs;
+    pyc_ir_op rhs;
+    pyc_ir_op mm;
+    pyc_ir_op out;
+    pyc_ir_module_init(m);
+
+    memset(&lhs, 0, sizeof(lhs));
+    lhs.kind = PYC_IR_OP_INPUT;
+    strcpy(lhs.name, "lhs");
+    lhs.dtype = PYC_DTYPE_F32;
+    lhs.shape.rank = 2;
+    lhs.shape.dims[0] = m_dim;
+    lhs.shape.dims[1] = k_dim;
+    pyc_ir_add_op(m, &lhs);
+
+    memset(&rhs, 0, sizeof(rhs));
+    rhs.kind = PYC_IR_OP_INPUT;
+    strcpy(rhs.name, "rhs");
+    rhs.dtype = PYC_DTYPE_F32;
+    rhs.shape.rank = 2;
+    rhs.shape.dims[0] = k_dim;
+    rhs.shape.dims[1] = n_dim;
+    pyc_ir_add_op(m, &rhs);
+
+    memset(&mm, 0, sizeof(mm));
+    mm.kind = PYC_IR_OP_MATMUL;
+    strcpy(mm.name, "matmul0");
+    mm.dtype = PYC_DTYPE_F32;
+    mm.input_ids[0] = 0;
+    mm.input_ids[1] = 1;
+    mm.input_count = 2;
+    pyc_ir_add_op(m, &mm);
+
+    memset(&out, 0, sizeof(out));
+    out.kind = PYC_IR_OP_OUTPUT;
+    strcpy(out.name, "out0");
+    out.dtype = PYC_DTYPE_F32;
+    out.shape.rank = 2;
+    out.shape.dims[0] = m_dim;
+    out.shape.dims[1] = n_dim;
+    out.input_ids[0] = 2;
+    out.input_count = 1;
+    pyc_ir_add_op(m, &out);
+}
+
 int main(int argc, char** argv) {
     const char* device = "cpu";
+    const char* task = getenv("BENCH_TASK");
     int batch = 64;
     int hidden = 1024;
+    int m_dim = 64;
+    int k_dim = 1024;
+    int n_dim = 1024;
     int iters = 40;
     int warmup = 10;
     int total;
@@ -111,6 +161,20 @@ int main(int argc, char** argv) {
     if (argc >= 4) hidden = atoi(argv[3]);
     if (argc >= 5) iters = atoi(argv[4]);
     if (argc >= 6) warmup = atoi(argv[5]);
+    if (!task || task[0] == '\0') {
+        task = "mlp";
+    }
+    if (strcmp(task, "gemm") == 0) {
+        const char* env_m = getenv("BENCH_M");
+        const char* env_k = getenv("BENCH_K");
+        const char* env_n = getenv("BENCH_N");
+        if (env_m) m_dim = atoi(env_m);
+        if (env_k) k_dim = atoi(env_k);
+        if (env_n) n_dim = atoi(env_n);
+        if (m_dim <= 0) m_dim = batch;
+        if (k_dim <= 0) k_dim = hidden;
+        if (n_dim <= 0) n_dim = hidden;
+    }
     if (batch <= 0 || hidden <= 0 || iters <= 0 || warmup < 0) {
         printf("{\"status\":\"error\",\"error\":\"invalid args\"}\n");
         return 1;
@@ -119,9 +183,15 @@ int main(int argc, char** argv) {
         backend = PYC_BACKEND_CUDA;
     }
 
-    elements_lhs = batch * hidden;
-    elements_rhs = hidden * hidden;
-    elements_out = batch * hidden;
+    if (strcmp(task, "gemm") == 0) {
+        elements_lhs = m_dim * k_dim;
+        elements_rhs = k_dim * n_dim;
+        elements_out = m_dim * n_dim;
+    } else {
+        elements_lhs = batch * hidden;
+        elements_rhs = hidden * hidden;
+        elements_out = batch * hidden;
+    }
     lhs = (float*)malloc((size_t)elements_lhs * sizeof(float));
     rhs = (float*)malloc((size_t)elements_rhs * sizeof(float));
     out = (float*)malloc((size_t)elements_out * sizeof(float));
@@ -136,7 +206,11 @@ int main(int argc, char** argv) {
     for (i = 0; i < elements_rhs; ++i) rhs[i] = (float)((i % 17) - 8) * 0.05f;
     memset(out, 0, (size_t)elements_out * sizeof(float));
 
-    build_matmul_module(&module, batch, hidden);
+    if (strcmp(task, "gemm") == 0) {
+        build_gemm_module(&module, m_dim, k_dim, n_dim);
+    } else {
+        build_matmul_module(&module, batch, hidden);
+    }
     memset(&desc, 0, sizeof(desc));
     desc.module = &module;
     desc.backend = backend;
@@ -163,22 +237,22 @@ int main(int argc, char** argv) {
     inputs[0].size_bytes = (size_t)elements_lhs * sizeof(float);
     inputs[0].dtype = PYC_DTYPE_F32;
     inputs[0].shape.rank = 2;
-    inputs[0].shape.dims[0] = batch;
-    inputs[0].shape.dims[1] = hidden;
+    inputs[0].shape.dims[0] = strcmp(task, "gemm") == 0 ? m_dim : batch;
+    inputs[0].shape.dims[1] = strcmp(task, "gemm") == 0 ? k_dim : hidden;
     inputs[1].data = rhs;
     inputs[1].size_bytes = (size_t)elements_rhs * sizeof(float);
     inputs[1].dtype = PYC_DTYPE_F32;
     inputs[1].shape.rank = 2;
-    inputs[1].shape.dims[0] = hidden;
-    inputs[1].shape.dims[1] = hidden;
+    inputs[1].shape.dims[0] = strcmp(task, "gemm") == 0 ? k_dim : hidden;
+    inputs[1].shape.dims[1] = strcmp(task, "gemm") == 0 ? n_dim : hidden;
 
     memset(outputs, 0, sizeof(outputs));
     outputs[0].data = out;
     outputs[0].size_bytes = (size_t)elements_out * sizeof(float);
     outputs[0].dtype = PYC_DTYPE_F32;
     outputs[0].shape.rank = 2;
-    outputs[0].shape.dims[0] = batch;
-    outputs[0].shape.dims[1] = hidden;
+    outputs[0].shape.dims[0] = strcmp(task, "gemm") == 0 ? m_dim : batch;
+    outputs[0].shape.dims[1] = strcmp(task, "gemm") == 0 ? n_dim : hidden;
 
     total = warmup + iters;
     for (i = 0; i < total; ++i) {
@@ -213,15 +287,17 @@ int main(int argc, char** argv) {
     p95 = percentile(samples, n, 95.0);
 
     printf(
-        "{\"status\":\"ok\",\"backend\":\"pyc_compiler_next\",\"device\":\"%s\",\"batch\":%d,\"hidden\":%d,\"iters\":%d,\"warmup\":%d,"
+        "{\"status\":\"ok\",\"backend\":\"pyc_compiler_next\",\"task\":\"%s\",\"device\":\"%s\",\"batch\":%d,\"hidden\":%d,\"m\":%d,\"k\":%d,\"n\":%d,\"iters\":%d,\"warmup\":%d,"
         "\"latency_ms\":{\"mean\":%.4f,\"p50\":%.4f,\"p95\":%.4f,\"min\":%.4f,\"max\":%.4f},"
-        "\"throughput_tokens_per_sec\":%.2f,\"peak_memory_bytes\":%zu,"
+        "\"throughput_tokens_per_sec\":%.2f,\"throughput_flops_per_sec\":%.2f,\"throughput_tflops_per_sec\":%.4f,\"peak_memory_bytes\":%zu,"
         "\"profile\":{\"dispatch_ms_mean\":%.4f,\"graph_exec_ms_mean\":%.4f,\"controller_ms_mean\":%.4f,\"kernel_select_ms_mean\":%.4f},"
         "\"reliability\":{\"compile_cache_hit\":%d,\"compile_budget_exceeded\":%d,\"guard_miss_count\":%zu,\"fallback_count\":%zu,\"graph_break_count\":%zu,\"compilability_score\":%.4f,\"autotune_loaded\":%d,\"autotune_saved\":%d}}"
         "\n",
-        device, batch, hidden, iters, warmup,
+        task, device, batch, hidden, m_dim, k_dim, n_dim, iters, warmup,
         mean, p50, p95, min_v, max_v,
-        ((double)batch * (double)hidden / mean) * 1000.0,
+        strcmp(task, "gemm") == 0 ? 0.0 : ((double)batch * (double)hidden / mean) * 1000.0,
+        strcmp(task, "gemm") == 0 ? (((double)2 * (double)m_dim * (double)k_dim * (double)n_dim / mean) * 1000.0) : 0.0,
+        strcmp(task, "gemm") == 0 ? ((((double)2 * (double)m_dim * (double)k_dim * (double)n_dim / mean) * 1000.0) / 1.0e12) : 0.0,
         rs.peak_bytes,
         sum_dispatch / (double)n,
         sum_graph / (double)n,

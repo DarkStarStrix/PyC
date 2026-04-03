@@ -1,0 +1,142 @@
+[ship] timestamp_utc=20260306T005857Z
+[ship] build_dir=build-ci-local
+-- Could NOT find OpenMP_C (missing: OpenMP_C_FLAGS OpenMP_C_LIB_NAMES)
+-- Could NOT find OpenMP (missing: OpenMP_C_FOUND C)
+-- PyC: CUDA toolkit not found, building fallback-only CUDA dispatcher
+-- Configuring done (0.4s)
+-- Generating done (0.1s)
+-- Build files have been written to: /Users/allanmurimiwandia/PyC/PyC/build-ci-local
+[ 40%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/compiler_api.c.o
+[ 40%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/runtime/distributed_runtime.c.o
+[ 40%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/runtime/comm_backend_loader.c.o
+[ 40%] Building C object CMakeFiles/pyc_compiler_next.dir/compiler/runtime/cuda_backend.c.o
+[ 50%] Linking C static library libpyc_compiler_next.a
+[100%] Built target pyc_compiler_next
+[ 83%] Built target pyc_compiler_next
+[ 91%] Building C object CMakeFiles/pyc_ai_bridge.dir/AI/ai_bridge.c.o
+[100%] Linking C static library libpyc_ai_bridge.a
+[100%] Built target pyc_ai_bridge
+[ 17%] Built target pyc_compiler_next
+[ 19%] Building C object CMakeFiles/pyc_compiler_next_smoke.dir/tests/compiler_next/compiler_next_smoke.c.o
+[ 21%] Linking C executable pyc_compiler_next_test_ir
+[ 23%] Linking C executable pyc_compiler_next_test_runtime_allocator
+[ 25%] Building C object CMakeFiles/pyc_compiler_next_test_autotune_compaction.dir/tests/compiler_next/test_autotune_compaction.c.o
+[ 26%] Building C object CMakeFiles/pyc_compiler_next_test_compiler_api.dir/tests/compiler_next/test_compiler_api.c.o
+[ 28%] Building C object CMakeFiles/pyc_compiler_next_test_cpu_execution.dir/tests/compiler_next/test_cpu_execution.c.o
+[ 30%] Linking C executable pyc_compiler_next_test_pass_golden
+[ 33%] Building C object CMakeFiles/pyc_compiler_next_test_prod_cuda_contracts.dir/tests/compiler_next/test_production_cuda_contracts.c.o
+[ 33%] Building C object CMakeFiles/pyc_compiler_next_test_policy_modes.dir/tests/compiler_next/test_policy_modes.c.o
+[ 37%] Building C object CMakeFiles/pyc_compiler_next_test_deterministic_contracts.dir/tests/compiler_next/test_deterministic_contracts.c.o
+[ 37%] Building C object CMakeFiles/pyc_compiler_next_test_graph_break_reporting.dir/tests/compiler_next/test_graph_break_reporting.c.o
+[ 39%] Building C object CMakeFiles/pyc_compiler_next_test_autotune_persistence.dir/tests/compiler_next/test_autotune_persistence.c.o
+[ 41%] Building C object CMakeFiles/pyc_compiler_next_test_cuda_backend.dir/tests/compiler_next/test_cuda_backend.c.o
+[ 44%] Building C object CMakeFiles/pyc_compiler_next_test_prod_status_errors.dir/tests/compiler_next/test_production_status_errors.c.o
+[ 46%] Linking C executable pyc_compiler_next_test_runtime_control
+[ 46%] Building C object CMakeFiles/pyc_compiler_next_test_prod_decision_log.dir/tests/compiler_next/test_production_decision_log.c.o
+[ 50%] Building C object CMakeFiles/pyc_compiler_next_test_determinism.dir/tests/compiler_next/test_determinism.c.o
+[ 50%] Building C object CMakeFiles/pyc_compiler_next_test_compile_cache.dir/tests/compiler_next/test_compile_cache.c.o
+[ 51%] Linking C executable pyc_compiler_next_test_kernel_registry
+[ 53%] Linking C executable pyc_compiler_next_test_pass_manager
+[ 57%] Built target pyc_ai_bridge
+[ 58%] Building C object CMakeFiles/pyc_compiler_next_test_prod_runtime_rollback.dir/tests/compiler_next/test_production_runtime_rollback.c.o
+[ 60%] Linking C executable pyc_compiler_next_test_prod_cuda_contracts
+[ 62%] Linking C executable pyc_compiler_next_smoke
+[ 64%] Linking C executable pyc_compiler_next_test_cuda_backend
+[ 66%] Building C object CMakeFiles/pyc_compiler_next_test_ai_bridge.dir/tests/compiler_next/test_ai_bridge.c.o
+[ 67%] Linking C executable pyc_compiler_next_test_cpu_execution
+[ 69%] Linking C executable pyc_compiler_next_test_prod_decision_log
+[ 71%] Linking C executable pyc_compiler_next_test_compiler_api
+[ 73%] Linking C executable pyc_compiler_next_test_graph_break_reporting
+[ 75%] Linking C executable pyc_compiler_next_test_prod_runtime_rollback
+[ 78%] Linking C executable pyc_compiler_next_test_autotune_compaction
+[ 78%] Linking C executable pyc_compiler_next_test_compile_cache
+[ 80%] Linking C executable pyc_compiler_next_test_autotune_persistence
+[ 82%] Linking C executable pyc_compiler_next_test_policy_modes
+[ 83%] Linking C executable pyc_compiler_next_test_prod_status_errors
+[ 85%] Linking C executable pyc_compiler_next_test_deterministic_contracts
+[ 87%] Linking C executable pyc_compiler_next_test_determinism
+[ 89%] Built target pyc_compiler_next_test_pass_manager
+[ 91%] Built target pyc_compiler_next_test_pass_golden
+[ 92%] Built target pyc_compiler_next_test_kernel_registry
+[ 94%] Built target pyc_compiler_next_test_runtime_allocator
+[ 94%] Built target pyc_compiler_next_test_cuda_backend
+[ 96%] Built target pyc_compiler_next_test_ir
+[ 98%] Linking C executable pyc_compiler_next_test_ai_bridge
+[100%] Built target pyc_compiler_next_test_runtime_control
+[100%] Built target pyc_compiler_next_smoke
+[100%] Built target pyc_compiler_next_test_determinism
+[100%] Built target pyc_compiler_next_test_cpu_execution
+[100%] Built target pyc_compiler_next_test_prod_decision_log
+[100%] Built target pyc_compiler_next_test_prod_cuda_contracts
+[100%] Built target pyc_compiler_next_test_prod_status_errors
+[100%] Built target pyc_compiler_next_test_policy_modes
+[100%] Built target pyc_compiler_next_test_prod_runtime_rollback
+[100%] Built target pyc_compiler_next_test_autotune_compaction
+[100%] Built target pyc_compiler_next_test_compiler_api
+[100%] Built target pyc_compiler_next_test_graph_break_reporting
+[100%] Built target pyc_compiler_next_test_autotune_persistence
+[100%] Built target pyc_compiler_next_test_compile_cache
+[100%] Built target pyc_compiler_next_test_deterministic_contracts
+[100%] Built target pyc_compiler_next_test_ai_bridge
+[100%] Built target pyc_compiler_next_tests
+Test project /Users/allanmurimiwandia/PyC/PyC/build-ci-local
+      Start  1: pyc_compiler_next_smoke_test
+ 1/23 Test  #1: pyc_compiler_next_smoke_test .....................   Passed    1.44 sec
+      Start  2: pyc_compiler_next_test_ir
+ 2/23 Test  #2: pyc_compiler_next_test_ir ........................   Passed    0.19 sec
+      Start  3: pyc_compiler_next_test_pass_manager
+ 3/23 Test  #3: pyc_compiler_next_test_pass_manager ..............   Passed    0.21 sec
+      Start  4: pyc_compiler_next_test_runtime_allocator
+ 4/23 Test  #4: pyc_compiler_next_test_runtime_allocator .........   Passed    0.20 sec
+      Start  5: pyc_compiler_next_test_kernel_registry
+ 5/23 Test  #5: pyc_compiler_next_test_kernel_registry ...........   Passed    0.19 sec
+      Start  6: pyc_compiler_next_test_compiler_api
+ 6/23 Test  #6: pyc_compiler_next_test_compiler_api ..............   Passed    0.20 sec
+      Start  7: pyc_compiler_next_test_determinism
+ 7/23 Test  #7: pyc_compiler_next_test_determinism ...............   Passed    0.21 sec
+      Start  8: pyc_compiler_next_test_pass_golden
+ 8/23 Test  #8: pyc_compiler_next_test_pass_golden ...............   Passed    0.19 sec
+      Start  9: pyc_compiler_next_test_policy_modes
+ 9/23 Test  #9: pyc_compiler_next_test_policy_modes ..............   Passed    0.20 sec
+      Start 10: pyc_compiler_next_test_runtime_control
+10/23 Test #10: pyc_compiler_next_test_runtime_control ...........   Passed    0.19 sec
+      Start 11: pyc_compiler_next_test_cpu_execution
+11/23 Test #11: pyc_compiler_next_test_cpu_execution .............   Passed    0.19 sec
+      Start 12: pyc_compiler_next_test_cuda_backend
+12/23 Test #12: pyc_compiler_next_test_cuda_backend ..............   Passed    0.20 sec
+      Start 13: pyc_compiler_next_test_deterministic_contracts
+13/23 Test #13: pyc_compiler_next_test_deterministic_contracts ...   Passed    0.19 sec
+      Start 14: pyc_compiler_next_test_compile_cache
+14/23 Test #14: pyc_compiler_next_test_compile_cache .............   Passed    0.21 sec
+      Start 15: pyc_compiler_next_test_graph_break_reporting
+15/23 Test #15: pyc_compiler_next_test_graph_break_reporting .....   Passed    0.24 sec
+      Start 16: pyc_compiler_next_test_autotune_persistence
+16/23 Test #16: pyc_compiler_next_test_autotune_persistence ......   Passed    0.18 sec
+      Start 17: pyc_compiler_next_test_autotune_compaction
+17/23 Test #17: pyc_compiler_next_test_autotune_compaction .......   Passed    0.20 sec
+      Start 18: pyc_compiler_next_test_prod_status_errors
+18/23 Test #18: pyc_compiler_next_test_prod_status_errors ........   Passed    0.21 sec
+      Start 19: pyc_compiler_next_test_prod_decision_log
+19/23 Test #19: pyc_compiler_next_test_prod_decision_log .........   Passed    0.20 sec
+      Start 20: pyc_compiler_next_test_prod_cuda_contracts
+20/23 Test #20: pyc_compiler_next_test_prod_cuda_contracts .......   Passed    0.20 sec
+      Start 21: pyc_compiler_next_test_prod_runtime_rollback
+21/23 Test #21: pyc_compiler_next_test_prod_runtime_rollback .....   Passed    0.19 sec
+      Start 22: pyc_compiler_next_test_ai_bridge
+22/23 Test #22: pyc_compiler_next_test_ai_bridge .................   Passed    0.20 sec
+      Start 23: pyc_validate_cmake_source_coverage
+23/23 Test #23: pyc_validate_cmake_source_coverage ...............   Passed    0.04 sec
+
+100% tests passed, 0 tests failed out of 23
+
+Total Test time (real) =   5.71 sec
+[ 57%] Built target pyc_core_obj
+[ 71%] Built target pyc_core
+[100%] Built target pyc
+[ 80%] Built target pyc_core_obj
+[100%] Built target pyc_core
+[ 80%] Built target pyc_core_obj
+[100%] Built target pyc_foundation
+PyC CI driver: core targets configured successfully.
+Published 150 artifacts to /Users/allanmurimiwandia/PyC/PyC/website/results
+[ship] build_and_publish=ok

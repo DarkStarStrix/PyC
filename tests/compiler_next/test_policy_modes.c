@@ -131,7 +131,18 @@ int main(void) {
     if (mem_stats.rematerialized_tensors == 0) return 6;
     if (util_stats.rematerialized_tensors != 0) return 7;
     if (strcmp(pyc_model_last_decision_log(mem_model), "") == 0) return 8;
-    if (strcmp(mem_stats.selected_kernel_symbol, util_stats.selected_kernel_symbol) == 0) return 9;
+    if (strcmp(mem_stats.selected_kernel_symbol, util_stats.selected_kernel_symbol) == 0) {
+        fprintf(
+            stderr,
+            "policy_modes mismatch: mem=%s util=%s mem_penalty=%.3f util_penalty=%.3f\n",
+            mem_stats.selected_kernel_symbol,
+            util_stats.selected_kernel_symbol,
+            mem_stats.selected_kernel_allocator_penalty,
+            util_stats.selected_kernel_allocator_penalty);
+        return 9;
+    }
+    if (mem_stats.selected_kernel_candidates < 2 || util_stats.selected_kernel_candidates < 2) return 10;
+    if (mem_stats.selected_kernel_allocator_penalty < 0.0 || util_stats.selected_kernel_allocator_penalty < 0.0) return 11;
 
     pyc_destroy_model(mem_model);
     pyc_destroy_model(util_model);

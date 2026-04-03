@@ -1,6 +1,6 @@
 module pyc/infra/nexa_insight
 
-go 1.24.0
+go 1.24
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10

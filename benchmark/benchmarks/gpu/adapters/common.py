@@ -18,11 +18,17 @@ def emit(payload: dict) -> int:
 
 
 def run_standard_workload(backend: str, device: str, batch: int, hidden: int, iters: int, warmup: int) -> dict:
+    task = os.environ.get("BENCH_TASK", "mlp").strip() or "mlp"
+    m = os.environ.get("BENCH_M", "").strip()
+    k = os.environ.get("BENCH_K", "").strip()
+    n = os.environ.get("BENCH_N", "").strip()
     cmd = [
         "python3",
         str(WORKLOAD),
         "--backend",
         backend,
+        "--task",
+        task,
         "--device",
         device,
         "--batch",
@@ -34,6 +40,8 @@ def run_standard_workload(backend: str, device: str, batch: int, hidden: int, it
         "--warmup",
         str(warmup),
     ]
+    if task == "gemm" and m and k and n:
+        cmd.extend(["--m", m, "--k", k, "--n", n])
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if proc.returncode != 0 and not proc.stdout.strip():
         return {"status": "error", "error": proc.stderr.strip() or "workload failed"}
@@ -84,6 +92,16 @@ def apply_bench_env(device: str, batch: int, hidden: int, iters: int, warmup: in
     os.environ["BENCH_HIDDEN"] = str(hidden)
     os.environ["BENCH_ITERS"] = str(iters)
     os.environ["BENCH_WARMUP"] = str(warmup)
+    task = os.environ.get("PYC_BENCH_TASK", "").strip()
+    if task:
+        os.environ["BENCH_TASK"] = task
+    for key in ("M", "K", "N"):
+        value = os.environ.get(f"PYC_BENCH_{key}", "").strip()
+        if value:
+            os.environ[f"BENCH_{key}"] = value
+    shape_name = os.environ.get("PYC_BENCH_SHAPE_NAME", "").strip()
+    if shape_name:
+        os.environ["BENCH_SHAPE_NAME"] = shape_name
 
 
 def enrich(payload: dict, adapter: str, display_name: str) -> dict:

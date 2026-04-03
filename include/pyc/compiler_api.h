@@ -65,6 +65,8 @@ typedef struct {
     int enable_fusion;
     int enable_memory_reuse;
     int enable_autotune;
+    int enable_speculative_plans;
+    size_t max_speculative_plans;
     pyc_objective_mode objective_mode;
     size_t memory_budget_bytes;
     double target_utilization_floor;
@@ -93,11 +95,14 @@ typedef struct {
     size_t pressure_events;
     double pressure_score;
     double selected_kernel_score;
+    double selected_kernel_allocator_penalty;
+    double selected_kernel_reuse_bonus;
     double estimated_utilization;
     pyc_objective_mode active_mode;
     pyc_rollback_reason rollback_reason;
     size_t rollback_count;
     int selected_kernel_count;
+    size_t selected_kernel_candidates;
     char selected_kernel_symbol[PYC_KERNEL_SYMBOL_MAX];
     double dispatch_ms;
     double graph_exec_ms;
@@ -123,6 +128,12 @@ typedef struct {
     int autotune_loaded;
     int autotune_saved;
     char graph_break_summary[128];
+    size_t speculative_plan_count;
+    int speculative_plan_hit;
+    size_t speculative_plan_miss_count;
+    size_t speculative_guard_miss_count;
+    double speculative_confidence;
+    char speculative_shape_bucket[64];
 } pyc_run_stats;
 
 typedef struct pyc_compiled_model pyc_compiled_model;

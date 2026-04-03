@@ -7,7 +7,7 @@ set -euo pipefail
 # Optional:
 #   ENABLE_TVM_CUDA_BUILD=1 bash scripts/setup_benchmark_env_locked.sh
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 
 export DEBIAN_FRONTEND=noninteractive

@@ -1,0 +1,30 @@
+{
+  "artifact_kind": "kernel_lab_suite",
+  "artifact_id": "kernel-suite-plan-20260402T150623Z",
+  "label": "kernel-suite-plan",
+  "source_json": "kernel-suite-plan-20260402T150623Z.json",
+  "timestamp_utc": "2026-04-02T15:06:23.186094+00:00",
+  "phase": "both",
+  "repeats": 10,
+  "warmup": 2,
+  "kernel_count": 3,
+  "selected_kernels": [
+    "ada_gemm",
+    "ada_tensor_core_fp16",
+    "ada_tensor_core_bf16"
+  ],
+  "filters": {
+    "tag": [
+      "ada"
+    ],
+    "exclude_tag": [],
+    "name": [],
+    "exclude_name": []
+  },
+  "toolchain": {
+    "nvcc": "nvcc",
+    "found": false,
+    "path": null,
+    "version": null
+  }
+}

@@ -29,26 +29,26 @@ echo "Target: $UNIFIED_DIR"
 echo ""
 
 # ----------------------------------------------------------------
-# 1. PyC compiler sources → compiler/
+# 1. PyC compiler sources → src/compiler/
 # ----------------------------------------------------------------
 echo "[1/3] Migrating PyC compiler sources..."
 
 # IR
-cp -v "$PYC_SRC_DIR/compiler/ir/ir.c"              "$UNIFIED_DIR/compiler/ir/ir.c"
+cp -v "$PYC_SRC_DIR/src/compiler/ir/ir.c"          "$UNIFIED_DIR/src/compiler/ir/ir.c"
 cp -v "$PYC_SRC_DIR/include/pyc/ir.h"              "$UNIFIED_DIR/include/pyc/ir.h"
 
 # Pass manager
-cp -v "$PYC_SRC_DIR/compiler/passes/pass_manager.c" "$UNIFIED_DIR/compiler/passes/pass_manager.c"
+cp -v "$PYC_SRC_DIR/src/compiler/passes/pass_manager.c" "$UNIFIED_DIR/src/compiler/passes/pass_manager.c"
 
 # Runtime (kernel registry, allocator, control)
-cp -v "$PYC_SRC_DIR/compiler/runtime/kernel_registry.c"  "$UNIFIED_DIR/compiler/runtime/kernel_registry.c"
-cp -v "$PYC_SRC_DIR/compiler/runtime/runtime_allocator.c" "$UNIFIED_DIR/compiler/runtime/runtime_allocator.c"
-cp -v "$PYC_SRC_DIR/compiler/runtime/runtime_control.c"   "$UNIFIED_DIR/compiler/runtime/runtime_control.c"
-cp -v "$PYC_SRC_DIR/compiler/runtime/cuda_backend.c"      "$UNIFIED_DIR/compiler/runtime/cuda_backend.cu"
+cp -v "$PYC_SRC_DIR/src/compiler/runtime/kernel_registry.c"  "$UNIFIED_DIR/src/compiler/runtime/kernel_registry.c"
+cp -v "$PYC_SRC_DIR/src/compiler/runtime/runtime_allocator.c" "$UNIFIED_DIR/src/compiler/runtime/runtime_allocator.c"
+cp -v "$PYC_SRC_DIR/src/compiler/runtime/runtime_control.c"   "$UNIFIED_DIR/src/compiler/runtime/runtime_control.c"
+cp -v "$PYC_SRC_DIR/src/compiler/runtime/cuda_backend.c"      "$UNIFIED_DIR/src/compiler/runtime/cuda_backend.cu"
 
 # Compiler API and AI bridge
-cp -v "$PYC_SRC_DIR/compiler/compiler_api.c"  "$UNIFIED_DIR/compiler/compiler_api.c"
-cp -v "$PYC_SRC_DIR/compiler/ai_bridge.c"     "$UNIFIED_DIR/compiler/ai_bridge.c"
+cp -v "$PYC_SRC_DIR/src/compiler/compiler_api.c"     "$UNIFIED_DIR/src/compiler/compiler_api.c"
+cp -v "$PYC_SRC_DIR/src/compiler/ai/ai_bridge.c"     "$UNIFIED_DIR/src/compiler/ai/ai_bridge.c"
 
 # Public headers
 cp -v "$PYC_SRC_DIR/include/pyc/compiler_api.h"      "$UNIFIED_DIR/include/pyc/compiler_api.h"
@@ -58,15 +58,15 @@ cp -v "$PYC_SRC_DIR/include/pyc/optimizer_policy.h"  "$UNIFIED_DIR/include/pyc/o
 cp -v "$PYC_SRC_DIR/include/pyc/ai_bridge.h"         "$UNIFIED_DIR/include/pyc/ai_bridge.h"
 
 # Tests
-cp -rv "$PYC_SRC_DIR/tests/"* "$UNIFIED_DIR/tests/compiler/"
+cp -rv "$PYC_SRC_DIR/tests/compiler_next/"* "$UNIFIED_DIR/tests/compiler_next/"
 
 # ----------------------------------------------------------------
-# 2. Nexa_Vortex runtime sources → runtime/vortex_core/src/
+# 2. Nexa_Vortex runtime sources → src/runtime/vortex_core/src/
 # ----------------------------------------------------------------
 echo "[2/3] Migrating Nexa_Vortex runtime sources..."
 
 VORTEX_SRC="$VORTEX_DIR/rust/vortex_core/src"
-UNIFIED_RT="$UNIFIED_DIR/runtime/vortex_core/src"
+UNIFIED_RT="$UNIFIED_DIR/src/runtime/vortex_core/src"
 
 # NOTE: hw_profile, allocator, cpu_dispatch, telemetry, errors have been
 # rewritten in this unified repo. Only migrate integrations/ (Mesocarp).

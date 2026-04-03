@@ -25,6 +25,15 @@ The script validates:
 - Python env
 - CUDA-enabled PyTorch install
 
+If you are bootstrapping a fresh VM, use the reusable image first and skip host package installation:
+
+```bash
+bash infra/build_bootstrap_image.sh
+INSTALL_SYSTEM_DEPS=0 bash infra/run_bootstrap_image.sh
+```
+
+Then continue with the host-specific CUDA setup and validation steps above.
+
 ## 3) Run standardized workload suite
 
 ```bash
@@ -33,8 +42,8 @@ python3 benchmark/benchmarks/gpu/run_gpu_suite.py --device cuda --batch 64 --hid
 
 Outputs:
 
-- `benchmark/benchmarks/gpu/results/gpu_baseline.json`
-- `benchmark/benchmarks/gpu/results/gpu_baseline.md`
+- `benchmark/benchmarks/results/json/<run_id>__gpu_baseline.json`
+- `benchmark/benchmarks/results/reports/<run_id>__gpu_baseline.md`
 
 Tracked KPIs:
 
@@ -94,6 +103,8 @@ For fair comparisons, keep this protocol:
 3. Same warmup/run counts.
 4. Same dtype and precision policy.
 5. Save each run under unique `--tag`.
+
+Kernel-oriented experiments should keep prototype kernels under `kernels/prototypes/` and use `kernels/lab/kernel_lab.py` for compile/run/bench control so the benchmarking surface stays separate from the compiler runtime path.
 
 Example tags:
 

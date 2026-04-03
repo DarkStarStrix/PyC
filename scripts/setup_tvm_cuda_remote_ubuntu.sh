@@ -6,7 +6,7 @@ set -euo pipefail
 #   source .venv/bin/activate
 #   bash scripts/setup_tvm_cuda_remote_ubuntu.sh
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TVM_DIR="${TVM_DIR:-/tmp/tvm}"
 TVM_REF="${TVM_REF:-v0.14.0}"
 

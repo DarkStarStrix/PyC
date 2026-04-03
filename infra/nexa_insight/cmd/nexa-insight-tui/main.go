@@ -97,6 +97,7 @@ var (
 	reItRate   = regexp.MustCompile(`([0-9]+(?:\.[0-9]+)?)\s*it/s`)
 	reExRate   = regexp.MustCompile(`([0-9]+(?:\.[0-9]+)?)\s*examples/s`)
 	reProcStep = regexp.MustCompile(`(\d+)\/(\d+)`)
+	reTrainStep = regexp.MustCompile(`step=(\d+)\/(\d+)`)
 )
 
 var (
@@ -411,12 +412,19 @@ func readLatestTrainMetrics(runsRoot string) (mlRow, error) {
 		ml.HasFinal = false
 		return ml, nil
 	}
-	// If no live activity recently, show an idle zeroed state.
-	return mlRow{
-		RunID:        runID,
-		ProgressLine: "idle",
-		LivePercent:  0,
-	}, nil
+	if ml.ProgressLine != "" && ml.ProgressLine != "progress line unavailable" && ml.ProgressLine != "idle" {
+		return ml, nil
+	}
+	if ml.HasFinal {
+		if ml.ProgressLine == "" || ml.ProgressLine == "progress line unavailable" {
+			ml.ProgressLine = "complete"
+		}
+		ml.LivePercent = 100
+		return ml, nil
+	}
+	ml.ProgressLine = "idle"
+	ml.LivePercent = 0
+	return ml, nil
 }
 
 func findLatestRunArtifacts(runsRoot string) (string, string, string, error) {
@@ -499,8 +507,18 @@ func latestProgress(logPath string) (string, int, float64, float64) {
 		if l == "" {
 			continue
 		}
-		if strings.Contains(l, "train:") || strings.Contains(l, "Map:") || strings.Contains(l, "%|") || reProcStep.MatchString(l) {
+		if strings.Contains(l, "train:") || strings.Contains(l, "Map:") || strings.Contains(l, "%|") || reTrainStep.MatchString(l) {
 			pct := extractInt(rePct, l)
+			if pct == 0 {
+				m := reTrainStep.FindStringSubmatch(l)
+				if len(m) >= 3 {
+					cur := parseInt(m[1])
+					total := parseInt(m[2])
+					if total > 0 {
+						pct = int((float64(cur) / float64(total)) * 100.0)
+					}
+				}
+			}
 			itRate := extractFloat(reItRate, l)
 			exRate := extractFloat(reExRate, l)
 			return truncate(l, 140), pct, itRate, exRate

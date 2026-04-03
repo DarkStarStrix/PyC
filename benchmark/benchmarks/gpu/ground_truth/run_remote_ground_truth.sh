@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
 LOCAL_GT_DIR="${ROOT}/benchmark/benchmarks/gpu/ground_truth"
 LOCAL_RESULTS_ROOT="${ROOT}/benchmark/benchmarks/results/profiles/ground_truth"
 

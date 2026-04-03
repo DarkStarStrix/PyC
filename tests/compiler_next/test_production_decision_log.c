@@ -54,6 +54,8 @@ int main(void) {
     opts.enable_fusion = 1;
     opts.enable_memory_reuse = 1;
     opts.enable_autotune = 0;
+    opts.enable_speculative_plans = 1;
+    opts.max_speculative_plans = 3;
     opts.objective_mode = PYC_MODE_BALANCED;
     opts.deterministic_strict = 1;
     opts.cache_mode = PYC_COMPILE_CACHE_IN_MEMORY;
@@ -96,6 +98,10 @@ int main(void) {
         pyc_destroy_model(model);
         return 5;
     }
+    if (!must_contain(log, "alloc_penalty=") || !must_contain(log, "reuse_bonus=") || !must_contain(log, "kernel_candidates=")) {
+        pyc_destroy_model(model);
+        return 18;
+    }
     if (!must_contain(log, "cuda_reason=")) {
         pyc_destroy_model(model);
         return 6;
@@ -107,6 +113,22 @@ int main(void) {
     if (!must_contain(log, "guard_miss=") || !must_contain(log, "fallback=")) {
         pyc_destroy_model(model);
         return 8;
+    }
+    if (!must_contain(log, "spec_plans=") || !must_contain(log, "spec_hit=") || !must_contain(log, "spec_bucket=")) {
+        pyc_destroy_model(model);
+        return 16;
+    }
+    if (!must_contain(log, "spec_conf=")) {
+        pyc_destroy_model(model);
+        return 20;
+    }
+    if (!must_contain(log, "spec_plans=3")) {
+        pyc_destroy_model(model);
+        return 21;
+    }
+    if (!must_contain(log, "spec_hit=1")) {
+        pyc_destroy_model(model);
+        return 22;
     }
     if (!must_contain(log, "graph_breaks=") || !must_contain(log, "compilability=")) {
         pyc_destroy_model(model);
@@ -136,6 +158,26 @@ int main(void) {
     if (stats.compilability_score < 0.99) {
         pyc_destroy_model(model);
         return 15;
+    }
+    if (stats.speculative_plan_count != 3) {
+        pyc_destroy_model(model);
+        return 17;
+    }
+    if (stats.selected_kernel_candidates == 0) {
+        pyc_destroy_model(model);
+        return 19;
+    }
+    if (stats.selected_kernel_symbol[0] == '\0') {
+        pyc_destroy_model(model);
+        return 23;
+    }
+    if (stats.speculative_plan_hit != 1) {
+        pyc_destroy_model(model);
+        return 24;
+    }
+    if (stats.speculative_shape_bucket[0] == '\0') {
+        pyc_destroy_model(model);
+        return 25;
     }
 
     pyc_destroy_model(model);

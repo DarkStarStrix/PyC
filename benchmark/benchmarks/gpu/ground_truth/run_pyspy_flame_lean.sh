@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
 SCRIPT="${ROOT}/benchmark/benchmarks/gpu/ground_truth/encoder_ground_truth.py"
 OUT_DIR="${1:-${ROOT}/benchmark/benchmarks/results/profiles/ground_truth}"
 RUN_ID="${2:-$(date -u +%Y%m%dT%H%M%SZ)_pyspy_lean}"

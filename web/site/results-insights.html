@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PyC Results Insights</title>
+  <link rel="stylesheet" href="./assets/css/site.css">
+</head>
+<body>
+  <main class="container">
+    <header class="site-header">
+      <div class="top-bar">
+        <p class="eyebrow">PyC Compiler Runtime</p>
+        <button id="theme-toggle" type="button" class="theme-toggle" aria-label="Toggle color theme">Switch Theme</button>
+      </div>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="./index.html">Main</a>
+        <a class="active" href="./results-insights.html">Results Insights</a>
+        <a href="./inference/index.html">Inference Portal</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <p class="hero-kicker">Live campaign signal</p>
+      <h1>Distributed performance readout with throughput, communication, and idle-gap decomposition.</h1>
+      <p class="hero-copy">
+        This page tracks the most recent campaign runs and exposes where time is spent in the execution loop.
+        The objective is simple: keep compute dominant while minimizing communication and idle fractions.
+      </p>
+      <p id="run-status" class="status">Loading distributed run summary...</p>
+      <div id="kpi-grid" class="kpi-grid"></div>
+    </section>
+
+    <section class="flow">
+      <h2>Key Visuals</h2>
+      <p class="section-text">
+        All visuals below are sourced from published artifacts in this repository and refreshed by the site publish pipeline.
+      </p>
+      <div class="chart-grid chart-grid-wide">
+        <figure>
+          <img id="latest-dist-summary" src="" alt="Latest run summary chart" loading="lazy">
+          <figcaption>Latest run summary SVG</figcaption>
+        </figure>
+        <figure>
+          <img id="latest-dist-throughput" src="" alt="Latest distributed throughput chart" loading="lazy">
+          <figcaption>Distributed throughput ranking (recent runs)</figcaption>
+        </figure>
+        <figure>
+          <img id="latest-dist-pipeline" src="" alt="Latest distributed pipeline breakdown chart" loading="lazy">
+          <figcaption>Latest run stage breakdown: compute, comm, idle, and H2D</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="flow">
+      <h2>Compiler Adapter Baseline</h2>
+      <p class="section-text">
+        Adapter-level benchmark summaries are shown for CPU and GPU paths to anchor distributed campaign interpretation.
+      </p>
+      <h3>CPU</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Mode</th>
+            <th>Mean (ms)</th>
+            <th>P50 (ms)</th>
+            <th>P95 (ms)</th>
+            <th>Throughput</th>
+          </tr>
+        </thead>
+        <tbody id="cpu-body"></tbody>
+      </table>
+
+      <h3>GPU</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Mode</th>
+            <th>Mean (ms)</th>
+            <th>P50 (ms)</th>
+            <th>P95 (ms)</th>
+            <th>Throughput</th>
+          </tr>
+        </thead>
+        <tbody id="gpu-body"></tbody>
+      </table>
+    </section>
+
+    <section class="flow">
+      <h2>Recent Distributed Runs</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Run ID</th>
+            <th>World</th>
+            <th>Samples/s</th>
+            <th>Tokens/s</th>
+            <th>Comm (ms)</th>
+            <th>Idle (ms)</th>
+          </tr>
+        </thead>
+        <tbody id="dist-body"></tbody>
+      </table>
+      <p class="section-text">
+        Raw files:
+        <a href="./results/manifest.json" target="_blank" rel="noopener noreferrer">manifest.json</a> |
+        <a href="./results/latest-summary.json" target="_blank" rel="noopener noreferrer">latest-summary.json</a> |
+        <a href="./results/distributed-latest.json" target="_blank" rel="noopener noreferrer">distributed-latest.json</a>
+      </p>
+    </section>
+  </main>
+  <script type="module" src="./assets/js/results.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="360" viewBox="0 0 1000 360">
+<rect width="100%" height="100%" fill="#f8fafc"/>
+<text x="32" y="46" font-family="Arial" font-size="32" fill="#0f172a" font-weight="700">GPU Compiler Comparison (p95 latency)</text>
+<text x="32" y="76" font-family="Arial" font-size="14" fill="#334155">2026-02-17T23:34:56.960815+00:00 | GPU: NVIDIA GeForce RTX 4090</text>
+<text x="32" y="150" font-family="Arial" font-size="22" fill="#111827">PyTorch Eager</text>
+<rect x="280" y="120" width="472" height="42" rx="6" fill="#2563eb"/>
+<text x="764" y="149" font-family="Arial" font-size="18" fill="#111827">0.1179 ms</text>
+<text x="32" y="220" font-family="Arial" font-size="22" fill="#111827">PyTorch Compile</text>
+<rect x="280" y="190" width="620" height="42" rx="6" fill="#16a34a"/>
+<text x="912" y="219" font-family="Arial" font-size="18" fill="#111827">0.1547 ms</text>
+</svg>

@@ -6,12 +6,12 @@ This folder is the source of truth for project technical documentation. GitHub c
 
 If you are new to the project, read these in order:
 
-1. `docs/project-status.md`
-2. `docs/Doc.md`
-3. `docs/Architecture.md`
-4. `docs/build-and-ci.md`
-5. `docs/benchmarking.md`
-6. `docs/results.md`
+1. `docs/reports/project-status.md`
+2. `docs/reference/project-overview.md`
+3. `docs/architecture/system-architecture.md`
+4. `docs/reference/build-and-ci.md`
+5. `docs/reference/benchmarking.md`
+6. `docs/reports/results.md`
 
 ## Documentation Map
 
@@ -23,26 +23,39 @@ If you are new to the project, read these in order:
   - Includes practical runtime usage spec in `docs/compiler-next/runtime-integration-spec.md`.
   - Includes Phase 1 test matrix in `tests/compiler_next/test_roadmap_phase1.md`.
   - Includes kernel mini-lab CLI guide in `docs/compiler-next/kernel-lab.md`.
-- `docs/Doc.md`
+- `kernels/lab/` and `kernels/prototypes/ada/`
+  - Kernel staging area for prototyping, benchmark-surface preparation, and Ada-specific experiments before promotion.
+- `docs/plans/`
+  - Repo-level cleanup and migration plans, including structure and feature-delivery sequencing.
+  - Includes the active compiler-next execution order in `docs/plans/compiler-next-feature-buildout.md`.
+- `docs/reference/project-overview.md`
   - Product and technical overview, scope, terminology, and current constraints.
-- `docs/Architecture.md`
-  - Component-level architecture, data flow, and module boundaries.
-- `docs/results.md`
-  - Canonical benchmark outcomes and published artifact references.
-- `docs/perf-report.md`
-  - Short current-state performance assessment.
-- `docs/project-status.md`
-  - What is stable now vs what is experimental.
-- `docs/build-and-ci.md`
+- `docs/reference/build-and-ci.md`
   - Canonical build commands, CI behavior, and troubleshooting.
-- `docs/benchmarking.md`
+- `docs/reference/benchmarking.md`
   - Deterministic benchmark harness usage and methodology.
-- `docs/performance-results.md`
+- `infra/README.md`
+  - GPU-host bootstrap flow, including the reusable Docker image path for faster VM bring-up.
+- `docs/reference/repository-rules.md`
+  - Non-negotiable repository rules plus layout guardrails and enforcement map.
+- `docs/architecture/system-architecture.md`
+  - Component-level architecture, data flow, and module boundaries.
+- `docs/reports/results.md`
+  - Canonical benchmark outcomes and published artifact references.
+- `docs/reports/perf-report.md`
+  - Short current-state performance assessment.
+- `docs/reports/project-status.md`
+  - What is stable now vs what is experimental.
+- `docs/reports/performance-results.md`
   - Stable-core local benchmark snapshot.
-- `index.html` (repo root)
-  - Static user-facing download page that links latest release binaries by OS.
-- `docs/Result.md`
-  - Legacy pointer to `docs/results.md`.
+- `docs/roadmap/`
+  - Longer-horizon roadmap and distributed-system planning docs.
+- `examples/`
+  - Standalone example programs and exploratory snippets, grouped by language or topic.
+- `tools/`
+  - Internal developer utilities and legacy first-party entrypoints that do not belong under `third_party/`.
+- `web/site/`
+  - Static user-facing site bundle, including the main page, results page, inference portal, and published site-facing results data.
 - `docs/contracts/`
   - Interface contracts for cross-module behavior.
 - `docs/milestones/`
@@ -84,4 +97,11 @@ Build compiler-next smoke target:
 cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
 cmake --build build --parallel --target pyc_compiler_next pyc_compiler_next_smoke
 ./build/pyc_compiler_next_smoke
+```
+
+Bootstrap a GPU VM with the reusable image:
+
+```bash
+bash infra/build_bootstrap_image.sh
+INSTALL_SYSTEM_DEPS=0 bash infra/run_bootstrap_image.sh
 ```

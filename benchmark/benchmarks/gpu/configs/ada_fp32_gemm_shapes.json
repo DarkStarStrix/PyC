@@ -1,0 +1,81 @@
+{
+  "name": "ada_fp32_gemm",
+  "task": "gemm",
+  "description": "Ada FP32 GEMM shape matrix for comparing native and CUTLASS-style GPU backends across realistic square and rectangular workloads.",
+  "device": "cuda",
+  "defaults": {
+    "iters": 80,
+    "warmup": 20,
+    "repeats": 3
+  },
+  "adapters": [
+    "torch_eager",
+    "torch_compile",
+    "pyc",
+    "tvm",
+    "xla",
+    "tensorrt"
+  ],
+  "shapes": [
+    {
+      "name": "square-256",
+      "m": 256,
+      "k": 256,
+      "n": 256,
+      "iters": 200,
+      "warmup": 40,
+      "repeats": 5,
+      "note": "Small square GEMM to capture launch overhead and very short-run steady state."
+    },
+    {
+      "name": "square-512",
+      "m": 512,
+      "k": 512,
+      "n": 512,
+      "iters": 160,
+      "warmup": 30,
+      "repeats": 4,
+      "note": "Mid-size square GEMM for a balanced Ada baseline comparison."
+    },
+    {
+      "name": "square-1024",
+      "m": 1024,
+      "k": 1024,
+      "n": 1024,
+      "iters": 100,
+      "warmup": 20,
+      "repeats": 3,
+      "note": "Representative production-sized square GEMM."
+    },
+    {
+      "name": "square-2048",
+      "m": 2048,
+      "k": 2048,
+      "n": 2048,
+      "iters": 60,
+      "warmup": 15,
+      "repeats": 3,
+      "note": "Large square GEMM for sustained throughput and cache pressure."
+    },
+    {
+      "name": "tall-skinny-4096x1024x4096",
+      "m": 4096,
+      "k": 1024,
+      "n": 4096,
+      "iters": 80,
+      "warmup": 20,
+      "repeats": 3,
+      "note": "Tall-skinny projection shape common in transformer feed-forward and projection paths."
+    },
+    {
+      "name": "wide-skinny-1024x4096x1024",
+      "m": 1024,
+      "k": 4096,
+      "n": 1024,
+      "iters": 80,
+      "warmup": 20,
+      "repeats": 3,
+      "note": "Wide GEMM variant that stresses memory traffic and kernel selection differently from square shapes."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 PY_BIN="${PY_BIN:-python3}"
 XLA_PY_BIN="${XLA_PY_BIN:-${PY_BIN}}"
 XLA_LD_LIBRARY_PATH=""

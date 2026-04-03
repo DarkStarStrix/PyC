@@ -113,7 +113,7 @@ def main():
     args = parser.parse_args()
 
     build_dir = (ROOT / args.build_dir).resolve()
-    results_dir = (ROOT / "benchmark" / "benchmarks" / "results").resolve()
+    results_dir = (ROOT / "workspace" / "benchmark" / "benchmarks" / "results").resolve()
     json_dir = (results_dir / "json").resolve()
     reports_dir = (results_dir / "reports").resolve()
     docs_dir = (ROOT / "docs").resolve()

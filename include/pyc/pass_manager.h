@@ -35,6 +35,9 @@ typedef struct {
     char first_graph_break_op_name[PYC_IR_MAX_NAME];
     double compilability_score;
     char graph_break_summary[128];
+    size_t speculative_plan_count;
+    double speculative_confidence;
+    char speculative_shape_bucket[64];
 } pyc_pass_report;
 
 typedef struct {

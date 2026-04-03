@@ -1,6 +1,7 @@
 # Compiler-Next Overview
 
 `compiler-next` is the new performance-first stack for PyC. It is currently experimental and designed to coexist with the stable CI core targets.
+The live flow now includes deterministic guards, speculative plans, an in-memory compile cache, runtime controller rails, and kernel + allocator co-selection. The next major step is `A3` shape-clustered multi-plan execution, which will turn the current speculative layer into true shape-family reuse.
 
 ## Goals
 
@@ -10,11 +11,11 @@
 
 ## Current Components
 
-- `compiler/ir/ir.c`: IR model + verifier.
-- `compiler/passes/pass_manager.c`: pipeline orchestration.
-- `compiler/runtime/runtime_allocator.c`: dynamic allocation planning with reuse.
-- `compiler/runtime/kernel_registry.c`: backend-aware kernel registration/selection.
-- `compiler/compiler_api.c`: public compile/run API.
+- `src/compiler/ir/ir.c`: IR model + verifier.
+- `src/compiler/passes/pass_manager.c`: pipeline orchestration.
+- `src/compiler/runtime/runtime_allocator.c`: dynamic allocation planning with reuse.
+- `src/compiler/runtime/kernel_registry.c`: backend-aware kernel registration/selection.
+- `src/compiler/compiler_api.c`: public compile/run API with speculative plans, compile-cache reuse, deterministic guards, controller rails, and runtime kernel reselection.
 - `include/pyc/optimizer_policy.h`: policy contract for memory-first, balanced, and utilization-first objective modes.
 - `tests/compiler_next/compiler_next_smoke.c`: integration smoke test.
 

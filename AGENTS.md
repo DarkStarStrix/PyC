@@ -1,8 +1,8 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `Core/`: stable C core (`Core/C_Files`, `Core/Header_Files`) used for canonical CI targets.
-- `compiler/` + `include/pyc/`: experimental compiler-next stack (IR, passes, runtime, public APIs).
+- `src/core/`: stable C core (`src/core/C_Files`, `src/core/Header_Files`) used for canonical CI targets.
+- `src/compiler/` + `include/pyc/`: experimental compiler-next stack (IR, passes, runtime, public APIs).
 - `tests/`: all tests; compiler-next tests live in `tests/compiler_next/`.
 - `benchmark/`: deterministic harness, baselines, and regression guardrails.
 - `docs/`: technical documentation and roadmap material.

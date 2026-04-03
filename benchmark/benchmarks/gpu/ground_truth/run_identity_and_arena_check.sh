@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
 CAPTURE="${ROOT}/benchmark/benchmarks/gpu/ground_truth/run_ground_truth_capture.sh"
 VERIFY="${ROOT}/benchmark/benchmarks/gpu/ground_truth/verify_kernel_identity.py"
 OUT_ROOT="${1:-${ROOT}/benchmark/benchmarks/results/profiles/ground_truth}"

@@ -41,6 +41,11 @@ jobs:
       - name: Set up CMake
         uses: jwlawson/actions-setup-cmake@v2
 
+      - name: Validate repository layout
+        run: |
+          python3 tests/validate_repo_layout.py .
+          python3 tests/validate_cmake_sources.py CMakeLists.txt .
+
       - name: Configure
         run: cmake -S . -B build -D PYC_BUILD_COMPILER_NEXT=ON -D PYC_BUILD_COMPILER_NEXT_TESTS=ON
 
@@ -67,7 +72,7 @@ jobs:
             cp build/libpyc_core.a dist/lib/
             cp build/libpyc_foundation.a dist/lib/
           fi
-          cp -R Core/Header_Files/* dist/include/
+          cp -R src/core/Header_Files/* dist/include/
           cp README.md LICENSE dist/
           tar -czf "${{ matrix.asset_name }}" -C dist .
 
@@ -81,7 +86,7 @@ jobs:
           Copy-Item build/Release/pyc.exe dist/bin/
           Copy-Item build/Release/pyc_core.lib dist/lib/
           Copy-Item build/Release/pyc_foundation.lib dist/lib/
-          Copy-Item Core/Header_Files/* dist/include/
+          Copy-Item src/core/Header_Files/* dist/include/
           Copy-Item README.md dist/
           Copy-Item LICENSE dist/
           Compress-Archive -Path dist/* -DestinationPath "${{ matrix.asset_name }}" -Force

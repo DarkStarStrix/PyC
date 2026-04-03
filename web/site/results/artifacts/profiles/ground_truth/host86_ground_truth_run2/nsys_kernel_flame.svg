@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="442" viewBox="0 0 1600 442">
+<rect width="100%" height="100%" fill="#0f1320"/>
+<text x="40" y="38" fill="#f3f5ff" font-family="monospace" font-size="24">PyC Ground Truth Baseline (host86)</text>
+<text x="40" y="60" fill="#c2c8e0" font-family="monospace" font-size="14">Nsight Systems kernel-time composition (single captured pass)</text>
+<rect x="40.00" y="80" width="725.41" height="70" fill="rgb(185,110,80)" stroke="#121212" stroke-width="1"/>
+<text x="46.00" y="120" fill="#111" font-family="monospace" font-size="14">47.7%</text>
+<rect x="765.41" y="80" width="680.28" height="70" fill="rgb(184,183,64)" stroke="#121212" stroke-width="1"/>
+<text x="771.41" y="120" fill="#111" font-family="monospace" font-size="14">44.8%</text>
+<rect x="1445.69" y="80" width="60.57" height="70" fill="rgb(200,97,61)" stroke="#121212" stroke-width="1"/>
+<text x="1451.69" y="120" fill="#111" font-family="monospace" font-size="14">4.0%</text>
+<rect x="1506.25" y="80" width="22.31" height="70" fill="rgb(209,144,152)" stroke="#121212" stroke-width="1"/>
+<rect x="1528.56" y="80" width="20.90" height="70" fill="rgb(120,116,158)" stroke="#121212" stroke-width="1"/>
+<rect x="1549.46" y="80" width="8.88" height="70" fill="rgb(182,205,115)" stroke="#121212" stroke-width="1"/>
+<rect x="1558.34" y="80" width="1.00" height="70" fill="rgb(161,120,82)" stroke="#121212" stroke-width="1"/>
+<rect x="1559.34" y="80" width="1.00" height="70" fill="rgb(188,131,100)" stroke="#121212" stroke-width="1"/>
+<rect x="1560.34" y="80" width="1.00" height="70" fill="rgb(151,172,115)" stroke="#121212" stroke-width="1"/>
+<rect x="40" y="166" width="14" height="14" fill="rgb(185,110,80)"/>
+<text x="62" y="178" fill="#e5e9ff" font-family="monospace" font-size="13">sm80_xmma_gemm_f16f16_f16f32_f32_tn_n_tilesize192x128x32_stage3_warpsize4x2x1_tensor16x8x16_execute_kernel__5x_cu... | 3.7277 ms | 47.7% | instances=1</text>
+<rect x="40" y="192" width="14" height="14" fill="rgb(184,183,64)"/>
+<text x="62" y="204" fill="#e5e9ff" font-family="monospace" font-size="13">void cutlass::Kernel2&lt;cutlass_80_tensorop_f16_s16816gemm_relu_f16_128x256_32x3_tn_align8&gt;(T1::Params) | 3.4958 ms | 44.8% | instances=1</text>
+<rect x="40" y="218" width="14" height="14" fill="rgb(200,97,61)"/>
+<text x="62" y="230" fill="#e5e9ff" font-family="monospace" font-size="13">void at::native::vectorized_elementwise_kernel&lt;(int)8, at::native::GeluCUDAKernelImpl(at::TensorIteratorBase &amp;, a... | 0.3112 ms | 4.0% | instances=1</text>
+<rect x="40" y="244" width="14" height="14" fill="rgb(209,144,152)"/>
+<text x="62" y="256" fill="#e5e9ff" font-family="monospace" font-size="13">void at::native::vectorized_elementwise_kernel&lt;(int)8, at::native::CUDAFunctor_add&lt;c10::Half&gt;, std::array&lt;char *,... | 0.1146 ms | 1.5% | instances=1</text>
+<rect x="40" y="270" width="14" height="14" fill="rgb(120,116,158)"/>
+<text x="62" y="282" fill="#e5e9ff" font-family="monospace" font-size="13">void at::native::&lt;unnamed&gt;::vectorized_layer_norm_kernel&lt;c10::Half, float&gt;(int, T2, const T1 *, const T1 *, const... | 0.1074 ms | 1.4% | instances=1</text>
+<rect x="40" y="296" width="14" height="14" fill="rgb(182,205,115)"/>
+<text x="62" y="308" fill="#e5e9ff" font-family="monospace" font-size="13">void at::native::reduce_kernel&lt;(int)128, (int)4, at::native::ReduceOp&lt;c10::Half, at::native::MeanOps&lt;c10::Half, f... | 0.0456 ms | 0.6% | instances=1</text>
+<rect x="40" y="322" width="14" height="14" fill="rgb(161,120,82)"/>
+<text x="62" y="334" fill="#e5e9ff" font-family="monospace" font-size="13">void cutlass::Kernel2&lt;cutlass_80_wmma_tensorop_f16_s161616gemm_f16_32x32_128x2_tn_align8&gt;(T1::Params) | 0.0034 ms | 0.0% | instances=1</text>
+<rect x="40" y="348" width="14" height="14" fill="rgb(188,131,100)"/>
+<text x="62" y="360" fill="#e5e9ff" font-family="monospace" font-size="13">void at::native::reduce_kernel&lt;(int)512, (int)1, at::native::ReduceOp&lt;c10::Half, at::native::func_wrapper_t&lt;c10::... | 0.0033 ms | 0.0% | instances=1</text>
+<rect x="40" y="374" width="14" height="14" fill="rgb(151,172,115)"/>
+<text x="62" y="386" fill="#e5e9ff" font-family="monospace" font-size="13">void cublasLt::splitKreduce_kernel&lt;(int)32, (int)16, int, __half, __half, float, __half, (bool)0, __half, __half,... | 0.0019 ms | 0.0% | instances=1</text>
+</svg>

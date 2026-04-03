@@ -16,7 +16,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "benchmark" / "benchmarks" / "results"
 REMOTE_SRC = ROOT / "benchmark" / "remote_results" / "runpod_h100_8x"
-DST = ROOT / "website" / "results"
+SITE_ROOT = ROOT / "web" / "site"
+DST = ROOT / "web" / "site" / "results"
 ARTIFACTS = DST / "artifacts"
 
 
@@ -26,6 +27,10 @@ class PublishedArtifact:
     source: str
     published: str
     bytes: int
+
+
+def _site_relative(path: Path) -> str:
+    return str(path.relative_to(SITE_ROOT)).replace("\\", "/")
 
 
 def _clean_destination() -> None:
@@ -48,7 +53,7 @@ def _copy_artifacts() -> list[PublishedArtifact]:
             PublishedArtifact(
                 kind="image_svg",
                 source=str(rel).replace("\\", "/"),
-                published=str(out.relative_to(ROOT)).replace("\\", "/"),
+                published=_site_relative(out),
                 bytes=src.stat().st_size,
             )
         )
@@ -64,7 +69,7 @@ def _copy_artifacts() -> list[PublishedArtifact]:
             PublishedArtifact(
                 kind="metadata_json",
                 source=str(rel).replace("\\", "/"),
-                published=str(out.relative_to(ROOT)).replace("\\", "/"),
+                published=_site_relative(out),
                 bytes=src.stat().st_size,
             )
         )
@@ -125,7 +130,7 @@ def _emit_latest_summary(cpu_meta: Path | None, gpu_meta: Path | None) -> dict[s
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         result_json = _result_json_from_meta(meta_path)
         rows = _extract_adapter_table(result_json) if result_json.exists() else []
-        rel_meta = str((ARTIFACTS / meta_path.relative_to(SRC)).relative_to(ROOT)).replace("\\", "/")
+        rel_meta = _site_relative(ARTIFACTS / meta_path.relative_to(SRC))
         latest[label] = {
             "run_id": meta.get("run_id"),
             "created_utc": meta.get("created_utc"),
@@ -218,11 +223,11 @@ def _copy_distributed_run_artifacts(payload: dict[str, Any]) -> list[PublishedAr
             PublishedArtifact(
                 kind="distributed_artifact",
                 source=str(src_path).replace("\\", "/"),
-                published=str(out.relative_to(ROOT)).replace("\\", "/"),
+                published=_site_relative(out),
                 bytes=src.stat().st_size,
             )
         )
-        return str(out.relative_to(ROOT)).replace("\\", "/")
+        return _site_relative(out)
 
     for run in payload.get("runs", []):
         run_id = str(run.get("run_id", "unknown"))
@@ -313,8 +318,8 @@ def _render_distributed_svgs(payload: dict[str, Any]) -> list[PublishedArtifact]
     lines.append("</svg>")
     pipeline_svg.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    throughput_pub = str(throughput_svg.relative_to(ROOT)).replace("\\", "/")
-    pipeline_pub = str(pipeline_svg.relative_to(ROOT)).replace("\\", "/")
+    throughput_pub = _site_relative(throughput_svg)
+    pipeline_pub = _site_relative(pipeline_svg)
     payload["visuals"] = {
         "throughput_svg": throughput_pub,
         "pipeline_svg": pipeline_pub,
@@ -347,7 +352,7 @@ def main() -> int:
 
     manifest = {
         "source": str(SRC.relative_to(ROOT)).replace("\\", "/"),
-        "published_root": str(DST.relative_to(ROOT)).replace("\\", "/"),
+        "published_root": _site_relative(DST),
         "counts": {
             "total": len(artifacts),
             "images": sum(1 for a in artifacts if a.kind.startswith("image_svg")),

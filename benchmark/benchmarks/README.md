@@ -54,6 +54,16 @@ Run with explicit output root and run id:
 bash benchmark/benchmarks/run_suite.sh benchmark/benchmarks/results 20260218T020000Z
 ```
 
+Ada FP32 GEMM shape-matrix sweep:
+
+```bash
+python3 benchmark/benchmarks/gpu/run_gemm_suite.py \
+  --matrix-file benchmark/benchmarks/gpu/configs/ada_fp32_gemm_shapes.json \
+  --dry-run
+```
+
+Drop `--dry-run` on the GPU VM to emit per-shape JSON/Markdown/SVG bundles plus the aggregate `latest_ada_fp32_gemm.*` aliases under `benchmark/benchmarks/results/`.
+
 Require true native CUDA mode for PyC only:
 
 ```bash

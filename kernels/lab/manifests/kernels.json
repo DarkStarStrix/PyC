@@ -1,0 +1,44 @@
+{
+  "kernels": [
+    {
+      "name": "matrix_mult",
+      "source": "kernels/prototypes/baseline/matmul/kernel.cu",
+      "description": "CUDA matrix multiplication kernel (compile-only baseline).",
+      "tags": ["cuda", "matmul"],
+      "compile_cmd": "{nvcc} -O3 -c {source} -o {build_dir}/{name}.o",
+      "run_cmd": ""
+    },
+    {
+      "name": "tokenizer_kernel",
+      "source": "kernels/prototypes/experimental/tokenizer_matmul/kernel.cu",
+      "description": "Experimental tokenizer/matrix CUDA kernel file.",
+      "tags": ["cuda", "tokenizer", "experimental"],
+      "compile_cmd": "{nvcc} -O2 -c {source} -o {build_dir}/{name}.o",
+      "run_cmd": ""
+    },
+    {
+      "name": "ada_gemm",
+      "source": "kernels/prototypes/ada/gemm/kernel.cu",
+      "description": "Ada-focused FP32 shared-memory GEMM prototype with standalone correctness and timing harness.",
+      "tags": ["cuda", "matmul", "ada", "sm89", "prototype"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89 -gencode arch=compute_89,code=compute_89 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50"
+    },
+    {
+      "name": "ada_tensor_core_fp16",
+      "source": "kernels/prototypes/ada/tensor_core/kernel.cu",
+      "description": "Ada Tensor Core FP16 GEMM prototype with WMMA-backed 32x64x16 correctness and timing harness.",
+      "tags": ["cuda", "matmul", "ada", "sm89", "prototype", "tensor-core", "fp16"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_ADA_TENSOR_CORE_USE_BF16=0 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_89,code=compute_89 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50"
+    },
+    {
+      "name": "ada_tensor_core_bf16",
+      "source": "kernels/prototypes/ada/tensor_core/kernel.cu",
+      "description": "Ada Tensor Core BF16 GEMM prototype with WMMA-backed 32x64x16 correctness and timing harness.",
+      "tags": ["cuda", "matmul", "ada", "sm89", "prototype", "tensor-core", "bf16"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_ADA_TENSOR_CORE_USE_BF16=1 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_89,code=compute_89 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50"
+    }
+  ]
+}

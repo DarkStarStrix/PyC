@@ -7,9 +7,9 @@ This document explains how to use PyC in real AI workloads where optimization mu
 PyC should be embedded in the job runtime path:
 
 1. Job launcher chooses constraints (memory budget, utilization floor, backend).
-2. Runtime calls PyC compile API once per model/shape cluster.
-3. Runtime calls PyC run API per step/batch.
-4. Runtime reads telemetry and may adjust policy mode between phases.
+2. Runtime calls PyC compile API once per model/shape cluster and retains the compiled model plus its speculative plan set and compile-cache state.
+3. Runtime calls PyC run API per step/batch under deterministic guards.
+4. Runtime reads telemetry, observes controller rails, and may adjust policy mode between phases.
 
 Use PyC as an in-process optimizer/runtime component, not a one-off offline compiler.
 
@@ -36,6 +36,7 @@ From launcher/scheduler, pass:
 - `deterministic_strict`
 
 Apply using `pyc_ai_apply_policy_contract(...)` into `pyc_compile_options`.
+For compiler-next flows, also enable speculative plans when you want plan reuse across repeated shapes.
 
 ## 4) Runtime Lifecycle
 
@@ -49,11 +50,13 @@ c.mode = PYC_MODE_BALANCED;
 c.memory_budget_bytes = budget;
 c.target_utilization_floor = 0.80;
 pyc_ai_apply_policy_contract(&o, &c);
+o.enable_speculative_plans = 1;
+o.max_speculative_plans = 3;
 
 pyc_compile_model(&desc, &o, &model);
 for (step = 0; step < n; ++step) {
   pyc_run_model(model, inputs, in_count, outputs, out_count, &stats);
-  // consume stats + decision log for control loop
+  // consume stats + decision log for control loop and guard/plan auditing
 }
 pyc_destroy_model(model);
 ```
@@ -66,6 +69,7 @@ Recommended switching rules:
 2. Steady phase: `PYC_MODE_BALANCED` for throughput + memory stability.
 3. Pressure spike (high `pressure_score` or repeated `pressure_events`): switch to `PYC_MODE_MEMORY_FIRST`.
 4. Recovery window: move back to `BALANCED` after pressure clears.
+5. Shape shift or bucket miss: allow the runtime to miss the current speculative plan, then rebuild or select the next plan family on the next compile cycle.
 
 ## 6) Telemetry to Wire Into Orchestrator
 
@@ -75,6 +79,9 @@ Collect per run from `pyc_run_stats`:
 - `rematerialized_tensors`, `pressure_events`, `pressure_score`
 - `estimated_utilization`, `selected_kernel_score`, `selected_kernel_symbol`
 - `compile_ms`, `run_ms`
+- `compile_cache_hit`, `speculative_plan_count`, `speculative_plan_hit`
+- `speculative_plan_miss_count`, `speculative_guard_miss_count`
+- `deterministic_contract_ok`, `deterministic_contract_reason`, `rollback_reason`
 
 Also record `pyc_model_last_decision_log(model)` for deterministic audit.
 
@@ -99,3 +106,4 @@ Track and enforce:
 2. Utilization gain: >=10% in utilization-first workloads.
 3. End-to-end improvement: >=1.2x throughput or equivalent p95 latency gain on reference workloads.
 4. Determinism: identical inputs/config produce identical decision logs.
+5. Shape-cluster reuse: repeated shapes should hit the current speculative plan or fall back with a reason-coded miss.

@@ -8,8 +8,8 @@ option(PYC_ENABLE_CUDA_RUNTIME "Enable CUDA runtime backend when CUDA toolkit is
 option(PYC_BUILD_EXPERIMENTAL "Compatibility no-op for legacy configure flows" OFF)
 option(PYC_BUILD_DISTRIBUTED_SCAFFOLD "Build distributed communication scaffold (loader + stub backend)" OFF)
 
-set(SRC_DIR "${CMAKE_SOURCE_DIR}/Core/C_Files")
-set(HEADER_DIR "${CMAKE_SOURCE_DIR}/Core/Header_Files")
+set(SRC_DIR "${CMAKE_SOURCE_DIR}/src/core/C_Files")
+set(HEADER_DIR "${CMAKE_SOURCE_DIR}/src/core/Header_Files")
 
 set(PYC_CORE_SOURCES
     "${SRC_DIR}/adapter.c"
@@ -45,15 +45,15 @@ endif()
 
 if(PYC_BUILD_COMPILER_NEXT)
   set(PYC_COMPILER_NEXT_SOURCES
-      "${CMAKE_SOURCE_DIR}/compiler/compiler_api.c"
-      "${CMAKE_SOURCE_DIR}/compiler/ir/ir.c"
-      "${CMAKE_SOURCE_DIR}/compiler/passes/pass_manager.c"
-      "${CMAKE_SOURCE_DIR}/compiler/runtime/runtime_allocator.c"
-      "${CMAKE_SOURCE_DIR}/compiler/runtime/kernel_registry.c"
-      "${CMAKE_SOURCE_DIR}/compiler/runtime/runtime_control.c"
-      "${CMAKE_SOURCE_DIR}/compiler/runtime/cuda_backend.c"
-      "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_loader.c"
-      "${CMAKE_SOURCE_DIR}/compiler/runtime/distributed_runtime.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/compiler_api.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/ir/ir.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/passes/pass_manager.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/runtime/runtime_allocator.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/runtime/kernel_registry.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/runtime/runtime_control.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/runtime/cuda_backend.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/runtime/comm_backend_loader.c"
+      "${CMAKE_SOURCE_DIR}/src/compiler/runtime/distributed_runtime.c"
   )
 
   add_library(pyc_compiler_next STATIC ${PYC_COMPILER_NEXT_SOURCES})
@@ -124,32 +124,32 @@ if(PYC_BUILD_COMPILER_NEXT)
     endif()
   endif()
 
-  add_library(pyc_ai_bridge STATIC "${CMAKE_SOURCE_DIR}/AI/ai_bridge.c")
+  add_library(pyc_ai_bridge STATIC "${CMAKE_SOURCE_DIR}/src/compiler/ai/ai_bridge.c")
   target_include_directories(pyc_ai_bridge PUBLIC "${CMAKE_SOURCE_DIR}/include")
   target_link_libraries(pyc_ai_bridge PUBLIC pyc_compiler_next)
   target_compile_features(pyc_ai_bridge PUBLIC c_std_11)
 
   if(PYC_BUILD_DISTRIBUTED_SCAFFOLD)
     add_library(pyc_comm_backend_stub SHARED
-        "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_stub.c"
+        "${CMAKE_SOURCE_DIR}/src/compiler/runtime/comm_backend_stub.c"
     )
     target_include_directories(pyc_comm_backend_stub PUBLIC "${CMAKE_SOURCE_DIR}/include")
     target_compile_features(pyc_comm_backend_stub PUBLIC c_std_11)
 
     add_library(pyc_comm_backend_nccl SHARED
-        "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_nccl.c"
+        "${CMAKE_SOURCE_DIR}/src/compiler/runtime/comm_backend_nccl.c"
     )
     target_include_directories(pyc_comm_backend_nccl PUBLIC "${CMAKE_SOURCE_DIR}/include")
     target_compile_features(pyc_comm_backend_nccl PUBLIC c_std_11)
 
     add_library(pyc_comm_backend_rccl SHARED
-        "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_rccl.c"
+        "${CMAKE_SOURCE_DIR}/src/compiler/runtime/comm_backend_rccl.c"
     )
     target_include_directories(pyc_comm_backend_rccl PUBLIC "${CMAKE_SOURCE_DIR}/include")
     target_compile_features(pyc_comm_backend_rccl PUBLIC c_std_11)
 
     add_library(pyc_comm_backend_mpi SHARED
-        "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_mpi.c"
+        "${CMAKE_SOURCE_DIR}/src/compiler/runtime/comm_backend_mpi.c"
     )
     target_include_directories(pyc_comm_backend_mpi PUBLIC "${CMAKE_SOURCE_DIR}/include")
     target_compile_features(pyc_comm_backend_mpi PUBLIC c_std_11)
@@ -194,6 +194,7 @@ if(PYC_BUILD_COMPILER_NEXT)
     pyc_add_compiler_next_test(pyc_compiler_next_test_deterministic_contracts "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_deterministic_contracts.c")
     pyc_add_compiler_next_test(pyc_compiler_next_test_compile_cache "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_compile_cache.c")
     pyc_add_compiler_next_test(pyc_compiler_next_test_graph_break_reporting "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_graph_break_reporting.c")
+    pyc_add_compiler_next_test(pyc_compiler_next_test_speculative_plans "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_speculative_plans.c")
     pyc_add_compiler_next_test(pyc_compiler_next_test_autotune_persistence "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_autotune_persistence.c")
     pyc_add_compiler_next_test(pyc_compiler_next_test_autotune_compaction "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_autotune_compaction.c")
     pyc_add_compiler_next_test(pyc_compiler_next_test_prod_status_errors "${CMAKE_SOURCE_DIR}/tests/compiler_next/test_production_status_errors.c")
@@ -210,7 +211,7 @@ if(PYC_BUILD_COMPILER_NEXT)
 
     if(PYC_BUILD_DISTRIBUTED_SCAFFOLD)
       add_library(pyc_comm_backend_invalid SHARED
-          "${CMAKE_SOURCE_DIR}/compiler/runtime/comm_backend_invalid.c"
+          "${CMAKE_SOURCE_DIR}/src/compiler/runtime/comm_backend_invalid.c"
       )
       target_compile_features(pyc_comm_backend_invalid PUBLIC c_std_11)
 

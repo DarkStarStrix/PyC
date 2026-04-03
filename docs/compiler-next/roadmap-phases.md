@@ -33,10 +33,10 @@ Selected strategy:
 
 ## Target Architecture
 
-1. High-level IR layer (`compiler/ir`) with verifier and typed tensor semantics.
-2. Pass pipeline (`compiler/passes`) for canonicalization, shape/layout, fusion, liveness, and lowering prep.
+1. High-level IR layer (`src/compiler/ir`) with verifier and typed tensor semantics.
+2. Pass pipeline (`src/compiler/passes`) for canonicalization, shape/layout, fusion, liveness, and lowering prep.
 3. Lowering + codegen path (CPU first, CUDA second).
-4. Runtime (`compiler/runtime`) with allocator planning, kernel selection, and execution telemetry.
+4. Runtime (`src/compiler/runtime`) with allocator planning, kernel selection, and execution telemetry.
 5. Autotune control plane for candidate search and best-kernel persistence.
 
 ## Public Interfaces (Current + Planned)
@@ -126,13 +126,13 @@ For each wave:
 
 ### Implemented
 
-1. Real pass behavior in `compiler/passes/pass_manager.c`:
+1. Real pass behavior in `src/compiler/passes/pass_manager.c`:
   - canonicalization of unnamed ops
   - shape inference for output/add/activation/layernorm/matmul
   - deterministic fusion (matmul + add/relu/gelu)
   - liveness peak analysis
-2. IR deterministic serialization for golden tests in `compiler/ir/ir.c` (`pyc_ir_serialize`).
-3. Memory planner diagnostics v1 in `compiler/runtime/runtime_allocator.c`:
+2. IR deterministic serialization for golden tests in `src/compiler/ir/ir.c` (`pyc_ir_serialize`).
+3. Memory planner diagnostics v1 in `src/compiler/runtime/runtime_allocator.c`:
   - allocation events
   - overlap pair count
   - largest allocation size
@@ -153,7 +153,7 @@ For each wave:
 
 ### Implemented
 
-1. Real CPU execution in `compiler/compiler_api.c`:
+1. Real CPU execution in `src/compiler/compiler_api.c`:
   - graph execution for `input`, `matmul`, `add`, `relu`, `output`
   - explicit runtime validation for shapes, ids, tensor sizes, and dtype
 2. Deterministic CPU correctness tests:
@@ -192,7 +192,7 @@ For each wave:
 
 1. CUDA runtime dispatch rail with deterministic fallback/error reasoning:
   - `include/pyc/cuda_backend.h`
-  - `compiler/runtime/cuda_backend.c`
+  - `src/compiler/runtime/cuda_backend.c`
   - `tests/compiler_next/test_cuda_backend.c`
   - native CUDA execution path for supported ops (`input`, `matmul`, `add`, `relu`, `output`) with guarded fallback
 2. Deterministic contract checks + guard counters in runtime stats:
@@ -210,7 +210,7 @@ For each wave:
   - surfaced in `pyc_run_stats`
   - coverage in `tests/compiler_next/test_graph_break_reporting.c`
 6. Native CUDA execution tuning for repeated runs:
-  - persistent CUDA workspace and cuBLAS handle reuse in `compiler/runtime/cuda_backend.c`
+  - persistent CUDA workspace and cuBLAS handle reuse in `src/compiler/runtime/cuda_backend.c`
   - deterministic fallback on runtime errors
 7. Richer autotune search space + compaction:
   - deterministic candidate enumeration (`pyc_kernel_collect`)

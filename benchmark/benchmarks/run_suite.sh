@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 OUT_ROOT="${1:-${ROOT}/benchmark/benchmarks/results}"
 RUN_ID="${2:-$(date -u +%Y%m%dT%H%M%SZ)}"
 ITERS="${ITERS:-40}"

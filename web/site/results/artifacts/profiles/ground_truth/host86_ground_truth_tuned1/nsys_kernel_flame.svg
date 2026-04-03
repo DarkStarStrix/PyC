@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="234" viewBox="0 0 1600 234">
+<rect width="100%" height="100%" fill="#0f1320"/>
+<text x="40" y="38" fill="#f3f5ff" font-family="monospace" font-size="24">PyC Ground Truth Tuned1 (compile max-autotune)</text>
+<text x="40" y="60" fill="#c2c8e0" font-family="monospace" font-size="14">Nsight Systems kernel-time composition (single captured pass)</text>
+<rect x="40.00" y="80" width="1520.00" height="70" fill="rgb(131,97,127)" stroke="#121212" stroke-width="1"/>
+<text x="46.00" y="120" fill="#111" font-family="monospace" font-size="14">100.0%</text>
+<rect x="40" y="166" width="14" height="14" fill="rgb(131,97,127)"/>
+<text x="62" y="178" fill="#e5e9ff" font-family="monospace" font-size="13">void at::native::&lt;unnamed&gt;::multi_tensor_apply_kernel&lt;at::native::&lt;unnamed&gt;::TensorListMetadata&lt;(int)2&gt;, at::nati... | 0.0848 ms | 100.0% | instances=1</text>
+</svg>

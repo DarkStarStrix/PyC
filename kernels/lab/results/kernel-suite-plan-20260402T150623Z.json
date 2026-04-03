@@ -1,0 +1,119 @@
+{
+  "meta": {
+    "timestamp_utc": "2026-04-02T15:06:23.186094+00:00",
+    "manifest": "/Users/allanmurimiwandia/PyC/PyC/kernels/lab/manifests/kernels.json",
+    "build_dir": "/Users/allanmurimiwandia/PyC/PyC/kernels/lab/build",
+    "results_dir": "/Users/allanmurimiwandia/PyC/PyC/kernels/lab/results",
+    "platform": "macOS-26.4-arm64-arm-64bit-Mach-O",
+    "python": "3.14.3",
+    "phase": "both",
+    "repeats": 10,
+    "warmup": 2,
+    "dry_run": true,
+    "nvcc": "nvcc",
+    "filters": {
+      "tag": [
+        "ada"
+      ],
+      "exclude_tag": [],
+      "name": [],
+      "exclude_name": []
+    },
+    "selected_kernels": [
+      "ada_gemm",
+      "ada_tensor_core_fp16",
+      "ada_tensor_core_bf16"
+    ],
+    "count": 3
+  },
+  "toolchain": {
+    "nvcc": "nvcc",
+    "found": false,
+    "path": null,
+    "version": null
+  },
+  "kernels": [
+    {
+      "kernel": {
+        "name": "ada_gemm",
+        "source": "kernels/prototypes/ada/gemm/kernel.cu",
+        "description": "Ada-focused FP32 shared-memory GEMM prototype with standalone correctness and timing harness.",
+        "tags": [
+          "cuda",
+          "matmul",
+          "ada",
+          "sm89",
+          "prototype"
+        ],
+        "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89 -gencode arch=compute_89,code=compute_89 {source} -o {build_dir}/{name}",
+        "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50",
+        "planned": true
+      },
+      "planned": true,
+      "context": {
+        "name": "ada_gemm",
+        "source": "/Users/allanmurimiwandia/PyC/PyC/kernels/prototypes/ada/gemm/kernel.cu",
+        "source_rel": "kernels/prototypes/ada/gemm/kernel.cu",
+        "root": "/Users/allanmurimiwandia/PyC/PyC",
+        "build_dir": "/Users/allanmurimiwandia/PyC/PyC/kernels/lab/build",
+        "nvcc": "nvcc"
+      }
+    },
+    {
+      "kernel": {
+        "name": "ada_tensor_core_fp16",
+        "source": "kernels/prototypes/ada/tensor_core/kernel.cu",
+        "description": "Ada Tensor Core FP16 GEMM prototype with WMMA-backed 32x64x16 correctness and timing harness.",
+        "tags": [
+          "cuda",
+          "matmul",
+          "ada",
+          "sm89",
+          "prototype",
+          "tensor-core",
+          "fp16"
+        ],
+        "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_ADA_TENSOR_CORE_USE_BF16=0 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_89,code=compute_89 {source} -o {build_dir}/{name}",
+        "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50",
+        "planned": true
+      },
+      "planned": true,
+      "context": {
+        "name": "ada_tensor_core_fp16",
+        "source": "/Users/allanmurimiwandia/PyC/PyC/kernels/prototypes/ada/tensor_core/kernel.cu",
+        "source_rel": "kernels/prototypes/ada/tensor_core/kernel.cu",
+        "root": "/Users/allanmurimiwandia/PyC/PyC",
+        "build_dir": "/Users/allanmurimiwandia/PyC/PyC/kernels/lab/build",
+        "nvcc": "nvcc"
+      }
+    },
+    {
+      "kernel": {
+        "name": "ada_tensor_core_bf16",
+        "source": "kernels/prototypes/ada/tensor_core/kernel.cu",
+        "description": "Ada Tensor Core BF16 GEMM prototype with WMMA-backed 32x64x16 correctness and timing harness.",
+        "tags": [
+          "cuda",
+          "matmul",
+          "ada",
+          "sm89",
+          "prototype",
+          "tensor-core",
+          "bf16"
+        ],
+        "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_ADA_TENSOR_CORE_USE_BF16=1 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_89,code=compute_89 {source} -o {build_dir}/{name}",
+        "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50",
+        "planned": true
+      },
+      "planned": true,
+      "context": {
+        "name": "ada_tensor_core_bf16",
+        "source": "/Users/allanmurimiwandia/PyC/PyC/kernels/prototypes/ada/tensor_core/kernel.cu",
+        "source_rel": "kernels/prototypes/ada/tensor_core/kernel.cu",
+        "root": "/Users/allanmurimiwandia/PyC/PyC",
+        "build_dir": "/Users/allanmurimiwandia/PyC/PyC/kernels/lab/build",
+        "nvcc": "nvcc"
+      }
+    }
+  ]
+}
