@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-APP_DIR="${ROOT}/infra/nexa_insight"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APP="${ROOT}/infra/nexa_insight/local_tui.py"
 
-cd "${APP_DIR}"
+PY_BIN="${ROOT}/.venv-observer/bin/python"
+if [[ ! -x "${PY_BIN}" ]]; then
+  PY_BIN="${ROOT}/.venv/bin/python"
+fi
+if [[ ! -x "${PY_BIN}" ]]; then
+  PY_BIN="$(command -v python3 || true)"
+fi
 
-if ! command -v go >/dev/null 2>&1; then
-  echo "[nexa-insight][ERROR] go is required" >&2
+if [[ -z "${PY_BIN}" ]]; then
+  echo "[nexa-insight][ERROR] python3 is required" >&2
   exit 1
 fi
 
-echo "[nexa-insight] building"
-go build -o nexa-insight ./cmd/nexa-insight
-
 echo "[nexa-insight] starting"
-exec ./nexa-insight "$@"
+exec "${PY_BIN}" "${APP}" "$@"

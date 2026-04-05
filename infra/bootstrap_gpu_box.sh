@@ -14,7 +14,7 @@ set -euo pipefail
 #   VERIFY_STRICT=0           # default: 0
 #   PYC_BUILD_DIR=build-distributed
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
 if [[ "$(id -u)" -eq 0 ]]; then
@@ -44,6 +44,7 @@ if [[ "${INSTALL_TORCH:-1}" == "1" ]]; then
   source .venv/bin/activate
   python -m pip install --upgrade pip
   pip install --index-url https://download.pytorch.org/whl/cu124 torch==2.6.0 torchvision==0.21.0
+  pip install tqdm
 else
   python3 -m venv .venv
   source .venv/bin/activate

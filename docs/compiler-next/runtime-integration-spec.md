@@ -7,9 +7,9 @@ This document explains how to use PyC in real AI workloads where optimization mu
 PyC should be embedded in the job runtime path:
 
 1. Job launcher chooses constraints (memory budget, utilization floor, backend).
-2. Runtime calls PyC compile API once per model/shape cluster and retains the compiled model plus its speculative plan set and compile-cache state.
+2. Runtime calls PyC compile API once per model/shape cluster and retains the compiled model plus its speculative plan set, phantom-graph state, and compile-cache state.
 3. Runtime calls PyC run API per step/batch under deterministic guards.
-4. Runtime reads telemetry, observes controller rails, and may adjust policy mode between phases.
+4. Runtime reads telemetry, observes controller rails, and may adjust policy mode between phases while preserving a shadow recommendation trail for audit.
 
 Use PyC as an in-process optimizer/runtime component, not a one-off offline compiler.
 
@@ -37,6 +37,8 @@ From launcher/scheduler, pass:
 
 Apply using `pyc_ai_apply_policy_contract(...)` into `pyc_compile_options`.
 For compiler-next flows, also enable speculative plans when you want plan reuse across repeated shapes.
+Enable the phantom graph when you want shadow-first expected-vs-observed graph tracking and reshape telemetry across repeated runtime steps.
+Use mixed-shape sequence runs when you want to validate A3/A2 behavior over a live hot path rather than a fresh per-shape compile.
 
 ## 4) Runtime Lifecycle
 
@@ -52,6 +54,8 @@ c.target_utilization_floor = 0.80;
 pyc_ai_apply_policy_contract(&o, &c);
 o.enable_speculative_plans = 1;
 o.max_speculative_plans = 3;
+o.enable_phantom_graph = 1;
+o.phantom_horizon_steps = 1;
 
 pyc_compile_model(&desc, &o, &model);
 for (step = 0; step < n; ++step) {
@@ -69,21 +73,24 @@ Recommended switching rules:
 2. Steady phase: `PYC_MODE_BALANCED` for throughput + memory stability.
 3. Pressure spike (high `pressure_score` or repeated `pressure_events`): switch to `PYC_MODE_MEMORY_FIRST`.
 4. Recovery window: move back to `BALANCED` after pressure clears.
-5. Shape shift or bucket miss: allow the runtime to miss the current speculative plan, then rebuild or select the next plan family on the next compile cycle.
+5. Shape shift or bucket miss: allow the runtime to miss the current speculative plan, then let the phantom graph record drift and reshape its expectation for later runs.
 
 ## 6) Telemetry to Wire Into Orchestrator
 
 Collect per run from `pyc_run_stats`:
 
 - `peak_bytes`, `total_requested_bytes`, `reused_allocations`
-- `rematerialized_tensors`, `pressure_events`, `pressure_score`
+- `rematerialized_tensors`, `rematerialized_bytes`, `pressure_events`, `pressure_score`
 - `estimated_utilization`, `selected_kernel_score`, `selected_kernel_symbol`
 - `compile_ms`, `run_ms`
 - `compile_cache_hit`, `speculative_plan_count`, `speculative_plan_hit`
 - `speculative_plan_miss_count`, `speculative_guard_miss_count`
+- `phantom_graph_match`, `phantom_graph_match_score`, `phantom_graph_confidence`
+- `phantom_graph_match_count`, `phantom_graph_mismatch_count`, `phantom_graph_reshape_count`
+- `phantom_graph_expected_signature`, `phantom_graph_observed_signature`
 - `deterministic_contract_ok`, `deterministic_contract_reason`, `rollback_reason`
 
-Also record `pyc_model_last_decision_log(model)` for deterministic audit.
+Also record `pyc_model_last_decision_log(model)` for deterministic audit. The live decision log now includes both the applied mode and the controller's `shadow_mode` / `shadow_reason`, so orchestration can distinguish "what ran" from "what the bounded planner would have preferred."
 
 ## 7) Rollout Plan for Production
 
@@ -96,6 +103,7 @@ Also record `pyc_model_last_decision_log(model)` for deterministic audit.
 
 - Compile failure: keep last-known-good compiled model.
 - Runtime pressure breach: force `PYC_MODE_MEMORY_FIRST` for next window.
+- Phantom-graph drift: keep the current run safe; reshape phantom expectations only after successful runs.
 - Determinism required workflows: keep `deterministic_strict=1` and block non-deterministic policy changes.
 
 ## 9) KPI Targets (Operational)

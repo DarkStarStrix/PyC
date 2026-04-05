@@ -31,7 +31,10 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .venv/
+.venv-*/
 venv/
+.coverage
+.hypothesis/
 
 # OS / editor noise
 .DS_Store
@@ -47,7 +50,20 @@ benchmark/remote_results/
 benchmark/benchmarks/results/
 website/results/
 website/logs/
+kernels/lab/tasks/runs/
 
 # Local secrets
 .env
 .env.*
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.mobileprovision
+*.secret
+*.secrets
+*.token

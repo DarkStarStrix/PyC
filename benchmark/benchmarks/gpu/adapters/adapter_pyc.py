@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 from common import apply_bench_env, emit, enrich, run_external_json_command
 
 
@@ -17,6 +18,11 @@ def main() -> int:
 
     apply_bench_env(args.device, args.batch, args.hidden, args.iters, args.warmup)
     command = os.environ.get("PYC_GPU_BENCH_CMD", "").strip()
+    if not command:
+        helper = Path(__file__).resolve().parents[1] / "external" / "bench_pyc_cmd.py"
+        if helper.exists():
+            command = f"python3 {helper}"
+            os.environ["PYC_GPU_BENCH_CMD"] = command
     if not command:
         payload = {
             "status": "unavailable",

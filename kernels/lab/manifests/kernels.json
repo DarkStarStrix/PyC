@@ -25,6 +25,14 @@
       "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50"
     },
     {
+      "name": "ada_gemm_k64_warp32_async",
+      "source": "kernels/prototypes/ada/gemm_k64_warp32_async/kernel.cu",
+      "description": "Ada FP32 GEMM winner with 64x64x64 tiles, 32x8 threads, and cp.async double-buffered shared-memory stages.",
+      "tags": ["cuda", "matmul", "ada", "sm89", "prototype", "fp32", "vectorized", "winner", "k64", "warp32", "async", "cpasync"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -gencode arch=compute_89,code=sm_89 -gencode arch=compute_89,code=compute_89 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50"
+    },
+    {
       "name": "ada_tensor_core_fp16",
       "source": "kernels/prototypes/ada/tensor_core/kernel.cu",
       "description": "Ada Tensor Core FP16 GEMM prototype with WMMA-backed 32x64x16 correctness and timing harness.",

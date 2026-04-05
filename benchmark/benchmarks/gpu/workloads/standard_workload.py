@@ -13,6 +13,25 @@ import statistics
 import time
 
 
+def resolve_torch_dtype(torch, device: str, dtype_name: str):
+    requested = (dtype_name or "auto").strip().lower()
+    if requested in {"", "auto"}:
+        requested = "float16" if device == "cuda" else "float32"
+    mapping = {
+        "float16": torch.float16,
+        "fp16": torch.float16,
+        "half": torch.float16,
+        "float32": torch.float32,
+        "fp32": torch.float32,
+        "float": torch.float32,
+        "bfloat16": torch.bfloat16,
+        "bf16": torch.bfloat16,
+    }
+    if requested not in mapping:
+        raise ValueError(f"unsupported dtype: {dtype_name}")
+    return requested, mapping[requested]
+
+
 def percentile(values: list[float], p: float) -> float:
     if not values:
         return 0.0
@@ -22,7 +41,7 @@ def percentile(values: list[float], p: float) -> float:
     return ordered[idx]
 
 
-def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmup: int) -> dict:
+def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmup: int, dtype_name: str) -> dict:
     import torch
 
     torch.manual_seed(7)
@@ -33,7 +52,7 @@ def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmu
         if device == "cuda":
             torch.cuda.synchronize()
 
-    dtype = torch.float16 if device == "cuda" else torch.float32
+    dtype_label, dtype = resolve_torch_dtype(torch, device, dtype_name)
 
     setup_start = time.perf_counter()
     model = torch.nn.Sequential(
@@ -101,6 +120,7 @@ def run_torch(device: str, mode: str, batch: int, hidden: int, iters: int, warmu
         "task": "mlp",
         "mode": "native",
         "device": device,
+        "dtype": dtype_label,
         "batch": batch,
         "hidden": hidden,
         "iters": iters,
@@ -132,6 +152,7 @@ def run_torch_gemm(
     n: int,
     iters: int,
     warmup: int,
+    dtype_name: str,
 ) -> dict:
     import torch
 
@@ -143,7 +164,7 @@ def run_torch_gemm(
         if device == "cuda":
             torch.cuda.synchronize()
 
-    dtype = torch.float16 if device == "cuda" else torch.float32
+    dtype_label, dtype = resolve_torch_dtype(torch, device, dtype_name)
 
     setup_start = time.perf_counter()
     lhs = torch.randn(m, k, device=device, dtype=dtype)
@@ -198,6 +219,7 @@ def run_torch_gemm(
         "task": "gemm",
         "mode": "native",
         "device": device,
+        "dtype": dtype_label,
         "m": m,
         "k": k,
         "n": n,
@@ -237,6 +259,7 @@ def main() -> int:
     parser.add_argument("--n", type=int, default=0)
     parser.add_argument("--iters", type=int, default=80)
     parser.add_argument("--warmup", type=int, default=20)
+    parser.add_argument("--dtype", default="auto")
     args = parser.parse_args()
 
     try:
@@ -244,9 +267,9 @@ def main() -> int:
             m = args.m if args.m > 0 else args.batch
             k = args.k if args.k > 0 else args.hidden
             n = args.n if args.n > 0 else args.hidden
-            result = run_torch_gemm(args.device, args.backend, m, k, n, args.iters, args.warmup)
+            result = run_torch_gemm(args.device, args.backend, m, k, n, args.iters, args.warmup, args.dtype)
         else:
-            result = run_torch(args.device, args.backend, args.batch, args.hidden, args.iters, args.warmup)
+            result = run_torch(args.device, args.backend, args.batch, args.hidden, args.iters, args.warmup, args.dtype)
     except Exception as exc:  # noqa: BLE001
         result = {"status": "error", "backend": args.backend, "error": str(exc)}
 

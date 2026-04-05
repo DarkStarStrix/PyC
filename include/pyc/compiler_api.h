@@ -66,7 +66,9 @@ typedef struct {
     int enable_memory_reuse;
     int enable_autotune;
     int enable_speculative_plans;
+    int enable_phantom_graph;
     size_t max_speculative_plans;
+    size_t phantom_horizon_steps;
     pyc_objective_mode objective_mode;
     size_t memory_budget_bytes;
     double target_utilization_floor;
@@ -92,6 +94,7 @@ typedef struct {
     size_t total_requested_bytes;
     size_t reused_allocations;
     size_t rematerialized_tensors;
+    size_t rematerialized_bytes;
     size_t pressure_events;
     double pressure_score;
     double selected_kernel_score;
@@ -101,13 +104,20 @@ typedef struct {
     pyc_objective_mode active_mode;
     pyc_rollback_reason rollback_reason;
     size_t rollback_count;
+    pyc_objective_mode shadow_mode;
+    pyc_rollback_reason shadow_reason;
     int selected_kernel_count;
     size_t selected_kernel_candidates;
     char selected_kernel_symbol[PYC_KERNEL_SYMBOL_MAX];
+    char execution_path[128];
     double dispatch_ms;
     double graph_exec_ms;
     double controller_ms;
     double kernel_select_ms;
+    double cuda_copy_in_ms;
+    double cuda_kernel_ms;
+    double cuda_copy_out_ms;
+    double cuda_sync_ms;
     int deterministic_contract_enforced;
     int deterministic_contract_ok;
     uint64_t model_fingerprint;
@@ -134,6 +144,16 @@ typedef struct {
     size_t speculative_guard_miss_count;
     double speculative_confidence;
     char speculative_shape_bucket[64];
+    int phantom_graph_enabled;
+    int phantom_graph_match;
+    size_t phantom_graph_match_count;
+    size_t phantom_graph_mismatch_count;
+    size_t phantom_graph_reshape_count;
+    double phantom_graph_confidence;
+    double phantom_graph_match_score;
+    char phantom_graph_expected_bucket[64];
+    char phantom_graph_expected_signature[128];
+    char phantom_graph_observed_signature[128];
 } pyc_run_stats;
 
 typedef struct pyc_compiled_model pyc_compiled_model;

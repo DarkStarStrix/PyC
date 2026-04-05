@@ -10,6 +10,7 @@ import platform
 import shutil
 import statistics
 import subprocess
+import sys
 from pathlib import Path
 
 try:
@@ -34,6 +35,21 @@ DEFAULT_ADAPTERS = [
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+
+def progress_write(message: str) -> None:
+    if tqdm is not None and sys.stderr.isatty():
+        tqdm.write(message, file=sys.stderr)
+    else:
+        print(message, flush=True)
+
+
+SOLID_PROGRESS_CHARS = " ▏▎▍▌▋▊▉█"
+
+
+def require_progress_support(enabled: bool) -> None:
+    if enabled and tqdm is None:
+        raise SystemExit("--progress requested but tqdm is not installed in this Python environment")
 
 
 def git_head() -> str:
@@ -223,9 +239,42 @@ def run_adapter(adapter: str, device: str, batch: int, hidden: int, iters: int, 
 
 
 def iter_with_progress(items, enabled: bool, desc: str):
-    if enabled and tqdm is not None:
-        return tqdm(items, desc=desc, unit="adapter")
+    if enabled and tqdm is not None and sys.stderr.isatty():
+        return tqdm(
+            items,
+            desc=desc,
+            unit="adapter",
+            file=sys.stderr,
+            dynamic_ncols=True,
+            ascii=SOLID_PROGRESS_CHARS,
+            mininterval=0.1,
+            leave=True,
+            smoothing=0.05,
+        )
     return items
+
+
+def create_progress_bar(total: int, enabled: bool, desc: str):
+    if enabled and tqdm is not None and sys.stderr.isatty() and total > 0:
+        return tqdm(
+            total=total,
+            desc=desc,
+            unit="run",
+            file=sys.stderr,
+            dynamic_ncols=True,
+            ascii=SOLID_PROGRESS_CHARS,
+            mininterval=0.1,
+            leave=True,
+            smoothing=0.05,
+            miniters=1,
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}",
+        )
+    return None
+
+
+def summarize_artifact_write(scope: str, paths: list[Path]) -> str:
+    labels = ", ".join(path.name for path in paths)
+    return f"[gpu-suite] wrote {scope} artifacts: {labels}"
 
 
 def aggregate_adapter_runs(adapter: str, runs: list[dict]) -> dict:
@@ -486,6 +535,7 @@ def main() -> int:
         help="Show tqdm progress bars while running adapters and repeats.",
     )
     args = parser.parse_args()
+    require_progress_support(args.progress)
 
     adapters = [a.strip() for a in args.adapters.split(",") if a.strip()]
     output_root = Path(args.output_root)
@@ -522,20 +572,34 @@ def main() -> int:
         "adapters": {},
     }
 
-    for adapter in iter_with_progress(adapters, args.progress, f"{args.device} adapters"):
-        repeat_range = range(args.repeats)
-        if args.progress and tqdm is not None and args.repeats > 1:
-            repeat_range = tqdm(
-                repeat_range,
-                desc=f"{adapter} repeats",
-                unit="run",
-                leave=False,
+    progress_write(
+        f"[gpu-suite] run_id={run_id} device={args.device} adapters={','.join(adapters)} repeats={args.repeats}"
+    )
+    progress = create_progress_bar(len(adapters) * args.repeats, args.progress, "gpu-suite")
+    for index, adapter in enumerate(adapters, start=1):
+        if progress is not None:
+            progress.set_description_str(f"gpu-suite {index}/{len(adapters)}")
+            progress.set_postfix_str(f"adapter={adapter}")
+        runs = []
+        for repeat_index in range(args.repeats):
+            if progress is not None:
+                progress.set_description_str(f"gpu-suite {index}/{len(adapters)}")
+                progress.set_postfix_str(f"adapter={adapter} repeat={repeat_index + 1}/{args.repeats}")
+            runs.append(run_adapter(adapter, args.device, args.batch, args.hidden, args.iters, args.warmup))
+            if progress is not None:
+                progress.update(1)
+        aggregated = enrich_derived_metrics(aggregate_adapter_runs(adapter, runs))
+        results["adapters"][adapter] = aggregated
+        if aggregated.get("status") == "ok":
+            progress_write(
+                f"[gpu-suite] adapter done {adapter} mean_ms={to_float((aggregated.get('latency_ms') or {}).get('mean')):.4f} "
+                f"mode={aggregated.get('mode', 'unknown')}"
             )
-        runs = [
-            run_adapter(adapter, args.device, args.batch, args.hidden, args.iters, args.warmup)
-            for _ in repeat_range
-        ]
-        results["adapters"][adapter] = enrich_derived_metrics(aggregate_adapter_runs(adapter, runs))
+        else:
+            progress_write(
+                f"[gpu-suite] adapter done {adapter} status={aggregated.get('status')} "
+                f"reason={aggregated.get('reason') or aggregated.get('error', 'n/a')}"
+            )
 
     stamp = f"{run_id}__{args.tag}"
     structured_json = output_root / "json" / f"{stamp}.json"
@@ -571,10 +635,12 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    print(f"Wrote {structured_json}")
-    print(f"Wrote {structured_md}")
-    print(f"Wrote {structured_svg}")
-    print(f"Wrote {structured_meta}")
+    if progress is not None:
+        progress.set_description_str("gpu-suite done")
+        progress.set_postfix_str("finalizing artifacts")
+        progress.close()
+    progress_write(summarize_artifact_write("run", [structured_json, structured_md, structured_svg, structured_meta]))
+    progress_write(f"[gpu-suite] complete run_id={run_id}")
     if args.parity_strict:
         proxy_adapters = [
             name

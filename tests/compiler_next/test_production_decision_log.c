@@ -55,7 +55,9 @@ int main(void) {
     opts.enable_memory_reuse = 1;
     opts.enable_autotune = 0;
     opts.enable_speculative_plans = 1;
+    opts.enable_phantom_graph = 1;
     opts.max_speculative_plans = 3;
+    opts.phantom_horizon_steps = 1;
     opts.objective_mode = PYC_MODE_BALANCED;
     opts.deterministic_strict = 1;
     opts.cache_mode = PYC_COMPILE_CACHE_IN_MEMORY;
@@ -106,6 +108,10 @@ int main(void) {
         pyc_destroy_model(model);
         return 6;
     }
+    if (!must_contain(log, "shadow_mode=") || !must_contain(log, "shadow_reason=")) {
+        pyc_destroy_model(model);
+        return 30;
+    }
     if (!must_contain(log, "contract=") || !must_contain(log, "contract_reason=")) {
         pyc_destroy_model(model);
         return 7;
@@ -121,6 +127,10 @@ int main(void) {
     if (!must_contain(log, "spec_conf=")) {
         pyc_destroy_model(model);
         return 20;
+    }
+    if (!must_contain(log, "phantom_enabled=1") || !must_contain(log, "phantom_match=1") || !must_contain(log, "phantom_score=")) {
+        pyc_destroy_model(model);
+        return 26;
     }
     if (!must_contain(log, "spec_plans=3")) {
         pyc_destroy_model(model);
@@ -178,6 +188,18 @@ int main(void) {
     if (stats.speculative_shape_bucket[0] == '\0') {
         pyc_destroy_model(model);
         return 25;
+    }
+    if (!stats.phantom_graph_enabled || !stats.phantom_graph_match) {
+        pyc_destroy_model(model);
+        return 27;
+    }
+    if (stats.phantom_graph_match_count == 0 || stats.phantom_graph_confidence <= 0.0) {
+        pyc_destroy_model(model);
+        return 28;
+    }
+    if (stats.phantom_graph_expected_signature[0] == '\0' || stats.phantom_graph_observed_signature[0] == '\0') {
+        pyc_destroy_model(model);
+        return 29;
     }
 
     pyc_destroy_model(model);

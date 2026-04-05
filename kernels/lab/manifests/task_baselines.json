@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "baselines": [
+    {
+      "task_kind": "gemm",
+      "backend": "cuda",
+      "arch": "sm89",
+      "kernel": "ada_gemm_k64_warp32_async",
+      "source": "seed",
+      "updated_utc": null,
+      "notes": "Current Ada FP32 GEMM winner for SM89 GPUs."
+    },
+    {
+      "task_kind": "gemm",
+      "backend": "cuda",
+      "arch": "generic",
+      "kernel": "matrix_mult",
+      "source": "seed",
+      "updated_utc": null,
+      "notes": "Generic CUDA GEMM baseline when no architecture-specific winner exists."
+    }
+  ]
+}

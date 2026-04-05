@@ -1,55 +1,39 @@
 # Nexa Insight
 
-`Nexa Insight` contains two single-node telemetry apps for GPU training boxes:
+`Nexa Insight` is now a single local SSH-backed Textual observer that watches the remote box from outside tmux.
 
-- `nexa-insight`: lightweight classic terminal dashboard (stdlib).
-- `nexa-insight-tui`: Bubble Tea cyberpunk TUI with ML run metrics.
+## Core Identity
 
-## What It Shows
+- Always-on telemetry dashboard with 1 Hz sparklines for SM utilization, memory-controller utilization, power, and temperature.
+- Active GPU process table filtered to processes with an active GPU context.
+- Structured progress view sourced from `latest_ada_fp32_gemm.progress.json`.
+- Active tmux window table and live pane tail for execution visibility.
+- Recent benchmark completions for quick judgment.
 
-- Host stats: uptime, load averages, memory usage, process count.
-- Network throughput: aggregate RX/TX MB/s from `/proc/net/dev`.
-- GPU summary: utilization, memory, temperature, and power from `nvidia-smi`.
-- Active GPU compute processes: PID, process, GPU UUID, VRAM usage.
-- Top CPU processes: PID/PPID/CPU%/MEM%/RSS.
+## Requirements
 
-## Build
-
-```bash
-cd infra/nexa_insight
-go build -o nexa-insight ./cmd/nexa-insight
-go build -o nexa-insight-tui ./cmd/nexa-insight-tui
-```
+- Python 3.9+
+- `textual`
+- SSH access to the remote GPU box
+- `nvidia-smi` and `tmux` on the remote host
+- Benchmark progress state written to `latest_ada_fp32_gemm.progress.json`
 
 ## Run
 
 ```bash
-cd infra/nexa_insight
-./nexa-insight
+bash infra/run_nexa_insight_local_tui.sh
 ```
 
-Bubble Tea TUI:
+The classic `run_nexa_insight.sh` and `run_nexa_insight_tui.sh` entrypoints now launch the same local observer.
 
-```bash
-./nexa-insight-tui --refresh 1s --runs-root benchmark/remote_results/runpod_h100_8x/campaign_v4
-```
+## Keybindings
 
-Or from repo root:
-
-```bash
-bash infra/run_nexa_insight.sh
-bash infra/run_nexa_insight_tui.sh --refresh 1s
-```
-
-## Useful Flags
-
-- `--refresh 1s`: update interval.
-- `--top 20`: number of top CPU processes.
-- `--json-out benchmark/remote_results/runpod_h100_8x/insight/live.ndjson`: append snapshots for later analysis.
-- `--no-clear`: emit heartbeat lines instead of full-screen redraw.
+- `q`: quit
+- `r`: refresh immediately
 
 ## Notes
 
-- Primary target is Linux GPU hosts (RunPod/Ubuntu).
-- If `nvidia-smi` is unavailable, GPU sections are shown as unavailable.
-- Exit with `Ctrl-C`.
+- The local observer polls the remote box over SSH and is the primary judgment surface.
+- `tmux` remains the execution surface only.
+- The snapshot profiler groups `ncu` CSV output by kernel name and kernel ID.
+- Progress state is read from `latest_ada_fp32_gemm.progress.json`, not inferred from terminal redraw behavior.

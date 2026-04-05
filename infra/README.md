@@ -20,15 +20,23 @@ Run the bootstrap from that image on a GPU VM:
 INSTALL_SYSTEM_DEPS=0 bash infra/run_bootstrap_image.sh
 ```
 
+If the host session exits mid-setup, resume from the current machine state instead of restarting:
+
+```bash
+bash infra/resume_gpu_box.sh
+```
+
 ## Scripts
 
 - `infra/bootstrap_gpu_box.sh`: system install + venv + verify + build pipeline.
+- `infra/resume_gpu_box.sh`: guarded, resumable host bootstrap with step markers and persistent logs.
 - `infra/build_bootstrap_image.sh`: builds the reusable Ubuntu bootstrap image.
 - `infra/run_bootstrap_image.sh`: runs the bootstrap image against the checked-out repo on a VM.
 - `infra/verify_gpu_env.sh`: checks GPU runtime/tools/libs/Python environment.
 - `infra/build_distributed_module.sh`: configures, builds, runs compiler-next tests, runs distributed benchmark suite.
-- `infra/run_nexa_insight.sh`: build and run Nexa Insight telemetry TUI.
-- `infra/run_nexa_insight_tui.sh`: run the Bubble Tea cyberpunk TUI with ML metrics.
+- `infra/run_nexa_insight.sh`: launch the local SSH-backed Nexa Insight TUI.
+- `infra/run_nexa_insight_tui.sh`: launch the same local SSH-backed TUI explicitly.
+- `infra/run_nexa_insight_local_tui.sh`: direct entrypoint for the same observer.
 
 ## Useful env vars
 
@@ -43,26 +51,34 @@ INSTALL_SYSTEM_DEPS=0 bash infra/run_bootstrap_image.sh
 - `IMAGE_TAG=pyc/bootstrap-gpu:latest`: override the bootstrap image tag.
 - `GPU_FLAG='--gpus all'`: override the Docker GPU runtime flags.
 
-## Nexa Insight (single-node telemetry TUI)
+## Nexa Insight
 
 Run from repo root:
 
 ```bash
-bash infra/run_nexa_insight.sh --refresh 1s --top 20
+bash infra/run_nexa_insight.sh --refresh 1
 ```
 
-Optional snapshot export:
+Dependencies:
 
 ```bash
-bash infra/run_nexa_insight.sh \
-  --json-out benchmark/remote_results/runpod_h100_8x/insight/live.ndjson
+source .venv/bin/activate
+pip install textual nvidia-ml-py
 ```
 
-## Nexa Insight TUI (Bubble Tea)
-
-Run from repo root:
+Run from your local machine to observe the remote box outside tmux:
 
 ```bash
-bash infra/run_nexa_insight_tui.sh --refresh 1s \
-  --runs-root benchmark/remote_results/runpod_h100_8x/campaign_v4
+bash infra/run_nexa_insight_local_tui.sh
 ```
+
+This starts a local Textual TUI that polls the remote host over SSH and renders the latest task or benchmark progress, GPU telemetry, active processes, windows, and pane tail:
+
+- live `nvidia-smi` GPU telemetry
+- active compute processes
+- current `pyc-ada` tmux windows
+- a live tail of the active tmux pane
+- structured benchmark progress from `latest_ada_fp32_gemm.progress.json`
+- recent benchmark completions for quick judgment
+
+For direct, human-readable PyC bench runs in the tmux pane, prefer `scripts/run_pyc_bench_pretty.sh`. It keeps the full JSON artifact but prints compact summary lines instead of flooding the terminal.

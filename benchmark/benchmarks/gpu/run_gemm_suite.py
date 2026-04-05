@@ -9,6 +9,7 @@ import platform
 import re
 import statistics
 import subprocess
+import sys
 from pathlib import Path
 
 try:
@@ -16,15 +17,42 @@ try:
 except Exception:  # noqa: BLE001
     tqdm = None
 
+ROOT = Path(__file__).resolve().parents[3]
+PROGRESS_STATE_DIR = ROOT / "infra" / "nexa_insight"
+if str(PROGRESS_STATE_DIR) not in sys.path:
+    sys.path.insert(0, str(PROGRESS_STATE_DIR))
+from progress_state import write_progress_state
+
 from run_gpu_suite import ADAPTER_DIR, DEFAULT_ADAPTERS, git_dirty, git_head, read_gpu_info
 
-ROOT = Path(__file__).resolve().parents[3]
 RESULTS_DIR = ROOT / "benchmark" / "benchmarks" / "results"
 DEFAULT_MATRIX_FILE = ROOT / "benchmark" / "benchmarks" / "gpu" / "configs" / "ada_fp32_gemm_shapes.json"
+SOLID_PROGRESS_CHARS = " ▏▎▍▌▋▊▉█"
 
 
 def run(cmd: list[str], env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+
+
+def progress_write(message: str) -> None:
+    if tqdm is not None and sys.stderr.isatty():
+        tqdm.write(message, file=sys.stderr)
+    else:
+        print(message, flush=True)
+
+
+def require_progress_support(enabled: bool) -> None:
+    if enabled and tqdm is None:
+        raise SystemExit("--progress requested but tqdm is not installed in this Python environment")
+
+
+def short_shape_name(name: str) -> str:
+    return (
+        name.replace("square-", "sq")
+        .replace("tall-skinny-", "ts-")
+        .replace("wide-skinny-", "ws-")
+        .replace("x", "x")
+    )
 
 
 def to_float(value, default: float = 0.0) -> float:
@@ -62,6 +90,7 @@ def build_env(
     k: int,
     n: int,
     device: str,
+    dtype: str,
     batch: int,
     hidden: int,
     iters: int,
@@ -79,6 +108,7 @@ def build_env(
     env["BENCH_K"] = str(k)
     env["BENCH_N"] = str(n)
     env["BENCH_DEVICE"] = device
+    env["BENCH_DTYPE"] = dtype
     env["BENCH_BATCH"] = str(batch)
     env["BENCH_HIDDEN"] = str(hidden)
     env["BENCH_ITERS"] = str(iters)
@@ -96,7 +126,8 @@ def run_adapter(adapter: str, device: str, shape: dict, iters: int, warmup: int)
     n = int(shape["n"])
     batch = m
     hidden = n
-    env = build_env("gemm", str(shape["name"]), m, k, n, device, batch, hidden, iters, warmup)
+    dtype = str(shape.get("dtype", "float32"))
+    env = build_env("gemm", str(shape["name"]), m, k, n, device, dtype, batch, hidden, iters, warmup)
     cmd = [
         "python3",
         str(script),
@@ -195,6 +226,7 @@ def emit_shape_markdown(results: dict) -> str:
         f"- Run ID: `{results['meta']['run_id']}`",
         f"- Tag: `{results['meta']['tag']}`",
         f"- Device: `{results['meta']['device']}`",
+        f"- DType: `{results['meta']['dtype']}`",
         "",
         "| Adapter | Mode | Mean ms | P50 ms | P95 ms | TFLOPS | Peak GiB | Status |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
@@ -220,6 +252,7 @@ def emit_run_markdown(results: dict) -> str:
         f"- Run ID: `{results['meta']['run_id']}`",
         f"- Tag: `{results['meta']['tag']}`",
         f"- Device: `{results['meta']['device']}`",
+        f"- DType: `{results['meta']['dtype']}`",
         f"- Host: `{results['meta']['host']}`",
         f"- Git: `{results['meta']['git_head']}` dirty={results['meta']['git_dirty']}",
         "",
@@ -273,7 +306,7 @@ def render_shape_svg(results: dict, out_path: Path) -> None:
 
     title = f"Ada FP32 GEMM: {shape['name']}"
     subtitle = f"run_id={results['meta']['run_id']} | git={results['meta']['git_head']} | dirty={results['meta']['git_dirty']}"
-    subtitle_2 = f"M={shape['m']} K={shape['k']} N={shape['n']} | adapters={len(ok_rows)}"
+    subtitle_2 = f"M={shape['m']} K={shape['k']} N={shape['n']} | dtype={results['meta']['dtype']} | adapters={len(ok_rows)}"
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
   <rect width="100%" height="100%" fill="#f8fafc"/>
   <text x="30" y="42" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#0f172a">{title}</text>
@@ -318,7 +351,7 @@ def render_run_svg(results: dict, out_path: Path) -> None:
 
     title = "Ada FP32 GEMM Sweep Summary"
     subtitle = f"run_id={results['meta']['run_id']} | git={results['meta']['git_head']} | dirty={results['meta']['git_dirty']}"
-    subtitle_2 = f"device={results['meta']['device']} | shapes={len(results['shapes'])}"
+    subtitle_2 = f"device={results['meta']['device']} | dtype={results['meta']['dtype']} | shapes={len(results['shapes'])}"
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
   <rect width="100%" height="100%" fill="#f8fafc"/>
   <text x="30" y="42" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#0f172a">{title}</text>
@@ -330,10 +363,27 @@ def render_run_svg(results: dict, out_path: Path) -> None:
     out_path.write_text(svg, encoding="utf-8")
 
 
-def iter_with_progress(items, enabled: bool, desc: str):
-    if enabled and tqdm is not None:
-        return tqdm(items, desc=desc, unit="shape")
-    return items
+def create_progress_bar(total: int, enabled: bool, desc: str):
+    if enabled and tqdm is not None and sys.stderr.isatty() and total > 0:
+        return tqdm(
+            total=total,
+            desc=desc,
+            unit="run",
+            file=sys.stderr,
+            dynamic_ncols=True,
+            ascii=SOLID_PROGRESS_CHARS,
+            mininterval=0.1,
+            leave=True,
+            smoothing=0.05,
+            miniters=1,
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}",
+        )
+    return None
+
+
+def summarize_artifact_write(scope: str, paths: list[Path]) -> str:
+    labels = ", ".join(path.name for path in paths)
+    return f"[gemm-suite] wrote {scope} artifacts: {labels}"
 
 
 def main() -> int:
@@ -344,12 +394,14 @@ def main() -> int:
     parser.add_argument("--iters", type=int, default=80)
     parser.add_argument("--warmup", type=int, default=20)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--dtype", default="float32", choices=["float16", "float32", "bfloat16"])
     parser.add_argument("--tag", default="ada_fp32_gemm")
     parser.add_argument("--run-id", default="")
     parser.add_argument("--output-root", default=str(RESULTS_DIR))
     parser.add_argument("--progress", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+    require_progress_support(args.progress)
 
     matrix_path = Path(args.matrix_file)
     matrix = load_matrix(matrix_path)
@@ -363,6 +415,8 @@ def main() -> int:
     output_root = Path(args.output_root)
     for folder in (output_root / "json", output_root / "reports", output_root / "images"):
         folder.mkdir(parents=True, exist_ok=True)
+    progress_state_path = output_root / "json" / f"{run_id}__{args.tag}.progress.json"
+    latest_progress_state_path = output_root / "json" / "latest_ada_fp32_gemm.progress.json"
 
     shapes = []
     for shape in matrix["shapes"]:
@@ -384,6 +438,7 @@ def main() -> int:
                 "iters": int(shape.get("iters", base_iters)),
                 "warmup": int(shape.get("warmup", base_warmup)),
                 "repeats": int(shape.get("repeats", base_repeats)),
+                "dtype": str(shape.get("dtype", args.dtype)).strip().lower() or args.dtype,
                 "note": str(shape.get("note", "")).strip(),
             }
         )
@@ -422,13 +477,62 @@ def main() -> int:
             "matrix_name": matrix.get("name", "ada_fp32_gemm"),
             "task": matrix.get("task", "gemm"),
             "adapters": adapters,
+            "dtype": args.dtype,
         },
         "gpu": read_gpu_info(),
         "matrix": matrix,
         "shapes": [],
     }
 
-    for shape in iter_with_progress(shapes, args.progress, "Ada GEMM shapes"):
+    total_runs = sum(shape["repeats"] * len(adapters) for shape in shapes)
+    progress = create_progress_bar(total_runs, args.progress, "gemm-suite")
+    progress_state = {
+        "meta": {
+            "run_id": run_id,
+            "tag": args.tag,
+            "device": args.device,
+            "dtype": args.dtype,
+            "host": results["meta"]["host"],
+            "started_utc": results["meta"]["timestamp_utc"],
+            "status": "running",
+            "shape_count": len(shapes),
+            "adapter_count": len(adapters),
+            "total_runs": total_runs,
+        },
+        "progress": {
+            "completed_runs": 0,
+            "current_shape_index": 0,
+            "current_shape_name": "",
+            "current_adapter": "",
+            "current_repeat": 0,
+            "current_repeat_total": 0,
+            "last_update_utc": results["meta"]["timestamp_utc"],
+        },
+        "recent_events": [],
+    }
+    write_progress_state(progress_state_path, progress_state)
+    write_progress_state(latest_progress_state_path, progress_state)
+    progress_write(
+        f"[gemm-suite] run_id={run_id} device={args.device} dtype={args.dtype} adapters={','.join(adapters)} shapes={len(shapes)}"
+    )
+    for index, shape in enumerate(shapes, start=1):
+        progress_state["progress"].update(
+            {
+                "current_shape_index": index,
+                "current_shape_name": shape["name"],
+                "current_adapter": "",
+                "current_repeat": 0,
+                "current_repeat_total": shape["repeats"],
+                "last_update_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
+        write_progress_state(progress_state_path, progress_state)
+        write_progress_state(latest_progress_state_path, progress_state)
+        progress_write(
+            f"[gemm-suite] shape {index}/{len(shapes)} {short_shape_name(shape['name'])} "
+            f"{shape['m']}x{shape['k']}x{shape['n']} {shape['dtype']} "
+            f"iters={shape['iters']} warmup={shape['warmup']} reps={shape['repeats']}"
+        )
         shape_results = {
             "shape": {k: shape[k] for k in ("name", "m", "k", "n")},
             "meta": {
@@ -444,6 +548,7 @@ def main() -> int:
                 "matrix_name": results["meta"]["matrix_name"],
                 "task": results["meta"]["task"],
                 "adapters": adapters,
+                "dtype": shape["dtype"],
             },
             "gpu": results["gpu"],
             "adapters": {},
@@ -451,11 +556,58 @@ def main() -> int:
         }
         repeat_count = shape["repeats"]
         for adapter in adapters:
-            repeat_range = range(repeat_count)
-            if args.progress and tqdm is not None and repeat_count > 1:
-                repeat_range = tqdm(repeat_range, desc=f"{shape['name']}:{adapter}", unit="run", leave=False)
-            runs = [run_adapter(adapter, args.device, shape, shape["iters"], shape["warmup"]) for _ in repeat_range]
-            shape_results["adapters"][adapter] = aggregate_runs(adapter, shape, runs)
+            progress_state["progress"].update(
+                {
+                    "current_adapter": adapter,
+                    "current_repeat": 0,
+                    "current_repeat_total": repeat_count,
+                    "last_update_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                }
+            )
+            write_progress_state(progress_state_path, progress_state)
+            write_progress_state(latest_progress_state_path, progress_state)
+            if progress is not None:
+                progress.set_postfix_str(f"{short_shape_name(shape['name'])} {adapter} 0/{repeat_count}")
+            runs = []
+            for repeat_index in range(repeat_count):
+                progress_state["progress"].update(
+                    {
+                        "current_repeat": repeat_index + 1,
+                        "last_update_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    }
+                )
+                write_progress_state(progress_state_path, progress_state)
+                write_progress_state(latest_progress_state_path, progress_state)
+                if progress is not None:
+                    progress.set_description_str(f"gemm-suite {index}/{len(shapes)}")
+                    progress.set_postfix_str(
+                        f"{short_shape_name(shape['name'])} {adapter} {repeat_index + 1}/{repeat_count}"
+                    )
+                runs.append(run_adapter(adapter, args.device, shape, shape["iters"], shape["warmup"]))
+                if progress is not None:
+                    progress.update(1)
+                progress_state["progress"]["completed_runs"] += 1
+            aggregated = aggregate_runs(adapter, shape, runs)
+            shape_results["adapters"][adapter] = aggregated
+            progress_state["recent_events"].append(
+                {
+                    "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    "shape": shape["name"],
+                    "adapter": adapter,
+                    "status": aggregated.get("status"),
+                    "mean_ms": to_float((aggregated.get("latency_ms") or {}).get("mean")),
+                    "throughput_tflops": to_float(aggregated.get("throughput_tflops_per_sec")),
+                }
+            )
+            progress_state["recent_events"] = progress_state["recent_events"][-12:]
+            progress_state["progress"]["last_update_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+            write_progress_state(progress_state_path, progress_state)
+            write_progress_state(latest_progress_state_path, progress_state)
+            if aggregated.get("status") != "ok":
+                progress_write(
+                    f"[gemm-suite] adapter done {short_shape_name(shape['name'])} {adapter} "
+                    f"status={aggregated.get('status')} reason={aggregated.get('reason') or aggregated.get('error', 'n/a')}"
+                )
 
         stamp = f"{run_id}__{args.tag}__{shape['slug']}"
         json_path = output_root / "json" / f"{stamp}.json"
@@ -479,6 +631,7 @@ def main() -> int:
                     "git_head": results["meta"]["git_head"],
                     "git_dirty": results["meta"]["git_dirty"],
                     "device": results["meta"]["device"],
+                    "dtype": shape["dtype"],
                     "adapters": adapters,
                 },
                 indent=2,
@@ -486,10 +639,19 @@ def main() -> int:
             + "\n",
             encoding="utf-8",
         )
-        print(f"Wrote {json_path}")
-        print(f"Wrote {md_path}")
-        print(f"Wrote {svg_path}")
-        print(f"Wrote {meta_path}")
+        ok_adapters = [payload for payload in shape_results["adapters"].values() if payload.get("status") == "ok"]
+        if ok_adapters:
+            best = max(ok_adapters, key=lambda payload: to_float(payload.get("throughput_tflops_per_sec")))
+            pyc = shape_results["adapters"].get("pyc")
+            pyc_note = ""
+            if isinstance(pyc, dict) and pyc.get("status") == "ok":
+                pyc_note = f" pyc={to_float(pyc.get('throughput_tflops_per_sec')):.4f}TF"
+            progress_write(
+                f"[gemm-suite] shape complete {shape['name']} best={best.get('display_name', best.get('adapter', 'n/a'))} "
+                f"{to_float(best.get('throughput_tflops_per_sec')):.4f}TF{pyc_note}"
+            )
+        else:
+            progress_write(f"[gemm-suite] shape complete {shape['name']} no successful adapters")
         results["shapes"].append(
             {
                 "shape": shape_results["shape"],
@@ -519,6 +681,7 @@ def main() -> int:
                 "git_head": results["meta"]["git_head"],
                 "git_dirty": results["meta"]["git_dirty"],
                 "device": results["meta"]["device"],
+                "dtype": results["meta"]["dtype"],
                 "adapters": adapters,
                 "shape_count": len(results["shapes"]),
             },
@@ -536,14 +699,19 @@ def main() -> int:
     latest_svg.write_text(run_svg.read_text(encoding="utf-8"), encoding="utf-8")
     latest_meta.write_text(run_meta.read_text(encoding="utf-8"), encoding="utf-8")
 
-    print(f"Wrote {run_json}")
-    print(f"Wrote {run_md}")
-    print(f"Wrote {run_svg}")
-    print(f"Wrote {run_meta}")
-    print(f"Wrote {latest_json}")
-    print(f"Wrote {latest_md}")
-    print(f"Wrote {latest_svg}")
-    print(f"Wrote {latest_meta}")
+    if progress is not None:
+        progress.set_description_str("gemm-suite done")
+        progress.set_postfix_str("finalizing artifacts")
+        progress.close()
+    progress_state["meta"]["status"] = "completed"
+    progress_state["progress"]["current_adapter"] = ""
+    progress_state["progress"]["current_repeat"] = 0
+    progress_state["progress"]["last_update_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    write_progress_state(progress_state_path, progress_state)
+    write_progress_state(latest_progress_state_path, progress_state)
+    progress_write(summarize_artifact_write("run", [run_json, run_md, run_svg, run_meta]))
+    progress_write(summarize_artifact_write("latest", [latest_json, latest_md, latest_svg, latest_meta]))
+    progress_write(f"[gemm-suite] complete run_id={run_id}")
     return 0
 
 

@@ -43,6 +43,8 @@ typedef struct {
 
 typedef struct {
     pyc_objective_mode current_mode;
+    pyc_objective_mode recommended_mode;
+    pyc_rollback_reason recommendation_reason;
     pyc_objective_mode last_stable_mode;
     pyc_rollback_reason last_rollback_reason;
     size_t rollback_count;

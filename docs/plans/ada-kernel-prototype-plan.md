@@ -37,6 +37,23 @@
    - a benchmark-backed registry metadata update
 5. Wire the chosen symbol into `kernel_registry` with measured occupancy/shared-memory values.
 
+## Current winning prototype
+
+- Winner: `ada_gemm_k64_warp32_async`
+- Source: `kernels/prototypes/ada/gemm_k64_warp32_async/kernel.cu`
+- It preserves the `64 x 64 x 64` / `32 x 8` / `8 x 2` family and replaces the old single-stage shared-memory loop with a double-buffered async/shared-memory path.
+- Baseline result on RTX 6000 Ada at `1024 x 1024 x 1024`:
+  - `33.825 TFLOPS`
+  - `best_ms=0.063`
+  - `max_abs_diff=0.000000`
+
+## Current measured comparison
+
+- Prior baseline: `ada_gemm_k64_warp32_store2`
+- Prior `nsys` kernel time: `77.72 us`
+- Current `nsys` kernel time: `68.41 us`
+- Decision: the async path is now the prototype to beat before any further promotion or CUTLASS wiring.
+
 ## First VM commands
 
 ```bash

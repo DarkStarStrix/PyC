@@ -127,7 +127,9 @@ int main(void) {
     opts.enable_memory_reuse = 1;
     opts.enable_autotune = 0;
     opts.enable_speculative_plans = 1;
+    opts.enable_phantom_graph = 1;
     opts.max_speculative_plans = 3;
+    opts.phantom_horizon_steps = 1;
     opts.objective_mode = PYC_MODE_BALANCED;
     opts.deterministic_strict = 1;
     pyc_runtime_rails_default(&opts.rails);
@@ -157,13 +159,25 @@ int main(void) {
         pyc_destroy_model(model);
         return 6;
     }
+    if (!stats.phantom_graph_enabled || !stats.phantom_graph_match) {
+        pyc_destroy_model(model);
+        return 18;
+    }
+    if (stats.phantom_graph_match_count != 1 || stats.phantom_graph_mismatch_count != 0 || stats.phantom_graph_reshape_count != 0) {
+        pyc_destroy_model(model);
+        return 19;
+    }
+    if (strcmp(stats.phantom_graph_expected_signature, stats.phantom_graph_observed_signature) != 0) {
+        pyc_destroy_model(model);
+        return 20;
+    }
     if (((float*)output.data)[0] != 1.0f || ((float*)output.data)[3] != 4.0f) {
         pyc_destroy_model(model);
         return 7;
     }
 
     log = pyc_model_last_decision_log(model);
-    if (!log || strstr(log, "spec_plans=") == NULL || strstr(log, "spec_hit=1") == NULL) {
+    if (!log || strstr(log, "spec_plans=") == NULL || strstr(log, "spec_hit=1") == NULL || strstr(log, "phantom_enabled=1") == NULL) {
         pyc_destroy_model(model);
         return 8;
     }
@@ -177,6 +191,18 @@ int main(void) {
     if (!stats.speculative_plan_hit || stats.speculative_plan_count != 3) {
         pyc_destroy_model(model);
         return 10;
+    }
+    if (!stats.phantom_graph_enabled || stats.phantom_graph_match) {
+        pyc_destroy_model(model);
+        return 21;
+    }
+    if (stats.phantom_graph_match_count != 1 || stats.phantom_graph_mismatch_count != 1 || stats.phantom_graph_reshape_count != 1) {
+        pyc_destroy_model(model);
+        return 22;
+    }
+    if (strcmp(stats.phantom_graph_expected_signature, stats.phantom_graph_observed_signature) != 0) {
+        pyc_destroy_model(model);
+        return 23;
     }
     if (((float*)output.data)[0] != 1.0f || ((float*)output.data)[15] != 16.0f) {
         pyc_destroy_model(model);
@@ -204,6 +230,22 @@ int main(void) {
     if (stats.speculative_guard_miss_count == 0) {
         pyc_destroy_model(model);
         return 13;
+    }
+    if (!stats.phantom_graph_enabled || stats.phantom_graph_match) {
+        pyc_destroy_model(model);
+        return 24;
+    }
+    if (stats.phantom_graph_match_count != 1 || stats.phantom_graph_mismatch_count != 2 || stats.phantom_graph_reshape_count != 1) {
+        pyc_destroy_model(model);
+        return 25;
+    }
+    if (strcmp(stats.phantom_graph_expected_signature, "1:r2x4x4;1:r2x4x4") != 0) {
+        pyc_destroy_model(model);
+        return 26;
+    }
+    if (strcmp(stats.phantom_graph_observed_signature, "1:r2x3x3;1:r2x3x3") != 0) {
+        pyc_destroy_model(model);
+        return 27;
     }
     if (strcmp(stats.deterministic_contract_reason, "input_shape_mismatch") != 0) {
         pyc_destroy_model(model);

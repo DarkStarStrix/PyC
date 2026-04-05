@@ -21,10 +21,14 @@ If you are new to the project, read these in order:
   - Includes innovation shortlist in `docs/compiler-next/innovation-backlog.md`.
   - Includes R&D landscape and source-backed direction in `docs/compiler-next/rd-landscape.md`.
   - Includes practical runtime usage spec in `docs/compiler-next/runtime-integration-spec.md`.
+  - Includes the current Ada FP32 runtime-path note in `docs/compiler-next/cuda-gemm-fast-path.md`.
+  - Includes the phantom-graph rationale in `docs/compiler-next/phantom-graph-rationale.md`.
   - Includes Phase 1 test matrix in `tests/compiler_next/test_roadmap_phase1.md`.
   - Includes kernel mini-lab CLI guide in `docs/compiler-next/kernel-lab.md`.
 - `kernels/lab/` and `kernels/prototypes/ada/`
   - Kernel staging area for prototyping, benchmark-surface preparation, and Ada-specific experiments before promotion.
+- `benchmark/benchmarks/README.md`
+  - Canonical benchmark result layout, pull/analyze flow, and Ada sweep workflow.
 - `docs/plans/`
   - Repo-level cleanup and migration plans, including structure and feature-delivery sequencing.
   - Includes the active compiler-next execution order in `docs/plans/compiler-next-feature-buildout.md`.

@@ -3,10 +3,106 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #if defined(PYC_HAVE_CUDA_RUNTIME)
 #include <cuda_runtime_api.h>
+#include <cublasLt.h>
 #include <cublas_v2.h>
+#endif
+
+#if !defined(PYC_HAVE_CUTLASS_KERNELS)
+void pyc_cutlass_registry_init(void) {
+}
+
+int pyc_cutlass_gemm_dispatch(
+    const char* symbol,
+    int M,
+    int N,
+    int K,
+    const void* A,
+    const void* B,
+    void* C,
+    float alpha,
+    float beta,
+    void* stream) {
+    (void)symbol;
+    (void)M;
+    (void)N;
+    (void)K;
+    (void)A;
+    (void)B;
+    (void)C;
+    (void)alpha;
+    (void)beta;
+    (void)stream;
+    return -1;
+}
+
+int pyc_cutlass_conv2d_dispatch(
+    const char* symbol,
+    int N,
+    int H,
+    int W,
+    int C_in,
+    int K,
+    int R,
+    int S,
+    int pad_h,
+    int pad_w,
+    int stride_h,
+    int stride_w,
+    const void* input,
+    const void* filter,
+    void* output,
+    void* stream) {
+    (void)symbol;
+    (void)N;
+    (void)H;
+    (void)W;
+    (void)C_in;
+    (void)K;
+    (void)R;
+    (void)S;
+    (void)pad_h;
+    (void)pad_w;
+    (void)stride_h;
+    (void)stride_w;
+    (void)input;
+    (void)filter;
+    (void)output;
+    (void)stream;
+    return -1;
+}
+
+int pyc_cutlass_attention_dispatch(
+    const char* symbol,
+    int seq_len,
+    int d_head,
+    const void* Q,
+    const void* K,
+    const void* V,
+    void* Out,
+    float scale,
+    void* stream) {
+    (void)symbol;
+    (void)seq_len;
+    (void)d_head;
+    (void)Q;
+    (void)K;
+    (void)V;
+    (void)Out;
+    (void)scale;
+    (void)stream;
+    return -1;
+}
+
+int pyc_cutlass_kernel_count(const char* op_key) {
+    (void)op_key;
+    return 0;
+}
+#else
+void pyc_cutlass_registry_init(void);
 #endif
 
 #if defined(PYC_HAVE_CUDA_RUNTIME)
@@ -18,23 +114,62 @@ typedef struct {
     size_t b_bytes;
     size_t c_bytes;
     cublasHandle_t handle;
+    cublasLtHandle_t lt_handle;
     cudaStream_t stream;
+    void* lt_workspace;
+    size_t lt_workspace_bytes;
     cudaGraph_t graph;
     cudaGraphExec_t graph_exec;
     int graph_valid;
+    int graph_uses_promoted_gemm;
+    int graph_lhs_copy_required;
     size_t graph_m;
     size_t graph_k;
     size_t graph_n;
+    const void* graph_host_a_last_ptr;
     const void* graph_host_a_ptr;
     const void* graph_host_b_ptr;
     const void* graph_host_out_ptr;
     int graph_rhs_copy_required;
+    char graph_promoted_symbol[PYC_KERNEL_SYMBOL_MAX];
+    const void* host_a_last_ptr;
+    size_t host_a_last_bytes;
     const void* host_b_last_ptr;
     size_t host_b_last_bytes;
+    int lhs_uploaded;
     int rhs_uploaded;
 } pyc_cuda_workspace;
 
 static pyc_cuda_workspace g_cuda_workspace;
+
+static int env_true(const char* name);
+static int env_default_true(const char* name);
+
+static double wall_ms_now(void) {
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    return ((double)ts.tv_sec * 1000.0) + ((double)ts.tv_nsec / 1000000.0);
+}
+static cublasStatus_t configure_cublas_math_mode(cublasHandle_t handle);
+static cublasStatus_t run_cublas_fp32_gemm(
+    cublasHandle_t handle,
+    int m,
+    int n,
+    int k,
+    const float* dev_a,
+    const float* dev_b,
+    float* dev_c);
+static cublasStatus_t run_cublaslt_fp32_gemm(
+    cublasLtHandle_t lt_handle,
+    cudaStream_t stream,
+    void* workspace,
+    size_t workspace_bytes,
+    int m,
+    int n,
+    int k,
+    const float* dev_a,
+    const float* dev_b,
+    float* dev_c);
 
 static void pyc_cuda_graph_reset(void) {
     if (g_cuda_workspace.graph_exec) {
@@ -46,13 +181,17 @@ static void pyc_cuda_graph_reset(void) {
         g_cuda_workspace.graph = NULL;
     }
     g_cuda_workspace.graph_valid = 0;
+    g_cuda_workspace.graph_uses_promoted_gemm = 0;
+    g_cuda_workspace.graph_lhs_copy_required = 0;
     g_cuda_workspace.graph_m = 0;
     g_cuda_workspace.graph_k = 0;
     g_cuda_workspace.graph_n = 0;
+    g_cuda_workspace.graph_host_a_last_ptr = NULL;
     g_cuda_workspace.graph_host_a_ptr = NULL;
     g_cuda_workspace.graph_host_b_ptr = NULL;
     g_cuda_workspace.graph_host_out_ptr = NULL;
     g_cuda_workspace.graph_rhs_copy_required = 0;
+    g_cuda_workspace.graph_promoted_symbol[0] = '\0';
 }
 
 static void pyc_cuda_workspace_release(void) {
@@ -73,15 +212,27 @@ static void pyc_cuda_workspace_release(void) {
         (void)cublasDestroy(g_cuda_workspace.handle);
         g_cuda_workspace.handle = NULL;
     }
+    if (g_cuda_workspace.lt_handle) {
+        (void)cublasLtDestroy(g_cuda_workspace.lt_handle);
+        g_cuda_workspace.lt_handle = NULL;
+    }
     if (g_cuda_workspace.stream) {
         (void)cudaStreamDestroy(g_cuda_workspace.stream);
         g_cuda_workspace.stream = NULL;
     }
+    if (g_cuda_workspace.lt_workspace) {
+        (void)cudaFree(g_cuda_workspace.lt_workspace);
+        g_cuda_workspace.lt_workspace = NULL;
+    }
     g_cuda_workspace.a_bytes = 0;
     g_cuda_workspace.b_bytes = 0;
     g_cuda_workspace.c_bytes = 0;
+    g_cuda_workspace.lt_workspace_bytes = 0;
+    g_cuda_workspace.host_a_last_ptr = NULL;
+    g_cuda_workspace.host_a_last_bytes = 0;
     g_cuda_workspace.host_b_last_ptr = NULL;
     g_cuda_workspace.host_b_last_bytes = 0;
+    g_cuda_workspace.lhs_uploaded = 0;
     g_cuda_workspace.rhs_uploaded = 0;
 }
 
@@ -93,6 +244,12 @@ static int pyc_cuda_workspace_ensure(
     cublasStatus_t cublas_status;
     int b_reallocated = 0;
     int graph_invalidate = 0;
+    size_t requested_lt_workspace = 0;
+
+    if (env_default_true("PYC_CUDA_ENABLE_CUBLASLT")) {
+        const char* value = getenv("PYC_CUDA_LT_WORKSPACE_BYTES");
+        requested_lt_workspace = value && value[0] != '\0' ? (size_t)strtoull(value, NULL, 10) : (size_t)(32u * 1024u * 1024u);
+    }
 
     if (!g_cuda_workspace.stream) {
         cuda_status = cudaStreamCreateWithFlags(&g_cuda_workspace.stream, cudaStreamNonBlocking);
@@ -109,7 +266,19 @@ static int pyc_cuda_workspace_ensure(
             return -1;
         }
     }
+    if (!g_cuda_workspace.lt_handle) {
+        cublasStatus_t lt_status = cublasLtCreate(&g_cuda_workspace.lt_handle);
+        if (lt_status != CUBLAS_STATUS_SUCCESS) {
+            pyc_cuda_workspace_release();
+            return -1;
+        }
+    }
     cublas_status = cublasSetStream(g_cuda_workspace.handle, g_cuda_workspace.stream);
+    if (cublas_status != CUBLAS_STATUS_SUCCESS) {
+        pyc_cuda_workspace_release();
+        return -1;
+    }
+    cublas_status = configure_cublas_math_mode(g_cuda_workspace.handle);
     if (cublas_status != CUBLAS_STATUS_SUCCESS) {
         pyc_cuda_workspace_release();
         return -1;
@@ -127,6 +296,9 @@ static int pyc_cuda_workspace_ensure(
             return -1;
         }
         g_cuda_workspace.a_bytes = a_bytes;
+        g_cuda_workspace.host_a_last_ptr = NULL;
+        g_cuda_workspace.host_a_last_bytes = 0;
+        g_cuda_workspace.lhs_uploaded = 0;
         graph_invalidate = 1;
     }
     if (b_bytes > g_cuda_workspace.b_bytes) {
@@ -166,6 +338,22 @@ static int pyc_cuda_workspace_ensure(
     if (graph_invalidate) {
         pyc_cuda_graph_reset();
     }
+    if (requested_lt_workspace > g_cuda_workspace.lt_workspace_bytes) {
+        if (g_cuda_workspace.lt_workspace) {
+            (void)cudaFree(g_cuda_workspace.lt_workspace);
+            g_cuda_workspace.lt_workspace = NULL;
+            g_cuda_workspace.lt_workspace_bytes = 0;
+        }
+        if (requested_lt_workspace > 0) {
+            cuda_status = cudaMalloc(&g_cuda_workspace.lt_workspace, requested_lt_workspace);
+            if (cuda_status != cudaSuccess) {
+                g_cuda_workspace.lt_workspace = NULL;
+                g_cuda_workspace.lt_workspace_bytes = 0;
+            } else {
+                g_cuda_workspace.lt_workspace_bytes = requested_lt_workspace;
+            }
+        }
+    }
 
     return 0;
 }
@@ -189,11 +377,241 @@ static int env_default_true(const char* name) {
              strcmp(value, "FALSE") == 0);
 }
 
+#if defined(PYC_HAVE_CUDA_RUNTIME)
+static cublasStatus_t configure_cublas_math_mode(cublasHandle_t handle) {
+#if defined(CUBLAS_TF32_TENSOR_OP_MATH)
+    cublasMath_t math_mode = env_default_true("PYC_CUDA_ALLOW_TF32") ?
+        CUBLAS_TF32_TENSOR_OP_MATH :
+        CUBLAS_DEFAULT_MATH;
+    return cublasSetMathMode(handle, math_mode);
+#else
+    (void)handle;
+    return CUBLAS_STATUS_SUCCESS;
+#endif
+}
+
+static cublasStatus_t run_cublas_fp32_gemm(
+    cublasHandle_t handle,
+    int m,
+    int n,
+    int k,
+    const float* dev_a,
+    const float* dev_b,
+    float* dev_c) {
+    const float alpha = 1.0f;
+    const float beta = 0.0f;
+#if defined(CUBLAS_COMPUTE_32F_FAST_TF32)
+    cublasComputeType_t compute_type = env_default_true("PYC_CUDA_ALLOW_TF32") ?
+        CUBLAS_COMPUTE_32F_FAST_TF32 :
+        CUBLAS_COMPUTE_32F;
+    return cublasGemmEx(
+        handle,
+        CUBLAS_OP_N,
+        CUBLAS_OP_N,
+        n,
+        m,
+        k,
+        &alpha,
+        dev_b,
+        CUDA_R_32F,
+        n,
+        dev_a,
+        CUDA_R_32F,
+        k,
+        &beta,
+        dev_c,
+        CUDA_R_32F,
+        n,
+        compute_type,
+        CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+#else
+    return cublasSgemm(
+        handle,
+        CUBLAS_OP_N,
+        CUBLAS_OP_N,
+        n,
+        m,
+        k,
+        &alpha,
+        dev_b,
+        n,
+        dev_a,
+        k,
+        &beta,
+        dev_c,
+        n);
+#endif
+}
+
+static cublasStatus_t run_best_fp32_gemm(
+    int m,
+    int n,
+    int k,
+    const float* dev_a,
+    const float* dev_b,
+    float* dev_c) {
+    if (env_default_true("PYC_CUDA_ENABLE_CUBLASLT")) {
+        cublasStatus_t lt_status = run_cublaslt_fp32_gemm(
+            g_cuda_workspace.lt_handle,
+            g_cuda_workspace.stream,
+            g_cuda_workspace.lt_workspace,
+            g_cuda_workspace.lt_workspace_bytes,
+            m,
+            n,
+            k,
+            dev_a,
+            dev_b,
+            dev_c);
+        if (lt_status == CUBLAS_STATUS_SUCCESS) {
+            return lt_status;
+        }
+    }
+    return run_cublas_fp32_gemm(g_cuda_workspace.handle, m, n, k, dev_a, dev_b, dev_c);
+}
+
+static cublasStatus_t run_cublaslt_fp32_gemm(
+    cublasLtHandle_t lt_handle,
+    cudaStream_t stream,
+    void* workspace,
+    size_t workspace_bytes,
+    int m,
+    int n,
+    int k,
+    const float* dev_a,
+    const float* dev_b,
+    float* dev_c) {
+    cublasStatus_t status;
+    cublasLtMatmulDesc_t op_desc = NULL;
+    cublasLtMatrixLayout_t a_layout = NULL;
+    cublasLtMatrixLayout_t b_layout = NULL;
+    cublasLtMatrixLayout_t c_layout = NULL;
+    cublasLtMatmulPreference_t pref = NULL;
+    cublasLtMatmulHeuristicResult_t heuristic;
+    int returned_results = 0;
+    const float alpha = 1.0f;
+    const float beta = 0.0f;
+    cublasOperation_t transa = CUBLAS_OP_N;
+    cublasOperation_t transb = CUBLAS_OP_N;
+#if defined(CUBLAS_COMPUTE_32F_FAST_TF32)
+    cublasComputeType_t compute_type = env_default_true("PYC_CUDA_ALLOW_TF32") ?
+        CUBLAS_COMPUTE_32F_FAST_TF32 :
+        CUBLAS_COMPUTE_32F;
+#else
+    cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+#endif
+
+    if (!lt_handle || !dev_a || !dev_b || !dev_c) {
+        return CUBLAS_STATUS_INVALID_VALUE;
+    }
+
+    status = cublasLtMatmulDescCreate(&op_desc, compute_type, CUDA_R_32F);
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        goto cleanup;
+    }
+    status = cublasLtMatmulDescSetAttribute(op_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transa, sizeof(transa));
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        goto cleanup;
+    }
+    status = cublasLtMatmulDescSetAttribute(op_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transb, sizeof(transb));
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        goto cleanup;
+    }
+
+    status = cublasLtMatrixLayoutCreate(&a_layout, CUDA_R_32F, m, k, k);
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        goto cleanup;
+    }
+    status = cublasLtMatrixLayoutCreate(&b_layout, CUDA_R_32F, k, n, n);
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        goto cleanup;
+    }
+    status = cublasLtMatrixLayoutCreate(&c_layout, CUDA_R_32F, m, n, n);
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        goto cleanup;
+    }
+
+#if defined(CUBLASLT_ORDER_ROW)
+    {
+        cublasLtOrder_t order = CUBLASLT_ORDER_ROW;
+        (void)cublasLtMatrixLayoutSetAttribute(a_layout, CUBLASLT_MATRIX_LAYOUT_ORDER, &order, sizeof(order));
+        (void)cublasLtMatrixLayoutSetAttribute(b_layout, CUBLASLT_MATRIX_LAYOUT_ORDER, &order, sizeof(order));
+        (void)cublasLtMatrixLayoutSetAttribute(c_layout, CUBLASLT_MATRIX_LAYOUT_ORDER, &order, sizeof(order));
+    }
+#endif
+
+    status = cublasLtMatmulPreferenceCreate(&pref);
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        goto cleanup;
+    }
+    status = cublasLtMatmulPreferenceSetAttribute(
+        pref,
+        CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+        &workspace_bytes,
+        sizeof(workspace_bytes));
+    if (status != CUBLAS_STATUS_SUCCESS) {
+        goto cleanup;
+    }
+
+    status = cublasLtMatmulAlgoGetHeuristic(
+        lt_handle,
+        op_desc,
+        a_layout,
+        b_layout,
+        c_layout,
+        c_layout,
+        pref,
+        1,
+        &heuristic,
+        &returned_results);
+    if (status != CUBLAS_STATUS_SUCCESS || returned_results <= 0) {
+        status = CUBLAS_STATUS_NOT_SUPPORTED;
+        goto cleanup;
+    }
+
+    status = cublasLtMatmul(
+        lt_handle,
+        op_desc,
+        &alpha,
+        dev_a,
+        a_layout,
+        dev_b,
+        b_layout,
+        &beta,
+        dev_c,
+        c_layout,
+        dev_c,
+        c_layout,
+        &heuristic.algo,
+        workspace,
+        workspace_bytes,
+        stream);
+
+cleanup:
+    if (pref) {
+        (void)cublasLtMatmulPreferenceDestroy(pref);
+    }
+    if (c_layout) {
+        (void)cublasLtMatrixLayoutDestroy(c_layout);
+    }
+    if (b_layout) {
+        (void)cublasLtMatrixLayoutDestroy(b_layout);
+    }
+    if (a_layout) {
+        (void)cublasLtMatrixLayoutDestroy(a_layout);
+    }
+    if (op_desc) {
+        (void)cublasLtMatmulDescDestroy(op_desc);
+    }
+    return status;
+}
+#endif
+
 void pyc_cuda_dispatch_trace_init(pyc_cuda_dispatch_trace* trace) {
     if (!trace) {
         return;
     }
     memset(trace, 0, sizeof(*trace));
+    trace->graph_replayed = 0;
     strcpy(trace->reason, "not_requested");
 }
 
@@ -823,22 +1241,32 @@ static int run_cuda_matmul_pipeline(
     size_t m,
     size_t k,
     size_t n,
-    int rhs_copy_required) {
-    const float alpha = 1.0f;
-    const float beta = 0.0f;
+    int lhs_copy_required,
+    int rhs_copy_required,
+    pyc_cuda_dispatch_trace* trace) {
     cublasStatus_t cublas_status;
     cudaError_t cuda_status;
+    int skip_output_copy = env_true("PYC_CUDA_SKIP_HOST_OUTPUT_COPY");
+    double t0;
+    double t1;
 
-    cuda_status = cudaMemcpyAsync(
-        g_cuda_workspace.dev_a,
-        host_a,
-        a_bytes,
-        cudaMemcpyHostToDevice,
-        g_cuda_workspace.stream);
-    if (cuda_status != cudaSuccess) {
-        return -1;
+    if (lhs_copy_required) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            g_cuda_workspace.dev_a,
+            host_a,
+            a_bytes,
+            cudaMemcpyHostToDevice,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            return -1;
+        }
+        if (trace) {
+            trace->copy_in_ms += wall_ms_now() - t0;
+        }
     }
     if (rhs_copy_required) {
+        t0 = wall_ms_now();
         cuda_status = cudaMemcpyAsync(
             g_cuda_workspace.dev_b,
             host_b,
@@ -848,37 +1276,47 @@ static int run_cuda_matmul_pipeline(
         if (cuda_status != cudaSuccess) {
             return -1;
         }
+        if (trace) {
+            trace->copy_in_ms += wall_ms_now() - t0;
+        }
     }
 
-    cublas_status = cublasSgemm(
-        g_cuda_workspace.handle,
-        CUBLAS_OP_N,
-        CUBLAS_OP_N,
-        (int)n,
+    t0 = wall_ms_now();
+    cublas_status = run_best_fp32_gemm(
         (int)m,
-        (int)k,
-        &alpha,
-        g_cuda_workspace.dev_b,
         (int)n,
-        g_cuda_workspace.dev_a,
         (int)k,
-        &beta,
-        g_cuda_workspace.dev_c,
-        (int)n);
+        g_cuda_workspace.dev_a,
+        g_cuda_workspace.dev_b,
+        g_cuda_workspace.dev_c);
     if (cublas_status != CUBLAS_STATUS_SUCCESS) {
         return -1;
     }
-
-    cuda_status = cudaMemcpyAsync(
-        host_out,
-        g_cuda_workspace.dev_c,
-        c_bytes,
-        cudaMemcpyDeviceToHost,
-        g_cuda_workspace.stream);
-    if (cuda_status != cudaSuccess) {
-        return -1;
+    t1 = wall_ms_now();
+    if (trace) {
+        trace->kernel_ms += t1 - t0;
     }
+
+    if (!skip_output_copy) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            host_out,
+            g_cuda_workspace.dev_c,
+            c_bytes,
+            cudaMemcpyDeviceToHost,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            return -1;
+        }
+        if (trace) {
+            trace->copy_out_ms += wall_ms_now() - t0;
+        }
+    }
+    t0 = wall_ms_now();
     cuda_status = cudaStreamSynchronize(g_cuda_workspace.stream);
+    if (trace) {
+        trace->sync_ms += wall_ms_now() - t0;
+    }
     return cuda_status == cudaSuccess ? 0 : -1;
 }
 
@@ -893,9 +1331,14 @@ static int run_promoted_cutlass_gemm_pipeline(
     size_t m,
     size_t k,
     size_t n,
+    int lhs_copy_required,
     int rhs_copy_required,
-    int* out_used) {
+    int* out_used,
+    pyc_cuda_dispatch_trace* trace) {
     cudaError_t cuda_status;
+    int skip_output_copy = env_true("PYC_CUDA_SKIP_HOST_OUTPUT_COPY");
+    double t0;
+    double t1;
 
     if (out_used) {
         *out_used = 0;
@@ -904,16 +1347,23 @@ static int run_promoted_cutlass_gemm_pipeline(
         return 1;
     }
 
-    cuda_status = cudaMemcpyAsync(
-        g_cuda_workspace.dev_a,
-        host_a,
-        a_bytes,
-        cudaMemcpyHostToDevice,
-        g_cuda_workspace.stream);
-    if (cuda_status != cudaSuccess) {
-        return -1;
+    if (lhs_copy_required) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            g_cuda_workspace.dev_a,
+            host_a,
+            a_bytes,
+            cudaMemcpyHostToDevice,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            return -1;
+        }
+        if (trace) {
+            trace->copy_in_ms += wall_ms_now() - t0;
+        }
     }
     if (rhs_copy_required) {
+        t0 = wall_ms_now();
         cuda_status = cudaMemcpyAsync(
             g_cuda_workspace.dev_b,
             host_b,
@@ -923,8 +1373,12 @@ static int run_promoted_cutlass_gemm_pipeline(
         if (cuda_status != cudaSuccess) {
             return -1;
         }
+        if (trace) {
+            trace->copy_in_ms += wall_ms_now() - t0;
+        }
     }
 
+    t0 = wall_ms_now();
     if (pyc_cutlass_gemm_dispatch(
             promoted_symbol,
             (int)m,
@@ -938,22 +1392,240 @@ static int run_promoted_cutlass_gemm_pipeline(
             g_cuda_workspace.stream) != 0) {
         return -1;
     }
-
-    cuda_status = cudaMemcpyAsync(
-        host_out,
-        g_cuda_workspace.dev_c,
-        c_bytes,
-        cudaMemcpyDeviceToHost,
-        g_cuda_workspace.stream);
-    if (cuda_status != cudaSuccess) {
-        return -1;
+    t1 = wall_ms_now();
+    if (trace) {
+        trace->kernel_ms += t1 - t0;
     }
+
+    if (!skip_output_copy) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            host_out,
+            g_cuda_workspace.dev_c,
+            c_bytes,
+            cudaMemcpyDeviceToHost,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            return -1;
+        }
+        if (trace) {
+            trace->copy_out_ms += wall_ms_now() - t0;
+        }
+    }
+    t0 = wall_ms_now();
     cuda_status = cudaStreamSynchronize(g_cuda_workspace.stream);
+    if (trace) {
+        trace->sync_ms += wall_ms_now() - t0;
+    }
     if (cuda_status != cudaSuccess) {
         return -1;
     }
     if (out_used) {
         *out_used = 1;
+    }
+    return 0;
+}
+
+static int run_promoted_cutlass_gemm_pipeline_graph(
+    const char* promoted_symbol,
+    const float* host_a,
+    const float* host_b,
+    float* host_out,
+    size_t a_bytes,
+    size_t b_bytes,
+    size_t c_bytes,
+    size_t m,
+    size_t k,
+    size_t n,
+    int lhs_copy_required,
+    int rhs_copy_required,
+    int* out_replayed,
+    pyc_cuda_dispatch_trace* trace) {
+    cudaError_t cuda_status;
+    cudaError_t capture_status;
+    int skip_output_copy = env_true("PYC_CUDA_SKIP_HOST_OUTPUT_COPY");
+    double t0;
+    double t1;
+
+    if (!out_replayed) {
+        return -1;
+    }
+    *out_replayed = 0;
+
+    if (!promoted_symbol || promoted_symbol[0] == '\0') {
+        return 1;
+    }
+    if (!env_default_true("PYC_CUDA_ENABLE_GRAPH_REPLAY")) {
+        return 1;
+    }
+
+    if (g_cuda_workspace.graph_valid &&
+        g_cuda_workspace.graph_exec != NULL &&
+        g_cuda_workspace.graph_uses_promoted_gemm &&
+        g_cuda_workspace.graph_m == m &&
+        g_cuda_workspace.graph_k == k &&
+        g_cuda_workspace.graph_n == n &&
+        g_cuda_workspace.graph_lhs_copy_required == lhs_copy_required &&
+        g_cuda_workspace.graph_rhs_copy_required == rhs_copy_required &&
+        g_cuda_workspace.graph_host_a_ptr == (const void*)host_a &&
+        g_cuda_workspace.graph_host_b_ptr == (const void*)host_b &&
+        g_cuda_workspace.graph_host_out_ptr == (const void*)host_out &&
+        strcmp(g_cuda_workspace.graph_promoted_symbol, promoted_symbol) == 0) {
+        t0 = wall_ms_now();
+        cuda_status = cudaGraphLaunch(g_cuda_workspace.graph_exec, g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            pyc_cuda_graph_reset();
+            return -1;
+        }
+        t1 = wall_ms_now();
+        if (trace) {
+            trace->graph_replayed = 1;
+            trace->kernel_ms += t1 - t0;
+        }
+        t0 = wall_ms_now();
+        cuda_status = cudaStreamSynchronize(g_cuda_workspace.stream);
+        if (trace) {
+            trace->sync_ms += wall_ms_now() - t0;
+        }
+        if (cuda_status != cudaSuccess) {
+            pyc_cuda_graph_reset();
+            return -1;
+        }
+        *out_replayed = 1;
+        return 0;
+    }
+
+    pyc_cuda_graph_reset();
+    capture_status = cudaStreamBeginCapture(g_cuda_workspace.stream, cudaStreamCaptureModeGlobal);
+    if (capture_status != cudaSuccess) {
+        return -1;
+    }
+
+    if (lhs_copy_required) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            g_cuda_workspace.dev_a,
+            host_a,
+            a_bytes,
+            cudaMemcpyHostToDevice,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
+            pyc_cuda_graph_reset();
+            return -1;
+        }
+        if (trace) {
+            trace->copy_in_ms += wall_ms_now() - t0;
+        }
+    }
+    if (rhs_copy_required) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            g_cuda_workspace.dev_b,
+            host_b,
+            b_bytes,
+            cudaMemcpyHostToDevice,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
+            pyc_cuda_graph_reset();
+            return -1;
+        }
+        if (trace) {
+            trace->copy_in_ms += wall_ms_now() - t0;
+        }
+    }
+
+    t0 = wall_ms_now();
+    if (pyc_cutlass_gemm_dispatch(
+            promoted_symbol,
+            (int)m,
+            (int)n,
+            (int)k,
+            g_cuda_workspace.dev_a,
+            g_cuda_workspace.dev_b,
+            g_cuda_workspace.dev_c,
+            1.0f,
+            0.0f,
+            g_cuda_workspace.stream) != 0) {
+        (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
+        pyc_cuda_graph_reset();
+        return -1;
+    }
+    t1 = wall_ms_now();
+    if (trace) {
+        trace->kernel_ms += t1 - t0;
+    }
+
+    if (!skip_output_copy) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            host_out,
+            g_cuda_workspace.dev_c,
+            c_bytes,
+            cudaMemcpyDeviceToHost,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
+            pyc_cuda_graph_reset();
+            return -1;
+        }
+        if (trace) {
+            trace->copy_out_ms += wall_ms_now() - t0;
+        }
+    }
+
+    capture_status = cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
+    if (capture_status != cudaSuccess) {
+        pyc_cuda_graph_reset();
+        return -1;
+    }
+#if defined(CUDART_VERSION) && CUDART_VERSION >= 12000
+    cuda_status = cudaGraphInstantiate(&g_cuda_workspace.graph_exec, g_cuda_workspace.graph, 0);
+#else
+    cuda_status = cudaGraphInstantiate(
+        &g_cuda_workspace.graph_exec,
+        g_cuda_workspace.graph,
+        NULL,
+        NULL,
+        0);
+#endif
+    if (cuda_status != cudaSuccess) {
+        pyc_cuda_graph_reset();
+        return -1;
+    }
+
+    g_cuda_workspace.graph_valid = 1;
+    g_cuda_workspace.graph_uses_promoted_gemm = 1;
+    g_cuda_workspace.graph_m = m;
+    g_cuda_workspace.graph_k = k;
+    g_cuda_workspace.graph_n = n;
+    g_cuda_workspace.graph_lhs_copy_required = lhs_copy_required;
+    g_cuda_workspace.graph_rhs_copy_required = rhs_copy_required;
+    g_cuda_workspace.graph_host_a_ptr = (const void*)host_a;
+    g_cuda_workspace.graph_host_b_ptr = (const void*)host_b;
+    g_cuda_workspace.graph_host_out_ptr = (const void*)host_out;
+    strncpy(g_cuda_workspace.graph_promoted_symbol, promoted_symbol, sizeof(g_cuda_workspace.graph_promoted_symbol) - 1);
+    g_cuda_workspace.graph_promoted_symbol[sizeof(g_cuda_workspace.graph_promoted_symbol) - 1] = '\0';
+
+    t0 = wall_ms_now();
+    cuda_status = cudaGraphLaunch(g_cuda_workspace.graph_exec, g_cuda_workspace.stream);
+    if (cuda_status != cudaSuccess) {
+        pyc_cuda_graph_reset();
+        return -1;
+    }
+    t1 = wall_ms_now();
+    if (trace) {
+        trace->kernel_ms += t1 - t0;
+    }
+    t0 = wall_ms_now();
+    cuda_status = cudaStreamSynchronize(g_cuda_workspace.stream);
+    if (trace) {
+        trace->sync_ms += wall_ms_now() - t0;
+    }
+    if (cuda_status != cudaSuccess) {
+        pyc_cuda_graph_reset();
+        return -1;
     }
     return 0;
 }
@@ -965,12 +1637,14 @@ static int graph_signature_matches(
     size_t m,
     size_t k,
     size_t n,
+    int lhs_copy_required,
     int rhs_copy_required) {
     return g_cuda_workspace.graph_valid &&
            g_cuda_workspace.graph_exec != NULL &&
            g_cuda_workspace.graph_m == m &&
            g_cuda_workspace.graph_k == k &&
            g_cuda_workspace.graph_n == n &&
+           g_cuda_workspace.graph_lhs_copy_required == lhs_copy_required &&
            g_cuda_workspace.graph_host_a_ptr == (const void*)host_a &&
            g_cuda_workspace.graph_host_b_ptr == (const void*)host_b &&
            g_cuda_workspace.graph_host_out_ptr == (const void*)host_out &&
@@ -987,13 +1661,16 @@ static int run_cuda_matmul_pipeline_graph(
     size_t m,
     size_t k,
     size_t n,
+    int lhs_copy_required,
     int rhs_copy_required,
-    int* out_replayed) {
-    const float alpha = 1.0f;
-    const float beta = 0.0f;
+    int* out_replayed,
+    pyc_cuda_dispatch_trace* trace) {
     cublasStatus_t cublas_status;
     cudaError_t cuda_status;
     cudaError_t capture_status;
+    int skip_output_copy = env_true("PYC_CUDA_SKIP_HOST_OUTPUT_COPY");
+    double t0;
+    double t1;
 
     if (!out_replayed) {
         return -1;
@@ -1004,13 +1681,23 @@ static int run_cuda_matmul_pipeline_graph(
         return 1;
     }
 
-    if (graph_signature_matches(host_a, host_b, host_out, m, k, n, rhs_copy_required)) {
+    if (graph_signature_matches(host_a, host_b, host_out, m, k, n, lhs_copy_required, rhs_copy_required)) {
+        t0 = wall_ms_now();
         cuda_status = cudaGraphLaunch(g_cuda_workspace.graph_exec, g_cuda_workspace.stream);
         if (cuda_status != cudaSuccess) {
             pyc_cuda_graph_reset();
             return -1;
         }
+        t1 = wall_ms_now();
+        if (trace) {
+            trace->graph_replayed = 1;
+            trace->kernel_ms += t1 - t0;
+        }
+        t0 = wall_ms_now();
         cuda_status = cudaStreamSynchronize(g_cuda_workspace.stream);
+        if (trace) {
+            trace->sync_ms += wall_ms_now() - t0;
+        }
         if (cuda_status != cudaSuccess) {
             pyc_cuda_graph_reset();
             return -1;
@@ -1025,18 +1712,25 @@ static int run_cuda_matmul_pipeline_graph(
         return -1;
     }
 
-    cuda_status = cudaMemcpyAsync(
-        g_cuda_workspace.dev_a,
-        host_a,
-        a_bytes,
-        cudaMemcpyHostToDevice,
-        g_cuda_workspace.stream);
-    if (cuda_status != cudaSuccess) {
-        (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
-        pyc_cuda_graph_reset();
-        return -1;
+    if (lhs_copy_required) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            g_cuda_workspace.dev_a,
+            host_a,
+            a_bytes,
+            cudaMemcpyHostToDevice,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
+            pyc_cuda_graph_reset();
+            return -1;
+        }
+        if (trace) {
+            trace->copy_in_ms += wall_ms_now() - t0;
+        }
     }
     if (rhs_copy_required) {
+        t0 = wall_ms_now();
         cuda_status = cudaMemcpyAsync(
             g_cuda_workspace.dev_b,
             host_b,
@@ -1048,39 +1742,45 @@ static int run_cuda_matmul_pipeline_graph(
             pyc_cuda_graph_reset();
             return -1;
         }
+        if (trace) {
+            trace->copy_in_ms += wall_ms_now() - t0;
+        }
     }
 
-    cublas_status = cublasSgemm(
-        g_cuda_workspace.handle,
-        CUBLAS_OP_N,
-        CUBLAS_OP_N,
-        (int)n,
+    t0 = wall_ms_now();
+    cublas_status = run_best_fp32_gemm(
         (int)m,
-        (int)k,
-        &alpha,
-        g_cuda_workspace.dev_b,
         (int)n,
-        g_cuda_workspace.dev_a,
         (int)k,
-        &beta,
-        g_cuda_workspace.dev_c,
-        (int)n);
+        g_cuda_workspace.dev_a,
+        g_cuda_workspace.dev_b,
+        g_cuda_workspace.dev_c);
     if (cublas_status != CUBLAS_STATUS_SUCCESS) {
         (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
         pyc_cuda_graph_reset();
         return -1;
     }
+    t1 = wall_ms_now();
+    if (trace) {
+        trace->kernel_ms += t1 - t0;
+    }
 
-    cuda_status = cudaMemcpyAsync(
-        host_out,
-        g_cuda_workspace.dev_c,
-        c_bytes,
-        cudaMemcpyDeviceToHost,
-        g_cuda_workspace.stream);
-    if (cuda_status != cudaSuccess) {
-        (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
-        pyc_cuda_graph_reset();
-        return -1;
+    if (!skip_output_copy) {
+        t0 = wall_ms_now();
+        cuda_status = cudaMemcpyAsync(
+            host_out,
+            g_cuda_workspace.dev_c,
+            c_bytes,
+            cudaMemcpyDeviceToHost,
+            g_cuda_workspace.stream);
+        if (cuda_status != cudaSuccess) {
+            (void)cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
+            pyc_cuda_graph_reset();
+            return -1;
+        }
+        if (trace) {
+            trace->copy_out_ms += wall_ms_now() - t0;
+        }
     }
 
     capture_status = cudaStreamEndCapture(g_cuda_workspace.stream, &g_cuda_workspace.graph);
@@ -1107,17 +1807,27 @@ static int run_cuda_matmul_pipeline_graph(
     g_cuda_workspace.graph_m = m;
     g_cuda_workspace.graph_k = k;
     g_cuda_workspace.graph_n = n;
+    g_cuda_workspace.graph_lhs_copy_required = lhs_copy_required;
     g_cuda_workspace.graph_host_a_ptr = (const void*)host_a;
     g_cuda_workspace.graph_host_b_ptr = (const void*)host_b;
     g_cuda_workspace.graph_host_out_ptr = (const void*)host_out;
     g_cuda_workspace.graph_rhs_copy_required = rhs_copy_required;
 
+    t0 = wall_ms_now();
     cuda_status = cudaGraphLaunch(g_cuda_workspace.graph_exec, g_cuda_workspace.stream);
     if (cuda_status != cudaSuccess) {
         pyc_cuda_graph_reset();
         return -1;
     }
+    t1 = wall_ms_now();
+    if (trace) {
+        trace->kernel_ms += t1 - t0;
+    }
+    t0 = wall_ms_now();
     cuda_status = cudaStreamSynchronize(g_cuda_workspace.stream);
+    if (trace) {
+        trace->sync_ms += wall_ms_now() - t0;
+    }
     if (cuda_status != cudaSuccess) {
         pyc_cuda_graph_reset();
         return -1;
@@ -1131,6 +1841,7 @@ static int execute_native_cuda_graph_cuda(
     size_t input_count,
     pyc_tensor* outputs,
     size_t output_count,
+    pyc_cuda_dispatch_trace* trace,
     char* native_reason,
     size_t native_reason_size) {
     pyc_cuda_graph_spec spec;
@@ -1146,9 +1857,13 @@ static int execute_native_cuda_graph_cuda(
     size_t b_bytes;
     size_t c_bytes;
     size_t add_bytes = 0;
+    int lhs_copy_required = 1;
     int rhs_copy_required = 1;
+    int assume_static_lhs = env_true("PYC_CUDA_ASSUME_STATIC_LHS");
     int assume_static_rhs = env_true("PYC_CUDA_ASSUME_STATIC_RHS");
+    int skip_output_copy = env_true("PYC_CUDA_SKIP_HOST_OUTPUT_COPY");
     int promoted_gemm_used = 0;
+    int promoted_graph_replayed = 0;
     char promoted_symbol[PYC_KERNEL_SYMBOL_MAX];
     int graph_replayed = 0;
     int run_status;
@@ -1200,7 +1915,7 @@ static int execute_native_cuda_graph_cuda(
     host_a = (const float*)inputs[(size_t)lhs_input_index].data;
     host_b = (const float*)inputs[(size_t)rhs_input_index].data;
     host_out = (float*)outputs[(size_t)target_output_index].data;
-    if (!host_a || !host_b || !host_out) {
+    if (!host_a || !host_b || (!host_out && !skip_output_copy)) {
         return -1;
     }
     if (spec.add_id >= 0) {
@@ -1231,6 +1946,14 @@ static int execute_native_cuda_graph_cuda(
         return -1;
     }
 
+    pyc_cutlass_registry_init();
+
+    if (assume_static_lhs &&
+        g_cuda_workspace.lhs_uploaded &&
+        g_cuda_workspace.host_a_last_ptr == (const void*)host_a &&
+        g_cuda_workspace.host_a_last_bytes == a_bytes) {
+        lhs_copy_required = 0;
+    }
     if (assume_static_rhs &&
         g_cuda_workspace.rhs_uploaded &&
         g_cuda_workspace.host_b_last_ptr == (const void*)host_b &&
@@ -1241,7 +1964,7 @@ static int execute_native_cuda_graph_cuda(
     promoted_symbol[0] = '\0';
     if (spec.add_id < 0 && spec.relu_id < 0 && env_true("PYC_CUDA_ENABLE_PROMOTED_GEMM")) {
         if (pyc_kernel_promoted_symbol("matmul", PYC_BACKEND_CUDA, promoted_symbol, sizeof(promoted_symbol)) == 0) {
-            run_status = run_promoted_cutlass_gemm_pipeline(
+            run_status = run_promoted_cutlass_gemm_pipeline_graph(
                 promoted_symbol,
                 host_a,
                 host_b,
@@ -1252,13 +1975,48 @@ static int execute_native_cuda_graph_cuda(
                 spec.m,
                 spec.k,
                 spec.n,
+                lhs_copy_required,
                 rhs_copy_required,
-                &promoted_gemm_used);
+                &promoted_graph_replayed,
+                trace);
+            if (run_status != 0) {
+                promoted_graph_replayed = 0;
+                run_status = run_promoted_cutlass_gemm_pipeline(
+                promoted_symbol,
+                host_a,
+                host_b,
+                host_out,
+                a_bytes,
+                b_bytes,
+                c_bytes,
+                spec.m,
+                spec.k,
+                spec.n,
+                lhs_copy_required,
+                rhs_copy_required,
+                &promoted_gemm_used,
+                trace);
+            } else {
+                promoted_gemm_used = 1;
+            }
             if (run_status == 0) {
+                if (lhs_copy_required) {
+                    g_cuda_workspace.lhs_uploaded = 1;
+                    g_cuda_workspace.host_a_last_ptr = (const void*)host_a;
+                    g_cuda_workspace.host_a_last_bytes = a_bytes;
+                }
                 if (promoted_gemm_used && promoted_symbol[0] != '\0') {
-                    snprintf(native_reason, native_reason_size, "cuda_promoted_gemm:%s", promoted_symbol);
+                    snprintf(
+                        native_reason,
+                        native_reason_size,
+                        "%s:%s",
+                        promoted_graph_replayed ? "cuda_promoted_gemm_graph" : "cuda_promoted_gemm",
+                        promoted_symbol);
                 } else {
-                    strncpy(native_reason, "cuda_promoted_gemm", native_reason_size - 1);
+                    strncpy(
+                        native_reason,
+                        promoted_graph_replayed ? "cuda_promoted_gemm_graph" : "cuda_promoted_gemm",
+                        native_reason_size - 1);
                     native_reason[native_reason_size - 1] = '\0';
                 }
                 if (rhs_copy_required) {
@@ -1282,8 +2040,10 @@ static int execute_native_cuda_graph_cuda(
         spec.m,
         spec.k,
         spec.n,
+        lhs_copy_required,
         rhs_copy_required,
-        &graph_replayed);
+        &graph_replayed,
+        trace);
     if (run_status != 0) {
         graph_replayed = 0;
         run_status = run_cuda_matmul_pipeline(
@@ -1296,10 +2056,17 @@ static int execute_native_cuda_graph_cuda(
             spec.m,
             spec.k,
             spec.n,
-            rhs_copy_required);
+            lhs_copy_required,
+            rhs_copy_required,
+            trace);
     }
     if (run_status != 0) {
         goto cleanup;
+    }
+    if (lhs_copy_required) {
+        g_cuda_workspace.lhs_uploaded = 1;
+        g_cuda_workspace.host_a_last_ptr = (const void*)host_a;
+        g_cuda_workspace.host_a_last_bytes = a_bytes;
     }
     if (rhs_copy_required) {
         g_cuda_workspace.rhs_uploaded = 1;
@@ -1307,10 +2074,10 @@ static int execute_native_cuda_graph_cuda(
         g_cuda_workspace.host_b_last_bytes = b_bytes;
     }
 
-    if (spec.add_id >= 0) {
+    if (!skip_output_copy && spec.add_id >= 0) {
         apply_add_epilogue(host_out, host_add, spec.m, spec.n, spec.add_mode);
     }
-    if (spec.relu_id >= 0) {
+    if (!skip_output_copy && spec.relu_id >= 0) {
         apply_relu_epilogue(host_out, spec.m * spec.n);
     }
 
@@ -1380,6 +2147,7 @@ pyc_cuda_dispatch_status pyc_cuda_dispatch(
             input_count,
             outputs,
             output_count,
+            trace,
             native_reason,
             sizeof(native_reason));
         if (run_status == 0) {

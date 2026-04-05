@@ -24,7 +24,16 @@ The runtime allocator in `src/compiler/runtime/runtime_allocator.c` builds a reu
 
 ## Algorithm
 
-Current strategy is first-fit reuse based on non-overlapping lifetime intervals and capacity checks.
+Current strategy is:
+
+- first-fit reuse based on non-overlapping lifetime intervals and capacity checks,
+- followed by a cost-based rematerialization estimate when the memory budget is exceeded.
+
+The rematerialization estimate is still experimental, but it is no longer only a `largest_allocation / 2` proxy. It now ranks candidate tensors by approximate relief per lifetime span and applies:
+
+- more aggressive relief in `memory_first`,
+- one conservative relief step in `balanced`,
+- no rematerialization in `utilization_first`.
 
 ## Metrics
 
@@ -33,6 +42,9 @@ Current strategy is first-fit reuse based on non-overlapping lifetime intervals 
 - `peak_bytes`
 - `total_requested_bytes`
 - `reused_allocations`
+- `rematerialized_tensors`
+- `rematerialized_bytes`
+- `pressure_score`
 
 ## Planned Extensions
 

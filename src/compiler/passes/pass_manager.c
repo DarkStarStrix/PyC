@@ -84,6 +84,50 @@ static void analyze_speculative_plans(const pyc_ir_module* module, pyc_pass_repo
         input_count,
         report->speculative_shape_bucket,
         sizeof(report->speculative_shape_bucket));
+    describe_speculative_shape_bucket(
+        total_input_bytes,
+        input_count,
+        report->phantom_shape_bucket,
+        sizeof(report->phantom_shape_bucket));
+
+    report->phantom_shape_signature[0] = '\0';
+    for (i = 0; i < module->op_count; ++i) {
+        const pyc_ir_op* op = &module->ops[i];
+        size_t used;
+        int n;
+        size_t d;
+        if (op->kind != PYC_IR_OP_INPUT) {
+            continue;
+        }
+        used = strlen(report->phantom_shape_signature);
+        n = snprintf(
+            report->phantom_shape_signature + used,
+            sizeof(report->phantom_shape_signature) - used,
+            "%s%d:r%zu",
+            used == 0 ? "" : ";",
+            (int)op->dtype,
+            op->shape.rank);
+        if (n < 0 || (size_t)n >= sizeof(report->phantom_shape_signature) - used) {
+            report->phantom_shape_signature[0] = '\0';
+            break;
+        }
+        used += (size_t)n;
+        for (d = 0; d < op->shape.rank; ++d) {
+            n = snprintf(
+                report->phantom_shape_signature + used,
+                sizeof(report->phantom_shape_signature) - used,
+                "x%lld",
+                (long long)op->shape.dims[d]);
+            if (n < 0 || (size_t)n >= sizeof(report->phantom_shape_signature) - used) {
+                report->phantom_shape_signature[0] = '\0';
+                break;
+            }
+            used += (size_t)n;
+        }
+        if (report->phantom_shape_signature[0] == '\0') {
+            break;
+        }
+    }
 
     confidence = report->compilability_score;
     if (report->graph_break_count > 0) {
@@ -99,6 +143,7 @@ static void analyze_speculative_plans(const pyc_ir_module* module, pyc_pass_repo
         confidence = 1.0;
     }
     report->speculative_confidence = confidence;
+    report->phantom_confidence = confidence;
     if (report->graph_break_count == 0) {
         report->speculative_plan_count = 3;
     } else if (report->compilability_score >= 0.75) {

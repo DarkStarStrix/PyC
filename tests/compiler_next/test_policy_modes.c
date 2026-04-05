@@ -130,7 +130,8 @@ int main(void) {
     if (mem_stats.pressure_events == 0) return 5;
     if (mem_stats.rematerialized_tensors == 0) return 6;
     if (util_stats.rematerialized_tensors != 0) return 7;
-    if (strcmp(pyc_model_last_decision_log(mem_model), "") == 0) return 8;
+    if (mem_stats.rematerialized_bytes == 0) return 8;
+    if (strcmp(pyc_model_last_decision_log(mem_model), "") == 0) return 9;
     if (strcmp(mem_stats.selected_kernel_symbol, util_stats.selected_kernel_symbol) == 0) {
         fprintf(
             stderr,
@@ -139,10 +140,10 @@ int main(void) {
             util_stats.selected_kernel_symbol,
             mem_stats.selected_kernel_allocator_penalty,
             util_stats.selected_kernel_allocator_penalty);
-        return 9;
+        return 10;
     }
-    if (mem_stats.selected_kernel_candidates < 2 || util_stats.selected_kernel_candidates < 2) return 10;
-    if (mem_stats.selected_kernel_allocator_penalty < 0.0 || util_stats.selected_kernel_allocator_penalty < 0.0) return 11;
+    if (mem_stats.selected_kernel_candidates < 2 || util_stats.selected_kernel_candidates < 2) return 11;
+    if (mem_stats.selected_kernel_allocator_penalty < 0.0 || util_stats.selected_kernel_allocator_penalty < 0.0) return 12;
 
     pyc_destroy_model(mem_model);
     pyc_destroy_model(util_model);

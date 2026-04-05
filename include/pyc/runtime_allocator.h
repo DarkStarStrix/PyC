@@ -29,6 +29,7 @@ typedef struct {
     size_t overlap_pairs_observed;
     size_t largest_allocation_bytes;
     size_t rematerialized_tensors;
+    size_t rematerialized_bytes;
     size_t pressure_events;
     double pressure_score;
 } pyc_alloc_plan;
@@ -41,6 +42,7 @@ typedef struct {
     size_t overlap_pairs_observed;
     size_t largest_allocation_bytes;
     size_t rematerialized_tensors;
+    size_t rematerialized_bytes;
     size_t pressure_events;
     double pressure_score;
 } pyc_alloc_stats;

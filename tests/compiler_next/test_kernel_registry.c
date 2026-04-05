@@ -10,6 +10,7 @@ int main(void) {
     pyc_kernel_benchmark bench;
     pyc_kernel_selection_trace trace;
     pyc_kernel_coselect_context context;
+    char promoted[PYC_KERNEL_SYMBOL_MAX];
 
     pyc_kernel_registry_reset();
 
@@ -36,6 +37,13 @@ int main(void) {
 
     if (pyc_kernel_select("matmul_fused", PYC_BACKEND_CPU, &out) != 0) return 3;
     if (strcmp(out.symbol, "kernel_v2") != 0) return 4;
+    if (pyc_kernel_promote_symbol("matmul_fused", PYC_BACKEND_CPU, "kernel_v1") != 0) return 4;
+    if (pyc_kernel_promoted_symbol("matmul_fused", PYC_BACKEND_CPU, promoted, sizeof(promoted)) != 0) return 4;
+    if (strcmp(promoted, "kernel_v1") != 0) return 4;
+    if (pyc_kernel_promote_symbol("matmul_fused", PYC_BACKEND_CPU, "kernel_v2") != 0) return 4;
+    if (pyc_kernel_promoted_symbol("matmul_fused", PYC_BACKEND_CPU, promoted, sizeof(promoted)) != 0) return 4;
+    if (strcmp(promoted, "kernel_v2") != 0) return 4;
+    if (pyc_kernel_promote_symbol("matmul_fused", PYC_BACKEND_CPU, "kernel_missing") != -1) return 4;
 
     if (pyc_kernel_benchmark_update("matmul_fused", PYC_BACKEND_CPU, 1.2) != 0) return 5;
     if (pyc_kernel_benchmark_update("matmul_fused", PYC_BACKEND_CPU, 0.9) != 0) return 6;

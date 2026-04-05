@@ -30,6 +30,16 @@
 #include <stdint.h>
 #include <stdio.h>
 
+extern "C" void pyc_register_ada_async_gemm_kernel(void);
+extern "C" int pyc_ada_async_gemm_dispatch(
+    int M, int N, int K,
+    const void* A,
+    const void* B,
+    void* C,
+    float alpha,
+    float beta,
+    cudaStream_t stream);
+
 /* ----------------------------------------------------------------
  * Kernel 1: FP16 Tensor Core GEMM
  * Uses CUTLASS GemmUniversal with FP16 inputs, FP16 accumulator.
@@ -134,6 +144,8 @@ extern "C" void pyc_cutlass_register_gemm_kernels(void) {
     desc.shared_mem_bytes     = 32768;
     desc.reg_pressure_class   = 1;
     pyc_kernel_register(&desc);
+
+    pyc_register_ada_async_gemm_kernel();
 }
 
 /* ----------------------------------------------------------------
@@ -188,6 +200,9 @@ extern "C" int pyc_cutlass_gemm_dispatch(
         );
         auto status = gemm_op(args, nullptr, stream);
         return (status == cutlass::Status::kSuccess) ? 0 : -1;
+    }
+    else if (strcmp(symbol, "ada_gemm_k64_warp32_async_f32") == 0) {
+        return pyc_ada_async_gemm_dispatch(M, N, K, A, B, C, alpha, beta, stream);
     }
     return -1;  /* unknown symbol */
 }

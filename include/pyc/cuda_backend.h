@@ -46,6 +46,11 @@ typedef struct {
     int  cuda_requested;                /* 1 if CUDA dispatch was attempted */
     int  cuda_available;                /* 1 if a CUDA device was found */
     int  fallback_to_cpu;               /* 1 if execution fell back to CPU */
+    int  graph_replayed;                /* 1 if CUDA graph replay handled the run */
+    double copy_in_ms;                  /* host->device copy wall time */
+    double kernel_ms;                   /* kernel launch/body wall time */
+    double copy_out_ms;                 /* device->host copy wall time */
+    double sync_ms;                     /* stream sync / graph launch wall time */
     char reason[PYC_CUDA_REASON_MAX];   /* human-readable status string */
 } pyc_cuda_dispatch_trace;
 

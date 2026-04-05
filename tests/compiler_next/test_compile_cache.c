@@ -138,7 +138,9 @@ int main(void) {
     options.enable_memory_reuse = 1;
     options.enable_autotune = 0;
     options.enable_speculative_plans = 1;
+    options.enable_phantom_graph = 1;
     options.max_speculative_plans = 3;
+    options.phantom_horizon_steps = 1;
     options.objective_mode = PYC_MODE_BALANCED;
     options.target_utilization_floor = 0.7;
     options.deterministic_strict = 1;
@@ -152,6 +154,11 @@ int main(void) {
     if (stats.compile_cache_hit != 0) return 2;
     if (stats.compile_budget_exceeded != 1) return 3;
     if (stats.speculative_plan_count != 3) return 7;
+    if (!stats.phantom_graph_enabled) return 13;
+    if (stats.phantom_graph_match) return 14;
+    if (stats.phantom_graph_mismatch_count != 1) return 19;
+    if (stats.phantom_graph_reshape_count != 1) return 20;
+    if (strcmp(stats.phantom_graph_expected_signature, stats.phantom_graph_observed_signature) != 0) return 21;
 
     set_env_flag("PYC_COMPILE_DELAY_MS", "0");
     rc = compile_and_run(&module, &options, 2, &stats);
@@ -163,6 +170,10 @@ int main(void) {
     if (stats.selected_kernel_candidates == 0) return 10;
     if (stats.selected_kernel_allocator_penalty < 0.0) return 11;
     if (stats.selected_kernel_reuse_bonus < 0.0) return 12;
+    if (!stats.phantom_graph_enabled) return 15;
+    if (!stats.phantom_graph_match) return 16;
+    if (stats.phantom_graph_match_count == 0) return 17;
+    if (strcmp(stats.phantom_graph_expected_signature, stats.phantom_graph_observed_signature) != 0) return 18;
 
     set_env_flag("PYC_COMPILE_DELAY_MS", "0");
     printf(

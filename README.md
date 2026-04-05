@@ -23,7 +23,7 @@ PyC currently focuses on stable build/link contracts and deterministic CI behavi
 - `pyc_foundation`: compatibility static library from the same objects.
 - `pyc`: minimal deterministic executable used by smoke tests.
 
-The next-generation compiler scaffolding is available behind `PYC_BUILD_COMPILER_NEXT=ON`.
+The next-generation compiler scaffolding is available behind `PYC_BUILD_COMPILER_NEXT=ON`. The experimental stack currently spans deterministic guards, compile cache, speculative plans, phantom graph tracking, runtime controller rails, rematerialization policy, kernel + allocator co-selection, and the Ada FP32 CUDA fast path.
 
 ## Repository Layout
 
@@ -214,11 +214,24 @@ For real GPU testing on rented Linux machines:
    python3 benchmark/benchmarks/gpu/run_gpu_suite.py --device cuda --tag gpu_baseline
    ```
 
+For direct human-readable PyC CUDA runs, use the pretty wrapper:
+
+```bash
+bash scripts/run_pyc_bench_pretty.sh cuda 64 1024 5 2
+```
+
 For kernel-level Ada work, use the kernel lab and benchmark-matrix path:
 
 ```bash
+python3 kernels/lab/kernel_lab.py task-create ada-sm89-gemm --task-kind gemm --candidate-tag ada
 python3 kernels/lab/kernel_lab.py bench-suite --dry-run --tag ada
 python3 benchmark/benchmarks/gpu/run_gemm_suite.py --matrix-file benchmark/benchmarks/gpu/configs/ada_fp32_gemm_shapes.json --dry-run
+```
+
+After the remote run lands, pull and analyze the Ada artifacts in one pass:
+
+```bash
+bash scripts/pull_and_analyze_ada_artifacts.sh
 ```
 
 Detailed guide:

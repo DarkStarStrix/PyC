@@ -22,6 +22,7 @@ def run_standard_workload(backend: str, device: str, batch: int, hidden: int, it
     m = os.environ.get("BENCH_M", "").strip()
     k = os.environ.get("BENCH_K", "").strip()
     n = os.environ.get("BENCH_N", "").strip()
+    dtype = os.environ.get("BENCH_DTYPE", "").strip()
     cmd = [
         "python3",
         str(WORKLOAD),
@@ -40,6 +41,8 @@ def run_standard_workload(backend: str, device: str, batch: int, hidden: int, it
         "--warmup",
         str(warmup),
     ]
+    if dtype:
+        cmd.extend(["--dtype", dtype])
     if task == "gemm" and m and k and n:
         cmd.extend(["--m", m, "--k", k, "--n", n])
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)

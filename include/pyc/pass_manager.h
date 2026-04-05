@@ -38,6 +38,9 @@ typedef struct {
     size_t speculative_plan_count;
     double speculative_confidence;
     char speculative_shape_bucket[64];
+    double phantom_confidence;
+    char phantom_shape_bucket[64];
+    char phantom_shape_signature[128];
 } pyc_pass_report;
 
 typedef struct {

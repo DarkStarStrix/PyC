@@ -37,7 +37,7 @@ Then continue with the host-specific CUDA setup and validation steps above.
 ## 3) Run standardized workload suite
 
 ```bash
-python3 benchmark/benchmarks/gpu/run_gpu_suite.py --device cuda --batch 64 --hidden 2048 --iters 80 --warmup 20 --tag gpu_baseline
+python3 benchmark/benchmarks/gpu/run_gpu_suite.py --device cuda --batch 64 --hidden 2048 --iters 80 --warmup 20 --tag gpu_baseline --progress
 ```
 
 Outputs:
@@ -89,6 +89,12 @@ export PYC_GPU_BENCH_CMD="python3 path/to/pyc_cuda_bench.py --json"
 export GLOW_BENCH_CMD="python3 path/to/glow_bench.py --json"
 ```
 
+`pyc` is now easier than the others: if `PYC_GPU_BENCH_CMD` is unset, the adapter falls back to the bundled `benchmark/benchmarks/gpu/external/bench_pyc_cmd.py` helper and reuses an existing `pyc_compiler_next_bench` executable when present.
+
+For the current Ada FP32 fast path, the important runtime document is:
+
+- `docs/compiler-next/cuda-gemm-fast-path.md`
+
 Each command must print JSON with at least:
 
 - `status`
@@ -103,6 +109,49 @@ For fair comparisons, keep this protocol:
 3. Same warmup/run counts.
 4. Same dtype and precision policy.
 5. Save each run under unique `--tag`.
+
+For FP32 Ada tuning, keep these controls explicit in the run notes:
+
+- `PYC_CUDA_ENABLE_CUBLASLT`
+- `PYC_CUDA_LT_WORKSPACE_BYTES`
+- `PYC_CUDA_ALLOW_TF32`
+- `PYC_CUDA_ENABLE_GRAPH_REPLAY`
+
+For a more realistic phantom-graph validation, use one long-lived GEMM process with a shape sequence that stays within speculative-plan scale factors:
+
+```bash
+BENCH_TASK=gemm \
+BENCH_SEQUENCE='512x512x512;1024x1024x1024;2048x2048x2048;1024x1024x1024;512x512x512' \
+PYC_BENCH_ENABLE_SPECULATIVE_PLANS=1 \
+PYC_BENCH_MAX_SPECULATIVE_PLANS=3 \
+PYC_BENCH_ENABLE_PHANTOM_GRAPH=1 \
+PYC_BENCH_PHANTOM_HORIZON_STEPS=1 \
+./build/pyc_compiler_next_bench cuda 512 512 20 4
+```
+
+That path keeps one compiled model alive, lets speculative-plan selection switch execution modules by shape, and records per-step phantom mismatch/reshape telemetry in the returned JSON.
+
+If you are watching the pane manually, prefer `bash scripts/run_pyc_bench_pretty.sh ...` for direct single-run inspection. It keeps the full JSON artifact on disk but prints compact summary lines instead of a raw one-line JSON blob.
+
+For the current runtime stack, use two separate judgment runs:
+
+1. Fixed-shape Ada sweeps when you want throughput comparison against the current `cublasLt` path.
+2. Mixed-shape `BENCH_SEQUENCE` runs when you want to judge `A3` phantom/speculative behavior and `A2` rematerialization under one live process.
+
+The hot-path shape sequence used most often on the Ada box is:
+
+```bash
+BENCH_TASK=gemm \
+BENCH_SEQUENCE='512x512x512;1024x1024x1024;2048x2048x2048;1024x1024x1024;512x512x512' \
+PYC_BENCH_ENABLE_SPECULATIVE_PLANS=1 \
+PYC_BENCH_MAX_SPECULATIVE_PLANS=3 \
+PYC_BENCH_ENABLE_PHANTOM_GRAPH=1 \
+PYC_BENCH_PHANTOM_HORIZON_STEPS=1 \
+PYC_BENCH_MEMORY_BUDGET_BYTES=33554432 \
+./build/pyc_compiler_next_bench cuda 512 512 20 4
+```
+
+After either run lands, pull and analyze it with `bash scripts/pull_and_analyze_ada_artifacts.sh` so the graphs, sheets, and rankings are generated from the same artifact set.
 
 Kernel-oriented experiments should keep prototype kernels under `kernels/prototypes/` and use `kernels/lab/kernel_lab.py` for compile/run/bench control so the benchmarking surface stays separate from the compiler runtime path.
 

@@ -1,5 +1,6 @@
 #include "pyc/compiler_api.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,20 @@ typedef struct {
     char shape_signature[PYC_SPECULATIVE_SIGNATURE_MAX];
     double confidence;
 } pyc_speculative_plan;
+
+typedef struct {
+    int enabled;
+    size_t horizon_steps;
+    size_t match_count;
+    size_t mismatch_count;
+    size_t reshape_count;
+    double confidence;
+    double last_match_score;
+    char expected_bucket[64];
+    char expected_signature[PYC_SPECULATIVE_SIGNATURE_MAX];
+    char observed_bucket[64];
+    char observed_signature[PYC_SPECULATIVE_SIGNATURE_MAX];
+} pyc_phantom_graph_state;
 
 typedef struct pyc_compiled_model {
     pyc_ir_module module;
@@ -75,10 +90,19 @@ typedef struct pyc_compiled_model {
     double speculative_confidence;
     char speculative_shape_bucket[64];
     char speculative_shape_signature[PYC_SPECULATIVE_SIGNATURE_MAX];
+    pyc_phantom_graph_state phantom_graph;
     char graph_break_summary[128];
     char autotune_db_path[256];
     uint64_t compile_cache_key;
-    char decision_log[1024];
+    char decision_log[2048];
+    int last_runtime_shape_valid;
+    uint64_t last_runtime_shape_hash;
+    char last_runtime_shape_bucket[64];
+    char last_runtime_shape_signature[PYC_SPECULATIVE_SIGNATURE_MAX];
+    size_t last_runtime_input_count;
+    size_t last_runtime_output_count;
+    pyc_tensor last_runtime_inputs[PYC_IR_MAX_INPUTS];
+    pyc_tensor last_runtime_outputs[PYC_IR_MAX_INPUTS];
 } pyc_compiled_model;
 
 static uint64_t fnv1a64(const char* data, size_t len) {
@@ -89,6 +113,100 @@ static uint64_t fnv1a64(const char* data, size_t len) {
         hash *= 1099511628211ULL;
     }
     return hash;
+}
+
+static int tensor_descriptor_equal(const pyc_tensor* a, const pyc_tensor* b) {
+    size_t dim;
+    if (!a || !b) {
+        return 0;
+    }
+    if (a->data != b->data ||
+        a->size_bytes != b->size_bytes ||
+        a->dtype != b->dtype ||
+        a->shape.rank != b->shape.rank) {
+        return 0;
+    }
+    for (dim = 0; dim < a->shape.rank && dim < PYC_IR_MAX_DIMS; ++dim) {
+        if (a->shape.dims[dim] != b->shape.dims[dim]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int tensor_descriptor_array_equal(
+    const pyc_tensor* current,
+    size_t current_count,
+    const pyc_tensor* cached,
+    size_t cached_count) {
+    size_t i;
+    if (!current || !cached || current_count != cached_count) {
+        return 0;
+    }
+    for (i = 0; i < current_count; ++i) {
+        if (!tensor_descriptor_equal(&current[i], &cached[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int env_default_true(const char* name) {
+    const char* value = getenv(name);
+    if (!value || value[0] == '\0') {
+        return 1;
+    }
+    return !(strcmp(value, "0") == 0 ||
+             strcmp(value, "false") == 0 ||
+             strcmp(value, "FALSE") == 0);
+}
+
+static size_t decision_log_append_text(char* dst, size_t dst_size, size_t used, const char* text) {
+    size_t copy;
+    if (!dst || dst_size == 0) {
+        return 0;
+    }
+    if (used >= dst_size) {
+        dst[dst_size - 1] = '\0';
+        return dst_size - 1;
+    }
+    if (!text) {
+        text = "";
+    }
+    copy = strlen(text);
+    if (copy > dst_size - used - 1) {
+        copy = dst_size - used - 1;
+    }
+    if (copy > 0) {
+        memcpy(dst + used, text, copy);
+    }
+    used += copy;
+    dst[used] = '\0';
+    return used;
+}
+
+static size_t decision_log_appendf(char* dst, size_t dst_size, size_t used, const char* fmt, ...) {
+    va_list ap;
+    int written;
+    size_t remaining;
+
+    if (!dst || dst_size == 0 || !fmt) {
+        return 0;
+    }
+    if (used >= dst_size) {
+        return dst_size - 1;
+    }
+    remaining = dst_size - used;
+    va_start(ap, fmt);
+    written = vsnprintf(dst + used, remaining, fmt, ap);
+    va_end(ap);
+    if (written < 0) {
+        return used;
+    }
+    if ((size_t)written >= remaining) {
+        return dst_size - 1;
+    }
+    return used + (size_t)written;
 }
 
 static int module_fingerprint(const pyc_ir_module* module, uint64_t* out_hash) {
@@ -131,6 +249,7 @@ typedef struct {
     double speculative_confidence;
     char speculative_shape_bucket[64];
     char speculative_shape_signature[PYC_SPECULATIVE_SIGNATURE_MAX];
+    pyc_phantom_graph_state phantom_graph;
 } pyc_compile_cache_entry;
 
 static pyc_compile_cache_entry g_compile_cache[PYC_COMPILE_CACHE_MAX];
@@ -154,7 +273,9 @@ static uint64_t build_compile_cache_key(
     key = hash_u64(key, (uint64_t)options->enable_memory_reuse);
     key = hash_u64(key, (uint64_t)options->enable_autotune);
     key = hash_u64(key, (uint64_t)options->enable_speculative_plans);
+    key = hash_u64(key, (uint64_t)options->enable_phantom_graph);
     key = hash_u64(key, (uint64_t)options->max_speculative_plans);
+    key = hash_u64(key, (uint64_t)options->phantom_horizon_steps);
     key = hash_u64(key, (uint64_t)options->objective_mode);
     key = hash_u64(key, (uint64_t)options->memory_budget_bytes);
     key = hash_u64(key, (uint64_t)(options->target_utilization_floor * 1000.0));
@@ -211,7 +332,8 @@ static void compile_cache_store(
     size_t speculative_plan_count,
     double speculative_confidence,
     const char* speculative_shape_bucket,
-    const char* speculative_shape_signature) {
+    const char* speculative_shape_signature,
+    const pyc_phantom_graph_state* phantom_graph) {
     pyc_compile_cache_entry* entry;
     if (!module || !plan || !kernel_trace) {
         return;
@@ -271,6 +393,9 @@ static void compile_cache_store(
             speculative_shape_signature,
             sizeof(entry->speculative_shape_signature) - 1);
         entry->speculative_shape_signature[sizeof(entry->speculative_shape_signature) - 1] = '\0';
+    }
+    if (phantom_graph) {
+        entry->phantom_graph = *phantom_graph;
     }
     g_compile_cache_next++;
 }
@@ -354,7 +479,9 @@ static pyc_compile_options default_compile_options(void) {
     o.enable_memory_reuse = 1;
     o.enable_autotune = 0;
     o.enable_speculative_plans = 0;
+    o.enable_phantom_graph = 0;
     o.max_speculative_plans = 0;
+    o.phantom_horizon_steps = 1;
     o.objective_mode = PYC_MODE_BALANCED;
     o.memory_budget_bytes = 0;
     o.target_utilization_floor = 0.70;
@@ -601,6 +728,127 @@ static void module_input_shape_signature(
     }
 }
 
+static double phantom_graph_match_score(
+    const char* expected_signature,
+    const char* observed_signature,
+    const char* expected_bucket,
+    const char* observed_bucket) {
+    if (expected_signature && observed_signature &&
+        expected_signature[0] != '\0' &&
+        observed_signature[0] != '\0' &&
+        strcmp(expected_signature, observed_signature) == 0) {
+        return 1.0;
+    }
+    if (expected_bucket && observed_bucket &&
+        expected_bucket[0] != '\0' &&
+        observed_bucket[0] != '\0' &&
+        strcmp(expected_bucket, observed_bucket) == 0) {
+        return 0.75;
+    }
+    if ((expected_signature && expected_signature[0] != '\0') ||
+        (observed_signature && observed_signature[0] != '\0')) {
+        return 0.25;
+    }
+    return 0.0;
+}
+
+static void phantom_graph_init(
+    pyc_phantom_graph_state* phantom,
+    const pyc_compile_options* options,
+    const pyc_pass_report* report,
+    const pyc_ir_module* module) {
+    if (!phantom) {
+        return;
+    }
+    memset(phantom, 0, sizeof(*phantom));
+    if (!options || !options->enable_phantom_graph) {
+        return;
+    }
+    phantom->enabled = 1;
+    phantom->horizon_steps = options->phantom_horizon_steps == 0 ? 1 : options->phantom_horizon_steps;
+    phantom->confidence = report ? report->phantom_confidence : 0.0;
+    if (report && report->phantom_shape_bucket[0] != '\0') {
+        strncpy(phantom->expected_bucket, report->phantom_shape_bucket, sizeof(phantom->expected_bucket) - 1);
+    } else {
+        module_input_shape_bucket(module, phantom->expected_bucket, sizeof(phantom->expected_bucket));
+    }
+    if (report && report->phantom_shape_signature[0] != '\0') {
+        strncpy(phantom->expected_signature, report->phantom_shape_signature, sizeof(phantom->expected_signature) - 1);
+    } else {
+        module_input_shape_signature(module, phantom->expected_signature, sizeof(phantom->expected_signature));
+    }
+}
+
+static int phantom_graph_compare(
+    pyc_phantom_graph_state* phantom,
+    const char* runtime_bucket,
+    const char* runtime_signature,
+    double* out_score) {
+    double score;
+    int matched;
+    if (out_score) {
+        *out_score = 0.0;
+    }
+    if (!phantom || !phantom->enabled) {
+        return 0;
+    }
+    strncpy(phantom->observed_bucket, runtime_bucket ? runtime_bucket : "", sizeof(phantom->observed_bucket) - 1);
+    phantom->observed_bucket[sizeof(phantom->observed_bucket) - 1] = '\0';
+    strncpy(phantom->observed_signature, runtime_signature ? runtime_signature : "", sizeof(phantom->observed_signature) - 1);
+    phantom->observed_signature[sizeof(phantom->observed_signature) - 1] = '\0';
+    score = phantom_graph_match_score(
+        phantom->expected_signature,
+        phantom->observed_signature,
+        phantom->expected_bucket,
+        phantom->observed_bucket);
+    phantom->last_match_score = score;
+    matched = score >= 0.999;
+    if (matched) {
+        phantom->match_count++;
+    } else {
+        phantom->mismatch_count++;
+    }
+    if (out_score) {
+        *out_score = score;
+    }
+    return matched;
+}
+
+static void phantom_graph_adapt(
+    pyc_phantom_graph_state* phantom,
+    const char* runtime_bucket,
+    const char* runtime_signature,
+    int runtime_error) {
+    int should_reshape;
+    if (!phantom || !phantom->enabled || runtime_error) {
+        return;
+    }
+    should_reshape =
+        ((runtime_signature && runtime_signature[0] != '\0' &&
+          strcmp(phantom->expected_signature, runtime_signature) != 0) ||
+         (runtime_bucket && runtime_bucket[0] != '\0' &&
+          strcmp(phantom->expected_bucket, runtime_bucket) != 0));
+    if (!should_reshape) {
+        phantom->confidence = (phantom->confidence * 0.85) + (phantom->last_match_score * 0.15);
+        return;
+    }
+    if (phantom->horizon_steps > 1 &&
+        (phantom->mismatch_count % phantom->horizon_steps) != 0) {
+        phantom->confidence = (phantom->confidence * 0.7) + (phantom->last_match_score * 0.3);
+        return;
+    }
+    phantom->reshape_count++;
+    if (runtime_bucket && runtime_bucket[0] != '\0') {
+        strncpy(phantom->expected_bucket, runtime_bucket, sizeof(phantom->expected_bucket) - 1);
+        phantom->expected_bucket[sizeof(phantom->expected_bucket) - 1] = '\0';
+    }
+    if (runtime_signature && runtime_signature[0] != '\0') {
+        strncpy(phantom->expected_signature, runtime_signature, sizeof(phantom->expected_signature) - 1);
+        phantom->expected_signature[sizeof(phantom->expected_signature) - 1] = '\0';
+    }
+    phantom->confidence = (phantom->confidence * 0.6) + (phantom->last_match_score * 0.4);
+}
+
 static void runtime_input_shape_bucket(
     const pyc_tensor* inputs,
     size_t input_count,
@@ -653,6 +901,29 @@ static void runtime_input_shape_signature(
             return;
         }
     }
+}
+
+static uint64_t runtime_input_shape_hash(const pyc_tensor* inputs, size_t input_count) {
+    uint64_t hash = 1469598103934665603ULL;
+    size_t i;
+
+    if (!inputs) {
+        return 0;
+    }
+    for (i = 0; i < input_count; ++i) {
+        size_t d;
+        hash ^= (uint64_t)inputs[i].dtype;
+        hash *= 1099511628211ULL;
+        hash ^= (uint64_t)inputs[i].size_bytes;
+        hash *= 1099511628211ULL;
+        hash ^= (uint64_t)inputs[i].shape.rank;
+        hash *= 1099511628211ULL;
+        for (d = 0; d < inputs[i].shape.rank; ++d) {
+            hash ^= (uint64_t)inputs[i].shape.dims[d];
+            hash *= 1099511628211ULL;
+        }
+    }
+    return hash;
 }
 
 static int scale_positive_dim(int64_t dim, size_t scale_factor, int64_t* out_dim) {
@@ -1791,7 +2062,9 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         model->options.enable_memory_reuse = options->enable_memory_reuse;
         model->options.enable_autotune = options->enable_autotune;
         model->options.enable_speculative_plans = options->enable_speculative_plans;
+        model->options.enable_phantom_graph = options->enable_phantom_graph;
         model->options.max_speculative_plans = options->max_speculative_plans;
+        model->options.phantom_horizon_steps = options->phantom_horizon_steps;
         model->options.objective_mode = options->objective_mode;
         model->options.memory_budget_bytes = options->memory_budget_bytes;
         model->options.target_utilization_floor = options->target_utilization_floor;
@@ -1809,8 +2082,14 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
     if (!(model->options.enable_speculative_plans == 0 || model->options.enable_speculative_plans == 1)) {
         model->options.enable_speculative_plans = 0;
     }
+    if (!(model->options.enable_phantom_graph == 0 || model->options.enable_phantom_graph == 1)) {
+        model->options.enable_phantom_graph = 0;
+    }
     if (model->options.max_speculative_plans > PYC_SPECULATIVE_PLAN_MAX) {
         model->options.max_speculative_plans = PYC_SPECULATIVE_PLAN_MAX;
+    }
+    if (model->options.phantom_horizon_steps == 0) {
+        model->options.phantom_horizon_steps = 1;
     }
     if (model->options.compile_budget_ms < 0.0) {
         model->options.compile_budget_ms = 0.0;
@@ -1898,6 +2177,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
             cache_entry->speculative_shape_signature,
             sizeof(model->speculative_shape_signature) - 1);
         model->speculative_shape_signature[sizeof(model->speculative_shape_signature) - 1] = '\0';
+        model->phantom_graph = cache_entry->phantom_graph;
         for (i = 0; i < model->speculative_plan_count && i < PYC_SPECULATIVE_PLAN_MAX; ++i) {
             model->speculative_plans[i] = cache_entry->speculative_plans[i];
         }
@@ -1949,6 +2229,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
             free(model);
             return PYC_STATUS_COMPILE_FAILED;
         }
+        phantom_graph_init(&model->phantom_graph, &model->options, &report, &model->module);
         if (model->speculative_plan_count == 0) {
             pyc_speculative_plan base_plan;
             module_input_shape_bucket(
@@ -1995,7 +2276,8 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
                 model->speculative_plan_count,
                 model->speculative_confidence,
                 model->speculative_shape_bucket,
-                model->speculative_shape_signature);
+                model->speculative_shape_signature,
+                &model->phantom_graph);
         }
     }
 
@@ -2018,37 +2300,61 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         model->compile_budget_exceeded = 1;
     }
 
-    snprintf(
-        model->decision_log,
-        sizeof(model->decision_log),
-        "mode=%d budget=%zu pressure=%.6f kernel=%s score=%.3f util=%.3f alloc_penalty=%.3f reuse_bonus=%.3f kernel_candidates=%zu det=%d cache_hit=%d compile_ms=%.3f budget_ms=%.3f budget_exceeded=%d graph_breaks=%zu break_first=%s@%d break_counts=%zu,%zu,%zu,%zu,%zu compilability=%.3f autotune_loaded=%d spec_plans=%zu spec_bucket=%s spec_conf=%.3f",
-        (int)model->options.objective_mode,
-        model->options.memory_budget_bytes,
-        model->alloc_plan.pressure_score,
-        model->has_selected_kernel ? model->selected_kernel.symbol : "none",
-        model->kernel_trace.selected_score,
-        model->kernel_trace.selected_estimated_utilization,
-        model->kernel_trace.allocator_penalty,
-        model->kernel_trace.reuse_bonus,
-        model->kernel_trace.candidates_considered,
-        model->options.deterministic_strict ? 1 : 0,
-        model->compile_cache_hit,
-        model->compile_ms,
-        model->options.compile_budget_ms,
-        model->compile_budget_exceeded,
-        model->graph_break_count,
-        model->first_graph_break_op_name,
-        model->first_graph_break_op_id,
-        model->graph_break_const_count,
-        model->graph_break_gelu_count,
-        model->graph_break_reduce_sum_count,
-        model->graph_break_layernorm_count,
-        model->graph_break_unknown_count,
-        model->compilability_score,
-        model->autotune_loaded,
-        model->speculative_plan_count,
-        model->speculative_shape_bucket,
-        model->speculative_confidence);
+    {
+        size_t decision_log_used = 0;
+        model->decision_log[0] = '\0';
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, "mode=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", (int)model->options.objective_mode);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " budget=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->options.memory_budget_bytes);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " pressure=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.6f", model->alloc_plan.pressure_score);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " kernel=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, model->has_selected_kernel ? model->selected_kernel.symbol : "none");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " score=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.selected_score);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " util=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.selected_estimated_utilization);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " alloc_penalty=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.allocator_penalty);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " reuse_bonus=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.reuse_bonus);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " kernel_candidates=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->kernel_trace.candidates_considered);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " det=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->options.deterministic_strict ? 1 : 0);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " cache_hit=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->compile_cache_hit);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " compile_ms=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->compile_ms);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " budget_ms=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->options.compile_budget_ms);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " budget_exceeded=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->compile_budget_exceeded);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " graph_breaks=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->graph_break_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " break_first=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, model->first_graph_break_op_name);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, "@");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->first_graph_break_op_id);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " break_counts=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu,%zu,%zu,%zu,%zu",
+            model->graph_break_const_count,
+            model->graph_break_gelu_count,
+            model->graph_break_reduce_sum_count,
+            model->graph_break_layernorm_count,
+            model->graph_break_unknown_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " compilability=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->compilability_score);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " autotune_loaded=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->autotune_loaded);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_plans=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->speculative_plan_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_bucket=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, model->speculative_shape_bucket);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_conf=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->speculative_confidence);
+    }
 
     *out_model = model;
     return PYC_STATUS_OK;
@@ -2078,9 +2384,14 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     const pyc_ir_module* execution_module = &model->module;
     int runtime_error = 0;
     int speculative_plan_hit_this_run = 0;
+    int phantom_graph_match_this_run = 0;
     size_t guard_miss_count_this_run = 0;
     size_t fallback_count_this_run = 0;
     double autotune_ms = 0.0;
+    double phantom_graph_score_this_run = 0.0;
+    uint64_t runtime_shape_hash = 0;
+    int runtime_shape_cached = 0;
+    int stable_repeat_fastpath = 0;
 
     if (!model || !inputs || !outputs || input_count == 0 || output_count == 0) {
         return PYC_STATUS_INVALID_ARGUMENT;
@@ -2106,8 +2417,51 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         }
     }
 
-    runtime_input_shape_bucket(inputs, input_count, runtime_shape_bucket, sizeof(runtime_shape_bucket));
-    runtime_input_shape_signature(inputs, input_count, runtime_shape_signature, sizeof(runtime_shape_signature));
+    if (!model->options.enable_speculative_plans &&
+        !model->options.enable_phantom_graph &&
+        model->last_runtime_shape_valid) {
+        if (input_count <= PYC_IR_MAX_INPUTS &&
+            output_count <= PYC_IR_MAX_INPUTS &&
+            tensor_descriptor_array_equal(
+                inputs,
+                input_count,
+                model->last_runtime_inputs,
+                model->last_runtime_input_count) &&
+            tensor_descriptor_array_equal(
+                outputs,
+                output_count,
+                model->last_runtime_outputs,
+                model->last_runtime_output_count)) {
+            strncpy(runtime_shape_bucket, model->last_runtime_shape_bucket, sizeof(runtime_shape_bucket) - 1);
+            runtime_shape_bucket[sizeof(runtime_shape_bucket) - 1] = '\0';
+            strncpy(runtime_shape_signature, model->last_runtime_shape_signature, sizeof(runtime_shape_signature) - 1);
+            runtime_shape_signature[sizeof(runtime_shape_signature) - 1] = '\0';
+            runtime_shape_cached = 1;
+            runtime_shape_hash = model->last_runtime_shape_hash;
+        } else {
+            runtime_shape_hash = runtime_input_shape_hash(inputs, input_count);
+            if (runtime_shape_hash != 0 &&
+                runtime_shape_hash == model->last_runtime_shape_hash) {
+                strncpy(runtime_shape_bucket, model->last_runtime_shape_bucket, sizeof(runtime_shape_bucket) - 1);
+                runtime_shape_bucket[sizeof(runtime_shape_bucket) - 1] = '\0';
+                strncpy(runtime_shape_signature, model->last_runtime_shape_signature, sizeof(runtime_shape_signature) - 1);
+                runtime_shape_signature[sizeof(runtime_shape_signature) - 1] = '\0';
+                runtime_shape_cached = 1;
+            }
+        }
+    }
+    if (!runtime_shape_cached) {
+        runtime_input_shape_bucket(inputs, input_count, runtime_shape_bucket, sizeof(runtime_shape_bucket));
+        runtime_input_shape_signature(inputs, input_count, runtime_shape_signature, sizeof(runtime_shape_signature));
+        if (runtime_shape_hash == 0) {
+            runtime_shape_hash = runtime_input_shape_hash(inputs, input_count);
+        }
+    }
+    phantom_graph_match_this_run = phantom_graph_compare(
+        &model->phantom_graph,
+        runtime_shape_bucket,
+        runtime_shape_signature,
+        &phantom_graph_score_this_run);
     if (!runtime_error && model->speculative_plan_count > 0) {
         const pyc_speculative_plan* active_plan = find_speculative_plan(
             model,
@@ -2128,6 +2482,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     }
 
     if (!runtime_error &&
+        !runtime_shape_cached &&
         !inputs_match_module(
             execution_module,
             inputs,
@@ -2171,6 +2526,38 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     stage_end = clock();
     dispatch_ms = elapsed_ms(stage_start, stage_end);
     graph_exec_ms = dispatch_ms;
+    if (!runtime_error &&
+        !model->options.enable_speculative_plans &&
+        !model->options.enable_phantom_graph &&
+        runtime_shape_hash != 0) {
+        size_t i;
+        model->last_runtime_shape_valid = 1;
+        model->last_runtime_shape_hash = runtime_shape_hash;
+        strncpy(model->last_runtime_shape_bucket, runtime_shape_bucket, sizeof(model->last_runtime_shape_bucket) - 1);
+        model->last_runtime_shape_bucket[sizeof(model->last_runtime_shape_bucket) - 1] = '\0';
+        strncpy(model->last_runtime_shape_signature, runtime_shape_signature, sizeof(model->last_runtime_shape_signature) - 1);
+        model->last_runtime_shape_signature[sizeof(model->last_runtime_shape_signature) - 1] = '\0';
+        model->last_runtime_input_count = input_count <= PYC_IR_MAX_INPUTS ? input_count : 0;
+        model->last_runtime_output_count = output_count <= PYC_IR_MAX_INPUTS ? output_count : 0;
+        for (i = 0; i < model->last_runtime_input_count; ++i) {
+            model->last_runtime_inputs[i] = inputs[i];
+        }
+        for (i = 0; i < model->last_runtime_output_count; ++i) {
+            model->last_runtime_outputs[i] = outputs[i];
+        }
+    } else if (runtime_error) {
+        model->last_runtime_shape_valid = 0;
+        model->last_runtime_shape_hash = 0;
+        model->last_runtime_shape_bucket[0] = '\0';
+        model->last_runtime_shape_signature[0] = '\0';
+        model->last_runtime_input_count = 0;
+        model->last_runtime_output_count = 0;
+    }
+    phantom_graph_adapt(
+        &model->phantom_graph,
+        runtime_shape_bucket,
+        runtime_shape_signature,
+        runtime_error);
 
     end = clock();
     run_ms = elapsed_ms(start, end);
@@ -2178,7 +2565,6 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     model->run_count++;
 
     pyc_alloc_plan_stats(&model->alloc_plan, &stats);
-    populate_coselect_context_from_stats(&stats, model->options.memory_budget_bytes, &kernel_context);
     if (model->baseline_p95_ms == 0.0) {
         model->baseline_p95_ms = run_ms;
     }
@@ -2186,68 +2572,85 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         model->baseline_throughput = throughput;
     }
 
-    memset(&metrics, 0, sizeof(metrics));
-    metrics.baseline_p95_ms = model->baseline_p95_ms;
-    metrics.observed_p95_ms = run_ms;
-    metrics.baseline_throughput = model->baseline_throughput;
-    metrics.observed_throughput = throughput;
-    metrics.pressure_score = stats.pressure_score;
-    metrics.pressure_events = stats.pressure_events;
-    metrics.rematerialized_tensors = stats.rematerialized_tensors;
-    metrics.runtime_error = runtime_error;
+    stable_repeat_fastpath =
+        env_default_true("PYC_ENABLE_STABLE_REPEAT_FASTPATH") &&
+        runtime_shape_cached &&
+        !runtime_error &&
+        !model->options.enable_speculative_plans &&
+        !model->options.enable_phantom_graph &&
+        !model->options.enable_autotune &&
+        model->backend == PYC_BACKEND_CUDA;
 
-    stage_start = clock();
-    if (pyc_runtime_controller_observe(
-        &model->controller,
-        &model->options.rails,
-        &metrics,
-        &active_mode,
-        &rollback_reason) != 0) {
-        return PYC_STATUS_RUNTIME_FAILED;
-    }
-    stage_end = clock();
-    controller_ms = elapsed_ms(stage_start, stage_end);
+    if (!stable_repeat_fastpath) {
+        populate_coselect_context_from_stats(&stats, model->options.memory_budget_bytes, &kernel_context);
+        memset(&metrics, 0, sizeof(metrics));
+        metrics.baseline_p95_ms = model->baseline_p95_ms;
+        metrics.observed_p95_ms = run_ms;
+        metrics.baseline_throughput = model->baseline_throughput;
+        metrics.observed_throughput = throughput;
+        metrics.pressure_score = stats.pressure_score;
+        metrics.pressure_events = stats.pressure_events;
+        metrics.rematerialized_tensors = stats.rematerialized_tensors;
+        metrics.runtime_error = runtime_error;
 
-    model->options.objective_mode = active_mode;
-    model->kernel_trace.selected_score = 0.0;
-    model->kernel_trace.selected_estimated_utilization = 0.0;
-    model->has_selected_kernel = 0;
-    stage_start = clock();
-    if (model->speculative_plan_count > 0) {
-        const pyc_speculative_plan* next_plan = find_speculative_plan(
-            model,
-            model->options.objective_mode,
-            runtime_shape_signature,
-            runtime_shape_bucket[0] != '\0' ? runtime_shape_bucket : model->speculative_shape_bucket);
-        if (next_plan) {
-            apply_speculative_plan(model, next_plan);
+        stage_start = clock();
+        if (pyc_runtime_controller_observe(
+            &model->controller,
+            &model->options.rails,
+            &metrics,
+            &active_mode,
+            &rollback_reason) != 0) {
+            return PYC_STATUS_RUNTIME_FAILED;
+        }
+        stage_end = clock();
+        controller_ms = elapsed_ms(stage_start, stage_end);
+
+        model->options.objective_mode = active_mode;
+        model->kernel_trace.selected_score = 0.0;
+        model->kernel_trace.selected_estimated_utilization = 0.0;
+        model->has_selected_kernel = 0;
+        stage_start = clock();
+        if (model->speculative_plan_count > 0) {
+            const pyc_speculative_plan* next_plan = find_speculative_plan(
+                model,
+                model->options.objective_mode,
+                runtime_shape_signature,
+                runtime_shape_bucket[0] != '\0' ? runtime_shape_bucket : model->speculative_shape_bucket);
+            if (next_plan) {
+                apply_speculative_plan(model, next_plan);
+            } else {
+                model->speculative_plan_miss_count++;
+                if (pyc_kernel_coselect_with_context(
+                        "matmul_fused",
+                        model->backend,
+                        model->options.objective_mode,
+                        &kernel_context,
+                        &model->selected_kernel,
+                        &model->kernel_trace) == 0) {
+                    model->has_selected_kernel = 1;
+                }
+            }
         } else {
-            model->speculative_plan_miss_count++;
+            pyc_kernel_desc selected;
             if (pyc_kernel_coselect_with_context(
                     "matmul_fused",
                     model->backend,
                     model->options.objective_mode,
                     &kernel_context,
-                    &model->selected_kernel,
+                    &selected,
                     &model->kernel_trace) == 0) {
+                model->selected_kernel = selected;
                 model->has_selected_kernel = 1;
             }
         }
+        stage_end = clock();
+        kernel_select_ms = elapsed_ms(stage_start, stage_end);
     } else {
-        pyc_kernel_desc selected;
-        if (pyc_kernel_coselect_with_context(
-                "matmul_fused",
-                model->backend,
-                model->options.objective_mode,
-                &kernel_context,
-                &selected,
-                &model->kernel_trace) == 0) {
-            model->selected_kernel = selected;
-            model->has_selected_kernel = 1;
-        }
+        active_mode = model->options.objective_mode;
+        rollback_reason = model->controller.last_rollback_reason;
+        controller_ms = 0.0;
+        kernel_select_ms = 0.0;
     }
-    stage_end = clock();
-    kernel_select_ms = elapsed_ms(stage_start, stage_end);
     model->guard_miss_count += guard_miss_count_this_run;
     model->fallback_count += fallback_count_this_run;
     autotune_ms = run_ms;
@@ -2304,47 +2707,104 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         }
     }
 
-    snprintf(
-        model->decision_log,
-        sizeof(model->decision_log),
-        "mode=%d rollback=%d rollback_count=%zu pressure=%.6f kernel=%s score=%.3f util=%.3f alloc_penalty=%.3f reuse_bonus=%.3f kernel_candidates=%zu cuda_fallback=%d cuda_reason=%s contract=%d contract_reason=%s guard_miss=%zu fallback=%zu cache_hit=%d budget_exceeded=%d graph_breaks=%zu break_first=%s@%d break_counts=%zu,%zu,%zu,%zu,%zu compilability=%.3f autotune_loaded=%d autotune_saved=%d autotune_candidates=%zu spec_plans=%zu spec_hit=%d spec_miss=%zu spec_guard=%zu spec_bucket=%s spec_conf=%.3f fp=%llu",
-        (int)model->options.objective_mode,
-        (int)model->controller.last_rollback_reason,
-        model->controller.rollback_count,
-        stats.pressure_score,
-        model->has_selected_kernel ? model->selected_kernel.symbol : "none",
-        model->kernel_trace.selected_score,
-        model->kernel_trace.selected_estimated_utilization,
-        model->kernel_trace.allocator_penalty,
-        model->kernel_trace.reuse_bonus,
-        model->kernel_trace.candidates_considered,
-        model->cuda_trace.fallback_to_cpu,
-        model->cuda_trace.reason,
-        contract_ok,
-        contract_reason,
-        model->guard_miss_count,
-        model->fallback_count,
-        model->compile_cache_hit,
-        model->compile_budget_exceeded,
-        model->graph_break_count,
-        model->first_graph_break_op_name,
-        model->first_graph_break_op_id,
-        model->graph_break_const_count,
-        model->graph_break_gelu_count,
-        model->graph_break_reduce_sum_count,
-        model->graph_break_layernorm_count,
-        model->graph_break_unknown_count,
-        model->compilability_score,
-        model->autotune_loaded,
-        model->autotune_saved,
-        model->autotune_candidate_count,
-        model->speculative_plan_count,
-        speculative_plan_hit_this_run,
-        model->speculative_plan_miss_count,
-        model->speculative_guard_miss_count,
-        runtime_shape_bucket[0] != '\0' ? runtime_shape_bucket : model->speculative_shape_bucket,
-        model->speculative_confidence,
-        (unsigned long long)model->module_fingerprint);
+    if (env_default_true("PYC_ENABLE_RUNTIME_DECISION_LOG")) {
+        size_t decision_log_used = 0;
+        const char* spec_bucket = runtime_shape_bucket[0] != '\0' ? runtime_shape_bucket : model->speculative_shape_bucket;
+        model->decision_log[0] = '\0';
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, "mode=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", (int)model->options.objective_mode);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " shadow_mode=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", (int)model->controller.recommended_mode);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " shadow_reason=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", (int)model->controller.recommendation_reason);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " rollback=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", (int)model->controller.last_rollback_reason);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " rollback_count=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->controller.rollback_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " pressure=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.6f", stats.pressure_score);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " kernel=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, model->has_selected_kernel ? model->selected_kernel.symbol : "none");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " score=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.selected_score);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " util=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.selected_estimated_utilization);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " alloc_penalty=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.allocator_penalty);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " reuse_bonus=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.reuse_bonus);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " kernel_candidates=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->kernel_trace.candidates_considered);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " cuda_fallback=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->cuda_trace.fallback_to_cpu);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " cuda_reason=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, model->cuda_trace.reason);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " contract=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", contract_ok);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " contract_reason=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, contract_reason);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " guard_miss=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->guard_miss_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " fallback=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->fallback_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " cache_hit=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->compile_cache_hit);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " budget_exceeded=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->compile_budget_exceeded);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " graph_breaks=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->graph_break_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " break_first=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, model->first_graph_break_op_name);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, "@");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->first_graph_break_op_id);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " break_counts=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu,%zu,%zu,%zu,%zu",
+            model->graph_break_const_count,
+            model->graph_break_gelu_count,
+            model->graph_break_reduce_sum_count,
+            model->graph_break_layernorm_count,
+            model->graph_break_unknown_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " compilability=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->compilability_score);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " autotune_loaded=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->autotune_loaded);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " autotune_saved=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->autotune_saved);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " autotune_candidates=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->autotune_candidate_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_plans=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->speculative_plan_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_hit=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", speculative_plan_hit_this_run);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_miss=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->speculative_plan_miss_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_guard=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->speculative_guard_miss_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_bucket=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, spec_bucket);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " spec_conf=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->speculative_confidence);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " phantom_enabled=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->phantom_graph.enabled);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " phantom_match=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", phantom_graph_match_this_run);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " phantom_score=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->phantom_graph.last_match_score);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " phantom_matches=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->phantom_graph.match_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " phantom_misses=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->phantom_graph.mismatch_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " phantom_reshapes=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->phantom_graph.reshape_count);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " phantom_expect=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, model->phantom_graph.expected_signature);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " phantom_observed=");
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, model->phantom_graph.observed_signature);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " fp=");
+        decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%llu", (unsigned long long)model->module_fingerprint);
+    } else {
+        model->decision_log[0] = '\0';
+    }
 
     if (out_stats) {
         memset(out_stats, 0, sizeof(*out_stats));
@@ -2354,6 +2814,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         out_stats->total_requested_bytes = stats.total_requested_bytes;
         out_stats->reused_allocations = stats.reused_allocations;
         out_stats->rematerialized_tensors = stats.rematerialized_tensors;
+        out_stats->rematerialized_bytes = stats.rematerialized_bytes;
         out_stats->pressure_events = stats.pressure_events;
         out_stats->pressure_score = stats.pressure_score;
         out_stats->selected_kernel_count = model->has_selected_kernel ? 1 : 0;
@@ -2365,10 +2826,18 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         out_stats->active_mode = model->options.objective_mode;
         out_stats->rollback_reason = rollback_reason;
         out_stats->rollback_count = model->controller.rollback_count;
+        out_stats->shadow_mode = model->controller.recommended_mode;
+        out_stats->shadow_reason = model->controller.recommendation_reason;
+        strncpy(out_stats->execution_path, model->cuda_trace.reason, sizeof(out_stats->execution_path) - 1);
+        out_stats->execution_path[sizeof(out_stats->execution_path) - 1] = '\0';
         out_stats->dispatch_ms = dispatch_ms;
         out_stats->graph_exec_ms = graph_exec_ms;
         out_stats->controller_ms = controller_ms;
         out_stats->kernel_select_ms = kernel_select_ms;
+        out_stats->cuda_copy_in_ms = model->cuda_trace.copy_in_ms;
+        out_stats->cuda_kernel_ms = model->cuda_trace.kernel_ms;
+        out_stats->cuda_copy_out_ms = model->cuda_trace.copy_out_ms;
+        out_stats->cuda_sync_ms = model->cuda_trace.sync_ms;
         out_stats->deterministic_contract_enforced = model->deterministic_contract_enforced;
         out_stats->deterministic_contract_ok = contract_ok;
         out_stats->model_fingerprint = model->module_fingerprint;
@@ -2403,6 +2872,28 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
             runtime_shape_bucket[0] != '\0' ? runtime_shape_bucket : model->speculative_shape_bucket,
             sizeof(out_stats->speculative_shape_bucket) - 1);
         out_stats->speculative_shape_bucket[sizeof(out_stats->speculative_shape_bucket) - 1] = '\0';
+        out_stats->phantom_graph_enabled = model->phantom_graph.enabled;
+        out_stats->phantom_graph_match = phantom_graph_match_this_run;
+        out_stats->phantom_graph_match_count = model->phantom_graph.match_count;
+        out_stats->phantom_graph_mismatch_count = model->phantom_graph.mismatch_count;
+        out_stats->phantom_graph_reshape_count = model->phantom_graph.reshape_count;
+        out_stats->phantom_graph_confidence = model->phantom_graph.confidence;
+        out_stats->phantom_graph_match_score = phantom_graph_score_this_run;
+        strncpy(
+            out_stats->phantom_graph_expected_bucket,
+            model->phantom_graph.expected_bucket,
+            sizeof(out_stats->phantom_graph_expected_bucket) - 1);
+        out_stats->phantom_graph_expected_bucket[sizeof(out_stats->phantom_graph_expected_bucket) - 1] = '\0';
+        strncpy(
+            out_stats->phantom_graph_expected_signature,
+            model->phantom_graph.expected_signature,
+            sizeof(out_stats->phantom_graph_expected_signature) - 1);
+        out_stats->phantom_graph_expected_signature[sizeof(out_stats->phantom_graph_expected_signature) - 1] = '\0';
+        strncpy(
+            out_stats->phantom_graph_observed_signature,
+            model->phantom_graph.observed_signature,
+            sizeof(out_stats->phantom_graph_observed_signature) - 1);
+        out_stats->phantom_graph_observed_signature[sizeof(out_stats->phantom_graph_observed_signature) - 1] = '\0';
         if (model->has_selected_kernel) {
             strcpy(out_stats->selected_kernel_symbol, model->selected_kernel.symbol);
         }

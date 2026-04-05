@@ -30,12 +30,15 @@ int main(void) {
     if (stats.overlap_pairs_observed == 0) return 10;
     if (stats.pressure_events == 0) return 11;
     if (stats.rematerialized_tensors == 0) return 12;
+    if (stats.rematerialized_bytes == 0) return 13;
+    if (stats.rematerialized_bytes > stats.total_requested_bytes) return 14;
 
-    printf("test_runtime_allocator: ok (peak=%zu reuse=%zu alloc_events=%zu overlap=%zu largest=%zu)\n",
+    printf("test_runtime_allocator: ok (peak=%zu reuse=%zu alloc_events=%zu overlap=%zu largest=%zu remat_bytes=%zu)\n",
            stats.peak_bytes,
            stats.reused_allocations,
            stats.allocation_events,
            stats.overlap_pairs_observed,
-           stats.largest_allocation_bytes);
+           stats.largest_allocation_bytes,
+           stats.rematerialized_bytes);
     return 0;
 }
