@@ -4,13 +4,18 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    if env::var_os("CARGO_FEATURE_PYTHON_EXT").is_some() {
+        println!("cargo:rerun-if-env-changed=CARGO_FEATURE_PYTHON_EXT");
+        return;
+    }
+
     // --------------------------------------------------------
     // 1. Tell Cargo where to find libpyc_compiler.so
     //    The CMake superbuild places it in ${CMAKE_BINARY_DIR}/compiler/
     //    We resolve via PYC_COMPILER_LIB_DIR env var (set by CMake).
     // --------------------------------------------------------
-    let lib_dir = env::var("PYC_COMPILER_LIB_DIR")
-        .unwrap_or_else(|_| "../../build/compiler".to_string());
+    let lib_dir =
+        env::var("PYC_COMPILER_LIB_DIR").unwrap_or_else(|_| "../../../build/compiler".to_string());
 
     println!("cargo:rustc-link-search=native={}", lib_dir);
     println!("cargo:rustc-link-lib=dylib=pyc_compiler");
@@ -18,18 +23,18 @@ fn main() {
     // --------------------------------------------------------
     // 2. Re-run if any PyC header changes
     // --------------------------------------------------------
-    println!("cargo:rerun-if-changed=../../include/pyc/compiler_api.h");
-    println!("cargo:rerun-if-changed=../../include/pyc/ir.h");
-    println!("cargo:rerun-if-changed=../../include/pyc/kernel_registry.h");
-    println!("cargo:rerun-if-changed=../../include/pyc/runtime_allocator.h");
-    println!("cargo:rerun-if-changed=../../include/pyc/optimizer_policy.h");
-    println!("cargo:rerun-if-changed=../../include/pyc/cuda_backend.h");
+    println!("cargo:rerun-if-changed=../../../include/pyc/compiler_api.h");
+    println!("cargo:rerun-if-changed=../../../include/pyc/ir.h");
+    println!("cargo:rerun-if-changed=../../../include/pyc/kernel_registry.h");
+    println!("cargo:rerun-if-changed=../../../include/pyc/runtime_allocator.h");
+    println!("cargo:rerun-if-changed=../../../include/pyc/optimizer_policy.h");
+    println!("cargo:rerun-if-changed=../../../include/pyc/cuda_backend.h");
 
     // --------------------------------------------------------
     // 3. Generate bindings via bindgen
     // --------------------------------------------------------
-    let include_dir = env::var("PYC_COMPILER_INCLUDE_DIR")
-        .unwrap_or_else(|_| "../../include".to_string());
+    let include_dir =
+        env::var("PYC_COMPILER_INCLUDE_DIR").unwrap_or_else(|_| "../../../include".to_string());
 
     let bindings = bindgen::Builder::default()
         // Master wrapper header that pulls in all pyc public headers

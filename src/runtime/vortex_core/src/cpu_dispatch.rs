@@ -10,9 +10,9 @@
 //!   - Consumer: a pool of CPU worker threads executes preprocessing,
 //!     then hands off to the GPU via the PyC CUDA backend.
 
+use crate::errors::VortexError;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use std::thread;
-use crate::errors::VortexError;
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 

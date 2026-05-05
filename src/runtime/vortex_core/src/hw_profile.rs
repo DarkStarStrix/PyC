@@ -5,7 +5,7 @@
 //! to derive optimal dispatch and allocator settings.
 
 use serde::{Deserialize, Serialize};
-use sysinfo::{System, SystemExt, CpuExt};
+use sysinfo::System;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HardwareProfile {
@@ -54,11 +54,7 @@ fn count_numa_nodes() -> usize {
         if let Ok(entries) = std::fs::read_dir("/sys/devices/system/node") {
             let count = entries
                 .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.file_name()
-                        .to_string_lossy()
-                        .starts_with("node")
-                })
+                .filter(|e| e.file_name().to_string_lossy().starts_with("node"))
                 .count();
             if count > 0 {
                 return count;
@@ -75,12 +71,10 @@ fn detect_gpus() -> (usize, Option<usize>) {
         .output();
 
     let gpu_count = match output {
-        Ok(out) if out.status.success() => {
-            String::from_utf8_lossy(&out.stdout)
-                .lines()
-                .filter(|l| !l.trim().is_empty())
-                .count()
-        }
+        Ok(out) if out.status.success() => String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .count(),
         _ => 0,
     };
 

@@ -3,6 +3,7 @@ llvm
 # CMake / native build outputs
 build
 build-*/
+target/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake

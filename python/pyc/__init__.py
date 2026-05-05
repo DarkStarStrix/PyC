@@ -28,7 +28,8 @@ Quick start::
     print(f"Peak memory: {stats.peak_memory_bytes / 1e9:.2f} GB")
 """
 
-from importlib.metadata import version, PackageNotFoundError
+from importlib import import_module, util
+from importlib.metadata import PackageNotFoundError, version
 
 try:
     __version__ = version("pyc")
@@ -40,8 +41,17 @@ from pyc.runtime.pipeline import init, Pipeline, PipelineConfig, PipelineStats
 from pyc.runtime.hw_profile import detect_hardware, HardwareProfile
 from pyc import compiler
 from pyc import runtime
-from pyc import distributed
-from pyc import apps
+
+
+def _optional_submodule(name: str):
+    module_name = f"{__name__}.{name}"
+    if util.find_spec(module_name) is None:
+        return None
+    return import_module(module_name)
+
+
+distributed = _optional_submodule("distributed")
+apps = _optional_submodule("apps")
 
 __all__ = [
     "init",

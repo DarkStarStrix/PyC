@@ -35,9 +35,6 @@ env_logger     = "0.11"
 # IDs
 uuid           = { version = "1.3", features = ["v4", "serde"] }
 
-# Optional: Mesocarp lock-free primitives
-mesocarp       = { path = "../../../third_party/mesocarp", optional = true }
-
 [build-dependencies]
 # bindgen generates Rust FFI bindings from pyc_compiler C headers
 bindgen        = "0.69"
@@ -45,7 +42,8 @@ bindgen        = "0.69"
 [features]
 default        = []
 python_ext     = ["pyo3"]
-mesocarp       = ["dep:mesocarp"]
+mesocarp       = []
+mesocarp_integration = []
 
 [package.metadata.pyc]
 # Path to libpyc_compiler.so — resolved at build time via build.rs

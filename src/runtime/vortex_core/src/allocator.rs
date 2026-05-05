@@ -88,9 +88,10 @@ impl Allocator {
         // No suitable buffer in pool — allocate fresh
         let ptr = unsafe { alloc(layout) };
         if ptr.is_null() {
-            return Err(VortexError::AllocationFailed(
-                format!("alloc returned null for {} bytes", size)
-            ));
+            return Err(VortexError::AllocationFailed(format!(
+                "alloc returned null for {} bytes",
+                size
+            )));
         }
 
         // Pin the memory if configured (Linux: mlock)
@@ -101,7 +102,11 @@ impl Allocator {
         // Add to pool for future reuse
         {
             let mut pool = self.pool.lock().unwrap();
-            pool.push(PoolEntry { ptr, layout, in_use: true });
+            pool.push(PoolEntry {
+                ptr,
+                layout,
+                in_use: true,
+            });
         }
 
         Ok(ptr)
@@ -120,7 +125,10 @@ impl Allocator {
             }
         }
         // Not in pool — this is a programming error; log and ignore
-        log::warn!("Allocator::deallocate called with unknown pointer {:?}", ptr);
+        log::warn!(
+            "Allocator::deallocate called with unknown pointer {:?}",
+            ptr
+        );
     }
 
     /// Pre-warm the pool with `count` buffers of `size` bytes.

@@ -11,7 +11,7 @@
 use crate::allocator::{Allocator, AllocatorConfig};
 use crate::cpu_dispatch::CpuDispatcher;
 use crate::errors::VortexError;
-use crate::ffi::{self, pyc_objective_mode, pyc_backend};
+use crate::ffi::{self, pyc_backend, pyc_objective_mode};
 use crate::hw_profile::HardwareProfile;
 use crate::telemetry::{TelemetryEvent, TelemetrySink};
 use crossbeam_channel::{bounded, Receiver, Sender};
@@ -121,7 +121,7 @@ impl Pipeline {
         // The kernel registry now includes CUTLASS kernels registered
         // by src/compiler/cutlass_kernels/registry/init.cu at library load time.
         let kernel = ffi::select_kernel(
-            "matmul",  // op_key — in practice derived from IR module
+            "matmul", // op_key — in practice derived from IR module
             ffi::pyc_backend::PYC_BACKEND_CUDA,
             self.config.policy_mode,
             alloc_stats.pressure_score,
@@ -140,7 +140,7 @@ impl Pipeline {
             module,
             inputs,
             outputs,
-            None,        // CPU fallback fn — None uses PyC's built-in fallback
+            None, // CPU fallback fn — None uses PyC's built-in fallback
             std::ptr::null_mut(),
         )
         .map_err(|e| VortexError::DispatchFailed(e.to_string()))?;
@@ -151,7 +151,7 @@ impl Pipeline {
         // ---- Step 4: Emit telemetry ----
         let stats = PipelineStats {
             batch_id,
-            preprocess_us: 0,  // populated by full implementation
+            preprocess_us: 0, // populated by full implementation
             h2d_transfer_us: 0,
             gpu_compute_us: gpu_us,
             d2h_transfer_us: 0,

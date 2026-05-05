@@ -4,12 +4,16 @@
 //! $OUT_DIR/pyc_bindings.rs. This module provides ergonomic, safe Rust
 //! types on top of those raw bindings.
 
-#![allow(non_upper_case_globals, non_camel_case_types, non_snake_case, dead_code)]
+#![allow(
+    non_upper_case_globals,
+    non_camel_case_types,
+    non_snake_case,
+    dead_code
+)]
 
 // Include the bindgen-generated raw bindings
 include!(concat!(env!("OUT_DIR"), "/pyc_bindings.rs"));
 
-use std::ffi::CStr;
 use thiserror::Error;
 
 // ----------------------------------------------------------------
@@ -36,18 +40,31 @@ pub enum PycError {
 // Safe wrapper: compile an IR module
 // ----------------------------------------------------------------
 
+/// Compiles a `pyc_ir_module` and returns an owned C model handle.
+pub fn compile_model(
+    module: &pyc_ir_module,
+    options: &pyc_compile_options,
+    backend: pyc_backend,
+) -> Result<*mut pyc_compiled_model, PycError> {
+    let desc = pyc_model_desc {
+        module: module as *const _,
+        backend,
+    };
+    let mut model: *mut pyc_compiled_model = std::ptr::null_mut();
+    let status = unsafe { pyc_compile_model(&desc as *const _, options as *const _, &mut model) };
+    if status == pyc_status::PYC_STATUS_OK && !model.is_null() {
+        Ok(model)
+    } else {
+        Err(PycError::CompileError(format!("status={:?}", status)))
+    }
+}
+
 /// Compiles a `pyc_ir_module` with the given options.
 /// Returns Ok(()) on success, or a `PycError` describing the failure.
-pub fn compile(
-    module: &mut pyc_ir_module,
-    options: &pyc_compile_options,
-) -> Result<(), PycError> {
-    let status = unsafe { pyc_compile(module as *mut _, options as *const _) };
-    if status == 0 {
-        Ok(())
-    } else {
-        Err(PycError::CompileError(format!("status={}", status)))
-    }
+pub fn compile(module: &mut pyc_ir_module, options: &pyc_compile_options) -> Result<(), PycError> {
+    let model = compile_model(module, options, pyc_backend::PYC_BACKEND_CPU)?;
+    unsafe { pyc_destroy_model(model) };
+    Ok(())
 }
 
 // ----------------------------------------------------------------
@@ -60,10 +77,12 @@ pub fn run(
     inputs: &[pyc_tensor],
     outputs: &mut [pyc_tensor],
 ) -> Result<pyc_run_stats, PycError> {
+    let options = pyc_compile_options::default();
+    let model = compile_model(module, &options, pyc_backend::PYC_BACKEND_CPU)?;
     let mut stats = pyc_run_stats::default();
     let status = unsafe {
-        pyc_run(
-            module as *const _,
+        pyc_run_model(
+            model,
             inputs.as_ptr(),
             inputs.len(),
             outputs.as_mut_ptr(),
@@ -71,10 +90,11 @@ pub fn run(
             &mut stats as *mut _,
         )
     };
-    if status == 0 {
+    unsafe { pyc_destroy_model(model) };
+    if status == pyc_status::PYC_STATUS_OK {
         Ok(stats)
     } else {
-        Err(PycError::RunError(status))
+        Err(PycError::RunError(status as i32))
     }
 }
 
@@ -122,9 +142,7 @@ pub fn build_alloc_plan(
     mode: pyc_objective_mode,
     budget_bytes: usize,
 ) -> Result<pyc_alloc_stats, PycError> {
-    let status = unsafe {
-        pyc_alloc_plan_build_with_mode(plan as *mut _, mode, budget_bytes)
-    };
+    let status = unsafe { pyc_alloc_plan_build_with_mode(plan as *mut _, mode, budget_bytes) };
     if status == 0 {
         let mut stats = pyc_alloc_stats::default();
         unsafe { pyc_alloc_plan_stats(plan as *const _, &mut stats as *mut _) };
@@ -161,8 +179,8 @@ pub fn cuda_dispatch(
         )
     };
     match status {
-        pyc_cuda_dispatch_status::PYC_CUDA_DISPATCH_OK => Ok(false),       // ran on GPU
-        pyc_cuda_dispatch_status::PYC_CUDA_DISPATCH_FALLBACK => Ok(true),  // fell back to CPU
+        pyc_cuda_dispatch_status::PYC_CUDA_DISPATCH_OK => Ok(false), // ran on GPU
+        pyc_cuda_dispatch_status::PYC_CUDA_DISPATCH_FALLBACK => Ok(true), // fell back to CPU
         _ => Err(PycError::CudaDispatchError),
     }
 }
