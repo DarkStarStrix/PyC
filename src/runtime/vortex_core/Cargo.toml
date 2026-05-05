@@ -14,7 +14,7 @@ tokio          = { version = "1", features = ["full"] }
 crossbeam-channel = "0.5"
 
 # Python bindings (optional — for direct Python SDK use)
-pyo3           = { version = "0.21", features = ["extension-module"], optional = true }
+pyo3           = { version = "0.24.1", features = ["extension-module"], optional = true }
 
 # Serialization / telemetry
 serde          = { version = "1.0", features = ["derive"] }

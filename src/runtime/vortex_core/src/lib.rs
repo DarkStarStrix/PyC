@@ -49,6 +49,7 @@ pub use telemetry::{TelemetryEvent, TelemetrySink};
 mod py_ext {
     use super::hw_profile;
     use pyo3::prelude::*;
+    use pyo3::types::PyModule;
 
     #[pyclass(name = "HardwareProfile")]
     pub struct PyHardwareProfile {
@@ -85,7 +86,7 @@ mod py_ext {
     }
 
     #[pymodule]
-    pub fn _vortex_core(_py: Python<'_>, module: &PyModule) -> PyResult<()> {
+    pub fn _vortex_core(module: &Bound<'_, PyModule>) -> PyResult<()> {
         module.add_class::<PyHardwareProfile>()?;
         module.add_function(wrap_pyfunction!(detect_hardware, module)?)?;
         Ok(())
