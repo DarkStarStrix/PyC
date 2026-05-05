@@ -1,0 +1,17 @@
+[Unit]
+Description=PyC tmux keepalive
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=__REPO_ROOT__
+Environment=SESSION_NAME=pyc-hopper
+Environment=WINDOW_NAME=main
+Environment=TMUX_DEFAULT_CMD=bash
+Environment=TMUX_KEEPALIVE_INTERVAL_SEC=15
+ExecStart=__REPO_ROOT__/infra/tmux_keepalive.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

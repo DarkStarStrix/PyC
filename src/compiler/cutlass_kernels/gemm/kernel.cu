@@ -68,11 +68,11 @@ using GemmFp16TensorCore = cutlass::gemm::device::GemmUniversal<
  * Kernel 2: BF16 Tensor Core GEMM
  * BF16 is preferred for training (better dynamic range than FP16).
  * ---------------------------------------------------------------- */
-using GemmBf16TensorCore = cutlass::gemm::device::GemmUniversal<
+using GemmBf16TensorCore = cutlass::gemm::device::Gemm<
     cutlass::bfloat16_t,
     cutlass::layout::RowMajor,
     cutlass::bfloat16_t,
-    cutlass::layout::ColumnMajor,
+    cutlass::layout::RowMajor,
     cutlass::bfloat16_t,
     cutlass::layout::RowMajor,
     float,
@@ -80,11 +80,7 @@ using GemmBf16TensorCore = cutlass::gemm::device::GemmUniversal<
     cutlass::arch::Sm80,
     cutlass::gemm::GemmShape<128, 128, 32>,
     cutlass::gemm::GemmShape<64, 64, 32>,
-    cutlass::gemm::GemmShape<16, 8, 16>,
-    cutlass::epilogue::thread::LinearCombination<
-        cutlass::bfloat16_t, 8, float, float>,
-    cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
-    3
+    cutlass::gemm::GemmShape<16, 8, 16>
 >;
 
 /* ----------------------------------------------------------------
@@ -179,13 +175,12 @@ extern "C" int pyc_cutlass_gemm_dispatch(
     else if (strcmp(symbol, "cutlass_gemm_tensorcore_bf16") == 0) {
         GemmBf16TensorCore gemm_op;
         GemmBf16TensorCore::Arguments args(
-            cutlass::gemm::GemmUniversalMode::kGemm,
             {M, N, K},
-            1,
-            {alpha, beta},
-            A, B, C, C,
-            (int64_t)M * K, (int64_t)K * N, (int64_t)M * N, (int64_t)M * N,
-            K, N, N, N
+            {(cutlass::bfloat16_t const*)A, K},
+            {(cutlass::bfloat16_t const*)B, N},
+            {(cutlass::bfloat16_t*)C, N},
+            {(cutlass::bfloat16_t*)C, N},
+            {alpha, beta}
         );
         auto status = gemm_op(args, nullptr, stream);
         return (status == cutlass::Status::kSuccess) ? 0 : -1;

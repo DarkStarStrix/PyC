@@ -10,11 +10,16 @@ set(PYC_CUTLASS_SOURCES
 )
 
 if(PYC_CUTLASS_FULL_ENABLED)
+    option(PYC_CUTLASS_ENABLE_EXTRA_KERNELS "Build experimental CUTLASS conv/attention kernels" OFF)
     list(APPEND PYC_CUTLASS_SOURCES
         gemm/kernel.cu
-        conv2d/kernel.cu
-        attention/kernel.cu
     )
+    if(PYC_CUTLASS_ENABLE_EXTRA_KERNELS)
+        list(APPEND PYC_CUTLASS_SOURCES
+            conv2d/kernel.cu
+            attention/kernel.cu
+        )
+    endif()
 else()
     list(APPEND PYC_CUTLASS_SOURCES
         gemm/dispatch_registry.cu
@@ -46,6 +51,7 @@ set_target_properties(pyc_cutlass_kernels PROPERTIES
 # CUTLASS requires these compile definitions
 target_compile_definitions(pyc_cutlass_kernels PRIVATE
     $<$<BOOL:${PYC_CUTLASS_FULL_ENABLED}>:PYC_CUTLASS_FULL_KERNELS=1>
+    $<$<BOOL:${PYC_CUTLASS_ENABLE_EXTRA_KERNELS}>:PYC_CUTLASS_ENABLE_EXTRA_KERNELS=1>
     $<$<BOOL:${PYC_CUTLASS_FULL_ENABLED}>:CUTLASS_ENABLE_TENSOR_CORE_MMA=1>
     $<$<BOOL:${PYC_CUTLASS_FULL_ENABLED}>:CUTLASS_DEBUG_TRACE_LEVEL=0>
 )

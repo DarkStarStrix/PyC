@@ -1,0 +1,158 @@
+{
+  "meta": {
+    "name": "hopper-sm90-gap-close",
+    "slug": "hopper-sm90-gap-close",
+    "status": "completed",
+    "created_utc": "2026-04-21T20:40:00+00:00",
+    "updated_utc": "2026-04-21T20:24:13.215053+00:00"
+  },
+  "hardware": {
+    "captured_utc": "2026-04-21T20:40:00+00:00",
+    "host": "excellent-wonderful-trout",
+    "platform": "Linux-5.15.0-170-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "backend": "cuda",
+    "nvcc": {
+      "nvcc": "nvcc",
+      "found": true,
+      "path": "/usr/local/cuda/bin/nvcc",
+      "version": "Build cuda_12.8.r12.8/compiler.35583870_0"
+    },
+    "gpu": {
+      "name": "NVIDIA H100 80GB HBM3",
+      "memory_total": "81559 MiB",
+      "memory_total_mib": 81559,
+      "driver_version": "580.126.09",
+      "compute_capability": "9.0"
+    },
+    "capacity": {
+      "memory_total_mib": 81559,
+      "tier": "large"
+    },
+    "arch": "sm90"
+  },
+  "task": {
+    "kind": "gemm",
+    "objective": "Shave the promoted async WMMA lane below the current ~1 ms class on 4096^3 BF16, then use the result as the last cheap guardrail before a Hopper-native WGMMA/TMA lane.",
+    "baseline_kernel": "hopper_tensor_core_bf16_async_wide",
+    "control_kernel": "hopper_cublaslt_bf16",
+    "candidate_tags": [],
+    "candidate_names": [
+      "hopper_tensor_core_bf16_async_wide",
+      "hopper_tensor_core_bf16_async_wide_k64",
+      "hopper_tensor_core_bf16_async_square",
+      "hopper_tensor_core_bf16_async_square_k64",
+      "hopper_cublaslt_bf16"
+    ],
+    "pyc_feature_profiles": [],
+    "baseline_resolution": {
+      "resolution": "explicit"
+    },
+    "success_criteria": {
+      "target_tflops_min": 150.0,
+      "target_tflops_max": 220.0
+    }
+  },
+  "baseline": {
+    "name": "hopper_tensor_core_bf16_async_wide",
+    "source": "kernels/prototypes/hopper/tensor_core_async/kernel.cu",
+    "description": "Hopper BF16 async WMMA lane widened to a 64x128x32 CTA so each stage amortizes more scheduling overhead before the WGMMA/TMA path lands.",
+    "tags": [
+      "cuda",
+      "matmul",
+      "hopper",
+      "sm90",
+      "prototype",
+      "tensor-core",
+      "bf16",
+      "async",
+      "cpasync",
+      "double-buffered",
+      "wide"
+    ],
+    "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_WARP_COL_GROUPS=4 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+    "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+  },
+  "control": {
+    "name": "hopper_cublaslt_bf16",
+    "source": "kernels/prototypes/hopper/cublaslt_bf16/kernel.cu",
+    "description": "Hopper cuBLASLt BF16 GEMM control lane for measuring the hardware-native library ceiling before a custom TMA/WGMMA implementation lands.",
+    "tags": [
+      "cuda",
+      "matmul",
+      "hopper",
+      "sm90",
+      "prototype",
+      "cublaslt",
+      "bf16",
+      "control",
+      "ceiling"
+    ],
+    "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -lcublasLt -lcublas -o {build_dir}/{name}",
+    "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+  },
+  "benchmark_plan": {
+    "task_kind": "gemm",
+    "profile_protocol": [
+      "python3 kernels/lab/kernel_lab.py --nvcc nvcc bench-suite --phase compile --repeats 1 --warmup 0 --label hopper-sm90-gap-close-compile --progress --name hopper_tensor_core_bf16_async_wide --name hopper_tensor_core_bf16_async_wide_k64 --name hopper_tensor_core_bf16_async_square --name hopper_tensor_core_bf16_async_square_k64 --name hopper_cublaslt_bf16",
+      "python3 kernels/lab/kernel_lab.py --nvcc nvcc bench-suite --phase run --repeats 5 --warmup 1 --label hopper-sm90-gap-close --progress --name hopper_tensor_core_bf16_async_wide --name hopper_tensor_core_bf16_async_wide_k64 --name hopper_tensor_core_bf16_async_square --name hopper_tensor_core_bf16_async_square_k64 --name hopper_cublaslt_bf16"
+    ],
+    "metrics": [
+      "mean_ms",
+      "min_ms",
+      "max_ms",
+      "stdev_ms"
+    ],
+    "promotion_rule": "winner becomes next baseline for matching task_kind/backend/arch",
+    "hardware_constraints": {
+      "backend": "cuda",
+      "arch": "sm90",
+      "capacity_tier": "large"
+    },
+    "feature_profiles": [],
+    "matrix_file": "/root/work/PyC/repo/benchmark/benchmarks/gpu/configs/ada_fp32_gemm_shapes.json"
+  },
+  "result": {
+    "winner_kernel": "hopper_tensor_core_bf16_async_square_k64",
+    "result_json": "/root/work/PyC/repo/kernels/lab/results/hopper-sm90-gap-close-20260421T202304Z.json",
+    "promoted": true,
+    "notes": "Promote 128x128x64 async WMMA square lane after zero-diff 512^3 correctness and 148.394 TFLOPS steady-state on H100. This is the best cheap shave on the ~1 ms class, but it still sits far from the cuBLASLt ceiling, so the main gap-close path now belongs to the Hopper-native WGMMA/TMA lane.",
+    "completed_utc": "2026-04-21T20:24:13.215038+00:00"
+  },
+  "last_run": {
+    "status": "ok",
+    "run_record": "/root/work/PyC/repo/kernels/lab/tasks/runs/hopper-sm90-gap-close-20260421T202305Z.json",
+    "completed_utc": "2026-04-21T20:23:05.002909+00:00"
+  },
+  "winner": {
+    "name": "hopper_tensor_core_bf16_async_square_k64",
+    "source": "kernels/prototypes/hopper/tensor_core_async/kernel.cu",
+    "description": "Hopper BF16 async WMMA square lane with a 128x128x64 CTA to test the last cheap work-per-stage lever before the WGMMA/TMA path takes over.",
+    "tags": [
+      "cuda",
+      "matmul",
+      "hopper",
+      "sm90",
+      "prototype",
+      "tensor-core",
+      "bf16",
+      "async",
+      "cpasync",
+      "double-buffered",
+      "square",
+      "k64",
+      "gap-close"
+    ],
+    "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_WARP_ROW_GROUPS=4 -DPYC_HOPPER_TC_WARP_COL_GROUPS=4 -DPYC_HOPPER_TC_TILE_K=64 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+    "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+  },
+  "promoted_baseline": {
+    "task_kind": "gemm",
+    "backend": "cuda",
+    "arch": "sm90",
+    "kernel": "hopper_tensor_core_bf16_async_square_k64",
+    "source": "task:hopper-sm90-gap-close",
+    "updated_utc": "2026-04-21T20:24:13.215097+00:00",
+    "notes": "Promote 128x128x64 async WMMA square lane after zero-diff 512^3 correctness and 148.394 TFLOPS steady-state on H100. This is the best cheap shave on the ~1 ms class, but it still sits far from the cuBLASLt ceiling, so the main gap-close path now belongs to the Hopper-native WGMMA/TMA lane."
+  }
+}

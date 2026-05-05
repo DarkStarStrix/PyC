@@ -35,6 +35,7 @@ The current fast path improves throughput through three concrete mechanisms:
 
 1. Persistent workspace reuse.
    - CUDA stream, cuBLAS handle, cuBLASLt handle, device buffers, and optional Lt workspace are reused across runs.
+   - CUDA graph capture now stages host input/output traffic through stable pinned buffers so replay is not invalidated by caller pointer churn alone.
 
 2. Better library path selection.
    - FP32-compatible GEMM now prefers `cublasLtMatmul` with heuristic selection and workspace, instead of relying only on the simpler cuBLAS path.
@@ -87,6 +88,7 @@ The more generally useful runtime optimizations are:
 - cuBLASLt preference
 - TF32 policy when the precision contract allows it
 - graph replay for stable signatures
+- pinned host staging for graph replay so repeated runs can reuse the same captured lane even when external host buffers rotate
 - static RHS reuse when the weight tensor is actually stable
 
 ## Current Outcome

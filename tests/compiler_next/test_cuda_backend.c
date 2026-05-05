@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "pyc/compiler_api.h"
 
@@ -37,6 +38,31 @@ static void build_passthrough_module(pyc_ir_module* m) {
     pyc_ir_add_op(m, &out);
 }
 
+static void build_passthrough_module_with_dtype(pyc_ir_module* m, pyc_dtype dtype) {
+    pyc_ir_op in;
+    pyc_ir_op out;
+
+    pyc_ir_module_init(m);
+
+    memset(&in, 0, sizeof(in));
+    in.kind = PYC_IR_OP_INPUT;
+    strcpy(in.name, "input0");
+    in.dtype = dtype;
+    in.shape.rank = 1;
+    in.shape.dims[0] = 4;
+    pyc_ir_add_op(m, &in);
+
+    memset(&out, 0, sizeof(out));
+    out.kind = PYC_IR_OP_OUTPUT;
+    strcpy(out.name, "output0");
+    out.dtype = dtype;
+    out.shape.rank = 1;
+    out.shape.dims[0] = 4;
+    out.input_ids[0] = 0;
+    out.input_count = 1;
+    pyc_ir_add_op(m, &out);
+}
+
 static void set_env_flag(const char* key, const char* value) {
 #if defined(_WIN32)
     _putenv_s(key, value);
@@ -59,6 +85,7 @@ static int run_matmul_add_relu_case(void) {
     float rhs[4] = {2.0f, 1.0f, -1.0f, 3.0f};
     float bias[2] = {0.5f, -1.5f};
     float out[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    float out_second[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     float expected[4] = {4.5f, 0.0f, 2.5f, 13.5f};
     size_t i;
     const char* reason;
@@ -201,6 +228,85 @@ static int run_matmul_add_relu_case(void) {
         }
     }
 
+    outputs[0].data = out_second;
+    st = pyc_run_model(model, inputs, 3, outputs, 1, &stats);
+    if (st != PYC_STATUS_OK) {
+        pyc_destroy_model(model);
+        return 26;
+    }
+    if (stats.fallback_count != 0) {
+        pyc_destroy_model(model);
+        return 27;
+    }
+    for (i = 0; i < 4; ++i) {
+        if (!approx_eq(out_second[i], expected[i])) {
+            pyc_destroy_model(model);
+            return 28;
+        }
+    }
+
+    pyc_destroy_model(model);
+    return 0;
+}
+
+static int run_bf16_passthrough_case(void) {
+    pyc_ir_module module;
+    pyc_model_desc desc;
+    pyc_compile_options options;
+    pyc_compiled_model* model = NULL;
+    pyc_status st;
+    pyc_tensor input;
+    pyc_tensor output;
+    pyc_run_stats stats;
+    uint16_t in_data[4] = {0x3f80u, 0x4000u, 0x4040u, 0x4080u};
+    uint16_t out_data[4] = {0u, 0u, 0u, 0u};
+
+    build_passthrough_module_with_dtype(&module, PYC_DTYPE_BF16);
+
+    memset(&desc, 0, sizeof(desc));
+    desc.module = &module;
+    desc.backend = PYC_BACKEND_CUDA;
+
+    memset(&options, 0, sizeof(options));
+    options.enable_fusion = 1;
+    options.enable_memory_reuse = 1;
+    options.enable_autotune = 0;
+    options.objective_mode = PYC_MODE_BALANCED;
+    options.target_utilization_floor = 0.70;
+    options.deterministic_strict = 1;
+    pyc_runtime_rails_default(&options.rails);
+
+    st = pyc_compile_model(&desc, &options, &model);
+    if (st != PYC_STATUS_OK || !model) return 31;
+
+    memset(&input, 0, sizeof(input));
+    input.data = in_data;
+    input.size_bytes = sizeof(in_data);
+    input.dtype = PYC_DTYPE_BF16;
+    input.shape.rank = 1;
+    input.shape.dims[0] = 4;
+
+    memset(&output, 0, sizeof(output));
+    output.data = out_data;
+    output.size_bytes = sizeof(out_data);
+    output.dtype = PYC_DTYPE_BF16;
+    output.shape.rank = 1;
+    output.shape.dims[0] = 4;
+
+    st = pyc_run_model(model, &input, 1, &output, 1, &stats);
+    if (st != PYC_STATUS_OK) {
+        pyc_destroy_model(model);
+        return 32;
+    }
+    if (memcmp(in_data, out_data, sizeof(in_data)) != 0) {
+        pyc_destroy_model(model);
+        return 33;
+    }
+    if (stats.fallback_count != 0) {
+        pyc_destroy_model(model);
+        return 34;
+    }
+
     pyc_destroy_model(model);
     return 0;
 }
@@ -277,6 +383,10 @@ int main(void) {
     if (run_matmul_add_relu_case() != 0) {
         pyc_destroy_model(model);
         return 10;
+    }
+    if (run_bf16_passthrough_case() != 0) {
+        pyc_destroy_model(model);
+        return 12;
     }
 
     set_env_flag("PYC_CUDA_FORCE_FALLBACK", "1");

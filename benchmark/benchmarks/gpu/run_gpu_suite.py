@@ -18,19 +18,11 @@ try:
 except Exception:  # noqa: BLE001
     tqdm = None
 
+from arena import DEFAULT_ADAPTERS, resolve_adapter_plan
+
 ROOT = Path(__file__).resolve().parents[3]
 STRUCTURED_RESULTS_DIR = ROOT / "benchmark" / "benchmarks" / "results"
 ADAPTER_DIR = ROOT / "benchmark" / "benchmarks" / "gpu" / "adapters"
-
-DEFAULT_ADAPTERS = [
-    "torch_eager",
-    "torch_compile",
-    "pyc",
-    "tvm",
-    "xla",
-    "tensorrt",
-    "glow",
-]
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
@@ -435,12 +427,20 @@ def summarize_markdown(results: dict) -> str:
     else:
         lines.append("- none")
 
+    plan = results["meta"].get("adapter_plan", {})
+    tiers = plan.get("tiers", []) if isinstance(plan, dict) else []
+    if tiers:
+        lines.extend(["", "## Arena Tiers", ""])
+        for tier in tiers:
+            lines.append(f"- {tier.get('label', tier.get('id', 'tier'))}: {', '.join(tier.get('adapters', []))}")
+
     lines.extend(
         [
             "",
             "## Notes",
             "",
             f"- Native count: {len(native_rows)} | Proxy count: {len(proxy_rows)} | Unavailable: {len(unavailable_rows)} | Errors: {len(error_rows)}",
+            f"- Adapter selection mode: {plan.get('mode', 'unknown') if isinstance(plan, dict) else 'unknown'}",
             "- Adapters are normalized to a common JSON schema.",
             "- For TVM/XLA/TensorRT/PyC custom paths, configure `*_BENCH_CMD` env vars in each adapter.",
         ]
@@ -520,6 +520,21 @@ def main() -> int:
         help="Comma-separated adapter ids (default: torch_eager,torch_compile,pyc,tvm,xla,tensorrt,glow)",
     )
     parser.add_argument(
+        "--arena-mode",
+        action="store_true",
+        help="Use arena ordering for the selected arena profile.",
+    )
+    parser.add_argument(
+        "--arena-tier",
+        default="",
+        help="Challenge one arena tier against prod(PyC). Accepts 1-4 or tier-1..tier-4.",
+    )
+    parser.add_argument(
+        "--arena-profile",
+        default="",
+        help="Arena profile to use (for example: legacy, hopper). Defaults to legacy.",
+    )
+    parser.add_argument(
         "--parity-strict",
         action="store_true",
         help="Fail if any adapter reports mode=proxy (native parity gate).",
@@ -537,7 +552,14 @@ def main() -> int:
     args = parser.parse_args()
     require_progress_support(args.progress)
 
-    adapters = [a.strip() for a in args.adapters.split(",") if a.strip()]
+    adapter_plan = resolve_adapter_plan(
+        args.adapters,
+        DEFAULT_ADAPTERS,
+        arena_mode=args.arena_mode,
+        arena_tier=args.arena_tier,
+        arena_profile=args.arena_profile,
+    )
+    adapters = list(adapter_plan["adapters"])
     output_root = Path(args.output_root)
     (output_root / "json").mkdir(parents=True, exist_ok=True)
     (output_root / "reports").mkdir(parents=True, exist_ok=True)
@@ -561,6 +583,7 @@ def main() -> int:
             "repeats": args.repeats,
             "tag": args.tag,
             "adapters": adapters,
+            "adapter_plan": adapter_plan,
             "run_id": run_id,
             "git_head": git_head(),
             "git_dirty": git_dirty(),
@@ -573,7 +596,8 @@ def main() -> int:
     }
 
     progress_write(
-        f"[gpu-suite] run_id={run_id} device={args.device} adapters={','.join(adapters)} repeats={args.repeats}"
+        f"[gpu-suite] run_id={run_id} device={args.device} adapter_mode={adapter_plan['mode']} "
+        f"adapters={','.join(adapters)} repeats={args.repeats}"
     )
     progress = create_progress_bar(len(adapters) * args.repeats, args.progress, "gpu-suite")
     for index, adapter in enumerate(adapters, start=1):
@@ -627,6 +651,7 @@ def main() -> int:
                 "warmup": results["meta"]["warmup"],
                 "repeats": results["meta"]["repeats"],
                 "adapters": adapters,
+                "adapter_plan": adapter_plan,
                 "required_native_adapters": results["meta"]["required_native_adapters"],
             },
             indent=2,

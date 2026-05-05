@@ -1,0 +1,107 @@
+{
+  "name": "hopper_bf16_gemm",
+  "title": "Hopper BF16 GEMM Arena",
+  "artifact_prefix": "hopper_bf16_gemm",
+  "task": "gemm",
+  "arena_profile": "hopper",
+  "description": "Hopper H100 BF16 GEMM matrix grouped by launch-sensitive control, sustained square throughput, and transformer-style projection workloads. Shapes are tensor-core-friendly and intended for native-only arena comparisons.",
+  "device": "cuda",
+  "defaults": {
+    "iters": 60,
+    "warmup": 15,
+    "repeats": 3
+  },
+  "required_native_adapters": [
+    "torch_compile",
+    "torch_eager",
+    "pyc"
+  ],
+  "adapters": [
+    "torch_compile",
+    "torch_eager",
+    "cutlass",
+    "tensorrt",
+    "tvm",
+    "xla",
+    "pyc"
+  ],
+  "shapes": [
+    {
+      "name": "control-square-512",
+      "m": 512,
+      "k": 512,
+      "n": 512,
+      "dtype": "bfloat16",
+      "iters": 200,
+      "warmup": 40,
+      "repeats": 5,
+      "note": "Launch-sensitive control shape. Keeps a small tensor-core GEMM in the mix to expose orchestration tax instead of hiding it behind giant problem sizes."
+    },
+    {
+      "name": "square-1024",
+      "m": 1024,
+      "k": 1024,
+      "n": 1024,
+      "dtype": "bfloat16",
+      "iters": 120,
+      "warmup": 24,
+      "repeats": 4,
+      "note": "Medium square GEMM for the transition out of launch-bound behavior."
+    },
+    {
+      "name": "square-2048",
+      "m": 2048,
+      "k": 2048,
+      "n": 2048,
+      "dtype": "bfloat16",
+      "iters": 80,
+      "warmup": 20,
+      "repeats": 3,
+      "note": "Sustained square throughput checkpoint with enough work to amortize setup."
+    },
+    {
+      "name": "square-4096",
+      "m": 4096,
+      "k": 4096,
+      "n": 4096,
+      "dtype": "bfloat16",
+      "iters": 40,
+      "warmup": 10,
+      "repeats": 3,
+      "note": "Primary Hopper control square. This is the cleanest throughput read for vendor and custom tensor-core lanes."
+    },
+    {
+      "name": "prefill-proj-8192x4096x4096",
+      "m": 8192,
+      "k": 4096,
+      "n": 4096,
+      "dtype": "bfloat16",
+      "iters": 30,
+      "warmup": 8,
+      "repeats": 3,
+      "note": "Large prefill-style projection with high M footprint to stress scheduling and sustained feed."
+    },
+    {
+      "name": "ff-up-4096x4096x16384",
+      "m": 4096,
+      "k": 4096,
+      "n": 16384,
+      "dtype": "bfloat16",
+      "iters": 24,
+      "warmup": 6,
+      "repeats": 3,
+      "note": "Transformer MLP expansion GEMM. Wide-N shape catches kernels that only look good on neat square problems."
+    },
+    {
+      "name": "ff-down-4096x16384x4096",
+      "m": 4096,
+      "k": 16384,
+      "n": 4096,
+      "dtype": "bfloat16",
+      "iters": 24,
+      "warmup": 6,
+      "repeats": 3,
+      "note": "Transformer MLP contraction GEMM. Wide-K shape exposes pipeline and memory-feed weaknesses differently from ff-up."
+    }
+  ]
+}

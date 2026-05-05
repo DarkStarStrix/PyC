@@ -17,6 +17,7 @@ typedef enum {
     PYC_DTYPE_UNKNOWN = 0,
     PYC_DTYPE_F32,
     PYC_DTYPE_F16,
+    PYC_DTYPE_BF16,
     PYC_DTYPE_I32,
     PYC_DTYPE_I8
 } pyc_dtype;

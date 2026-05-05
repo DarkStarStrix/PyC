@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <stdint.h>
 
 #include "pyc/compiler_api.h"
 
@@ -122,14 +123,40 @@ static void set_default_env_if_missing(const char* name, const char* value) {
 #endif
 }
 
-static float* alloc_host_f32(size_t count, int prefer_pinned, int* out_is_pinned) {
+static pyc_dtype parse_bench_dtype(const char* raw) {
+    const char* value = raw ? raw : "float32";
+    if (strcmp(value, "float16") == 0 || strcmp(value, "f16") == 0 || strcmp(value, "half") == 0) {
+        return PYC_DTYPE_F16;
+    }
+    if (strcmp(value, "bfloat16") == 0 || strcmp(value, "bf16") == 0) {
+        return PYC_DTYPE_BF16;
+    }
+    if (strcmp(value, "float32") == 0 || strcmp(value, "f32") == 0) {
+        return PYC_DTYPE_F32;
+    }
+    return PYC_DTYPE_UNKNOWN;
+}
+
+static size_t dtype_size_bytes(pyc_dtype dtype) {
+    switch (dtype) {
+        case PYC_DTYPE_F16:
+        case PYC_DTYPE_BF16:
+            return 2;
+        case PYC_DTYPE_F32:
+            return 4;
+        default:
+            return 0;
+    }
+}
+
+static void* alloc_host_buffer(size_t bytes, int prefer_pinned, int* out_is_pinned) {
     if (out_is_pinned) {
         *out_is_pinned = 0;
     }
 #if defined(PYC_HAVE_CUDA_RUNTIME)
-    float* ptr = NULL;
+    void* ptr = NULL;
     if (prefer_pinned) {
-        if (cudaMallocHost((void**)&ptr, count * sizeof(float)) == cudaSuccess) {
+        if (cudaMallocHost(&ptr, bytes) == cudaSuccess) {
             if (out_is_pinned) {
                 *out_is_pinned = 1;
             }
@@ -139,10 +166,10 @@ static float* alloc_host_f32(size_t count, int prefer_pinned, int* out_is_pinned
 #else
     (void)prefer_pinned;
 #endif
-    return (float*)malloc(count * sizeof(float));
+    return malloc(bytes);
 }
 
-static void free_host_f32(float* ptr, int use_pinned) {
+static void free_host_buffer(void* ptr, int use_pinned) {
     if (!ptr) {
         return;
     }
@@ -155,6 +182,93 @@ static void free_host_f32(float* ptr, int use_pinned) {
     (void)use_pinned;
 #endif
     free(ptr);
+}
+
+typedef union {
+    float f32;
+    uint32_t u32;
+} pyc_fp32_bits;
+
+static uint16_t float_to_f16_bits(float value) {
+    pyc_fp32_bits bits;
+    uint32_t sign;
+    uint32_t exp;
+    uint32_t mantissa;
+
+    bits.f32 = value;
+    sign = (bits.u32 >> 16) & 0x8000u;
+    exp = (bits.u32 >> 23) & 0xffu;
+    mantissa = bits.u32 & 0x7fffffu;
+
+    if (exp == 0xffu) {
+        if (mantissa != 0u) {
+            return (uint16_t)(sign | 0x7e00u);
+        }
+        return (uint16_t)(sign | 0x7c00u);
+    }
+    if (exp > 142u) {
+        return (uint16_t)(sign | 0x7c00u);
+    }
+    if (exp < 113u) {
+        if (exp < 103u) {
+            return (uint16_t)sign;
+        }
+        mantissa |= 0x800000u;
+        {
+            uint32_t shift = 126u - exp;
+            uint32_t rounded = mantissa >> shift;
+            uint32_t remainder = mantissa & ((1u << shift) - 1u);
+            uint32_t halfway = 1u << (shift - 1u);
+            if (remainder > halfway || (remainder == halfway && (rounded & 1u) != 0u)) {
+                rounded++;
+            }
+            return (uint16_t)(sign | rounded);
+        }
+    }
+
+    {
+        uint32_t half_exp = exp - 112u;
+        uint32_t half_mantissa = mantissa >> 13;
+        uint32_t round_bit = (mantissa >> 12) & 1u;
+        uint32_t sticky = mantissa & 0xfffu;
+        if (round_bit && (sticky != 0u || (half_mantissa & 1u) != 0u)) {
+            half_mantissa++;
+            if (half_mantissa == 0x400u) {
+                half_mantissa = 0u;
+                half_exp++;
+                if (half_exp >= 31u) {
+                    return (uint16_t)(sign | 0x7c00u);
+                }
+            }
+        }
+        return (uint16_t)(sign | (half_exp << 10) | half_mantissa);
+    }
+}
+
+static uint16_t float_to_bf16_bits(float value) {
+    pyc_fp32_bits bits;
+    uint32_t lsb;
+
+    bits.f32 = value;
+    lsb = (bits.u32 >> 16) & 1u;
+    bits.u32 += 0x7fffu + lsb;
+    return (uint16_t)(bits.u32 >> 16);
+}
+
+static void store_scalar_value(void* dst, size_t index, pyc_dtype dtype, float value) {
+    switch (dtype) {
+        case PYC_DTYPE_F16:
+            ((uint16_t*)dst)[index] = float_to_f16_bits(value);
+            break;
+        case PYC_DTYPE_BF16:
+            ((uint16_t*)dst)[index] = float_to_bf16_bits(value);
+            break;
+        case PYC_DTYPE_F32:
+            ((float*)dst)[index] = value;
+            break;
+        default:
+            break;
+    }
 }
 
 static int cmp_double(const void* a, const void* b) {
@@ -325,14 +439,14 @@ static int parse_gemm_sequence(
     return 0;
 }
 
-static void fill_host_pattern(float* dst, size_t count, int seed, float scale) {
+static void fill_host_pattern(void* dst, size_t count, int seed, float scale, pyc_dtype dtype) {
     size_t i;
     if (!dst) {
         return;
     }
     for (i = 0; i < count; ++i) {
         int value = (int)((i + (size_t)seed) % 23) - 11;
-        dst[i] = (float)value * scale;
+        store_scalar_value(dst, i, dtype, (float)value * scale);
     }
 }
 
@@ -364,7 +478,39 @@ static void print_json_string(const char* value) {
     putchar('"');
 }
 
-static void build_matmul_module(pyc_ir_module* m, int batch, int hidden) {
+static void print_error_json(
+    const char* error,
+    pyc_status status,
+    const pyc_run_stats* rs,
+    const pyc_compiled_model* model,
+    const gemm_shape_step* step,
+    size_t sequence_index,
+    int include_sequence_index) {
+    char execution_path[128];
+    const char* status_name = pyc_status_string(status);
+    const char* decision_log = model ? pyc_model_last_decision_log(model) : "";
+
+    populate_execution_path(rs, execution_path, sizeof(execution_path));
+
+    printf("{\"status\":\"error\",\"error\":");
+    print_json_string(error);
+    printf(",\"pyc_status\":");
+    print_json_string(status_name ? status_name : "UNKNOWN");
+    printf(",\"pyc_status_code\":%d", (int)status);
+    printf(",\"execution_path\":");
+    print_json_string(execution_path);
+    printf(",\"decision_log\":");
+    print_json_string(decision_log);
+    if (step) {
+        printf(",\"m\":%d,\"k\":%d,\"n\":%d", step->m, step->k, step->n);
+    }
+    if (include_sequence_index) {
+        printf(",\"sequence_index\":%zu", sequence_index);
+    }
+    printf("}\n");
+}
+
+static void build_matmul_module(pyc_ir_module* m, int batch, int hidden, pyc_dtype dtype) {
     pyc_ir_op lhs;
     pyc_ir_op rhs;
     pyc_ir_op mm;
@@ -374,7 +520,7 @@ static void build_matmul_module(pyc_ir_module* m, int batch, int hidden) {
     memset(&lhs, 0, sizeof(lhs));
     lhs.kind = PYC_IR_OP_INPUT;
     strcpy(lhs.name, "lhs");
-    lhs.dtype = PYC_DTYPE_F32;
+    lhs.dtype = dtype;
     lhs.shape.rank = 2;
     lhs.shape.dims[0] = batch;
     lhs.shape.dims[1] = hidden;
@@ -383,7 +529,7 @@ static void build_matmul_module(pyc_ir_module* m, int batch, int hidden) {
     memset(&rhs, 0, sizeof(rhs));
     rhs.kind = PYC_IR_OP_INPUT;
     strcpy(rhs.name, "rhs");
-    rhs.dtype = PYC_DTYPE_F32;
+    rhs.dtype = dtype;
     rhs.shape.rank = 2;
     rhs.shape.dims[0] = hidden;
     rhs.shape.dims[1] = hidden;
@@ -392,7 +538,7 @@ static void build_matmul_module(pyc_ir_module* m, int batch, int hidden) {
     memset(&mm, 0, sizeof(mm));
     mm.kind = PYC_IR_OP_MATMUL;
     strcpy(mm.name, "matmul0");
-    mm.dtype = PYC_DTYPE_F32;
+    mm.dtype = dtype;
     mm.input_ids[0] = 0;
     mm.input_ids[1] = 1;
     mm.input_count = 2;
@@ -401,7 +547,7 @@ static void build_matmul_module(pyc_ir_module* m, int batch, int hidden) {
     memset(&out, 0, sizeof(out));
     out.kind = PYC_IR_OP_OUTPUT;
     strcpy(out.name, "out0");
-    out.dtype = PYC_DTYPE_F32;
+    out.dtype = dtype;
     out.shape.rank = 2;
     out.shape.dims[0] = batch;
     out.shape.dims[1] = hidden;
@@ -410,7 +556,7 @@ static void build_matmul_module(pyc_ir_module* m, int batch, int hidden) {
     pyc_ir_add_op(m, &out);
 }
 
-static void build_gemm_module(pyc_ir_module* m, int m_dim, int k_dim, int n_dim) {
+static void build_gemm_module(pyc_ir_module* m, int m_dim, int k_dim, int n_dim, pyc_dtype dtype) {
     pyc_ir_op lhs;
     pyc_ir_op rhs;
     pyc_ir_op mm;
@@ -420,7 +566,7 @@ static void build_gemm_module(pyc_ir_module* m, int m_dim, int k_dim, int n_dim)
     memset(&lhs, 0, sizeof(lhs));
     lhs.kind = PYC_IR_OP_INPUT;
     strcpy(lhs.name, "lhs");
-    lhs.dtype = PYC_DTYPE_F32;
+    lhs.dtype = dtype;
     lhs.shape.rank = 2;
     lhs.shape.dims[0] = m_dim;
     lhs.shape.dims[1] = k_dim;
@@ -429,7 +575,7 @@ static void build_gemm_module(pyc_ir_module* m, int m_dim, int k_dim, int n_dim)
     memset(&rhs, 0, sizeof(rhs));
     rhs.kind = PYC_IR_OP_INPUT;
     strcpy(rhs.name, "rhs");
-    rhs.dtype = PYC_DTYPE_F32;
+    rhs.dtype = dtype;
     rhs.shape.rank = 2;
     rhs.shape.dims[0] = k_dim;
     rhs.shape.dims[1] = n_dim;
@@ -438,7 +584,7 @@ static void build_gemm_module(pyc_ir_module* m, int m_dim, int k_dim, int n_dim)
     memset(&mm, 0, sizeof(mm));
     mm.kind = PYC_IR_OP_MATMUL;
     strcpy(mm.name, "matmul0");
-    mm.dtype = PYC_DTYPE_F32;
+    mm.dtype = dtype;
     mm.input_ids[0] = 0;
     mm.input_ids[1] = 1;
     mm.input_count = 2;
@@ -447,7 +593,7 @@ static void build_gemm_module(pyc_ir_module* m, int m_dim, int k_dim, int n_dim)
     memset(&out, 0, sizeof(out));
     out.kind = PYC_IR_OP_OUTPUT;
     strcpy(out.name, "out0");
-    out.dtype = PYC_DTYPE_F32;
+    out.dtype = dtype;
     out.shape.rank = 2;
     out.shape.dims[0] = m_dim;
     out.shape.dims[1] = n_dim;
@@ -460,6 +606,8 @@ int main(int argc, char** argv) {
     const char* device = "cpu";
     const char* task = getenv("BENCH_TASK");
     const char* sequence_raw = getenv("BENCH_SEQUENCE");
+    pyc_dtype bench_dtype = parse_bench_dtype(env_string_or("BENCH_DTYPE", "float32"));
+    size_t elem_bytes = dtype_size_bytes(bench_dtype);
     int batch = 64;
     int hidden = 1024;
     int m_dim = 64;
@@ -475,9 +623,9 @@ int main(int argc, char** argv) {
     pyc_compiled_model* model = NULL;
     pyc_tensor inputs[2];
     pyc_tensor outputs[1];
-    float* lhs = NULL;
-    float* rhs = NULL;
-    float* out = NULL;
+    void* lhs = NULL;
+    void* rhs = NULL;
+    void* out = NULL;
     gemm_shape_step sequence_steps[16];
     gemm_sequence_result sequence_results[16];
     size_t sequence_count = 0;
@@ -519,6 +667,11 @@ int main(int argc, char** argv) {
     int rhs_pinned = 0;
     int out_pinned = 0;
     int sequence_mode = 0;
+
+    if (bench_dtype == PYC_DTYPE_UNKNOWN || elem_bytes == 0) {
+        printf("{\"status\":\"error\",\"error\":\"unsupported BENCH_DTYPE\"}\n");
+        return 1;
+    }
 
     if (argc >= 2) device = argv[1];
     if (argc >= 3) batch = atoi(argv[2]);
@@ -591,27 +744,27 @@ int main(int argc, char** argv) {
         elements_rhs = hidden * hidden;
         elements_out = batch * hidden;
     }
-    lhs = alloc_host_f32((size_t)elements_lhs, pinned_host_buffers, &lhs_pinned);
-    rhs = alloc_host_f32((size_t)elements_rhs, pinned_host_buffers, &rhs_pinned);
-    out = alloc_host_f32((size_t)elements_out, pinned_host_buffers, &out_pinned);
+    lhs = alloc_host_buffer((size_t)elements_lhs * elem_bytes, pinned_host_buffers, &lhs_pinned);
+    rhs = alloc_host_buffer((size_t)elements_rhs * elem_bytes, pinned_host_buffers, &rhs_pinned);
+    out = alloc_host_buffer((size_t)elements_out * elem_bytes, pinned_host_buffers, &out_pinned);
     samples = (double*)malloc((size_t)iters * sizeof(double));
     if (!lhs || !rhs || !out || !samples) {
         printf("{\"status\":\"error\",\"error\":\"alloc failed\"}\n");
-        free_host_f32(lhs, lhs_pinned);
-        free_host_f32(rhs, rhs_pinned);
-        free_host_f32(out, out_pinned);
+        free_host_buffer(lhs, lhs_pinned);
+        free_host_buffer(rhs, rhs_pinned);
+        free_host_buffer(out, out_pinned);
         free(samples);
         return 1;
     }
 
-    fill_host_pattern(lhs, (size_t)elements_lhs, 0, 0.1f);
-    fill_host_pattern(rhs, (size_t)elements_rhs, 7, 0.05f);
-    memset(out, 0, (size_t)elements_out * sizeof(float));
+    fill_host_pattern(lhs, (size_t)elements_lhs, 0, 0.1f, bench_dtype);
+    fill_host_pattern(rhs, (size_t)elements_rhs, 7, 0.05f, bench_dtype);
+    memset(out, 0, (size_t)elements_out * elem_bytes);
 
     if (strcmp(task, "gemm") == 0) {
-        build_gemm_module(&module, m_dim, k_dim, n_dim);
+        build_gemm_module(&module, m_dim, k_dim, n_dim, bench_dtype);
     } else {
-        build_matmul_module(&module, batch, hidden);
+        build_matmul_module(&module, batch, hidden, bench_dtype);
     }
     memset(&desc, 0, sizeof(desc));
     desc.module = &module;
@@ -633,33 +786,34 @@ int main(int argc, char** argv) {
     opts.cache_mode = env_default_true("PYC_BENCH_CACHE_IN_MEMORY") ? PYC_COMPILE_CACHE_IN_MEMORY : PYC_COMPILE_CACHE_DISABLED;
     pyc_runtime_rails_default(&opts.rails);
 
-    if (pyc_compile_model(&desc, &opts, &model) != PYC_STATUS_OK || !model) {
-        printf("{\"status\":\"error\",\"error\":\"compile failed\"}\n");
-        free_host_f32(lhs, lhs_pinned);
-        free_host_f32(rhs, rhs_pinned);
-        free_host_f32(out, out_pinned);
+    s = pyc_compile_model(&desc, &opts, &model);
+    if (s != PYC_STATUS_OK || !model) {
+        print_error_json("compile failed", s, NULL, model, NULL, 0, 0);
+        free_host_buffer(lhs, lhs_pinned);
+        free_host_buffer(rhs, rhs_pinned);
+        free_host_buffer(out, out_pinned);
         free(samples);
         return 1;
     }
 
     memset(inputs, 0, sizeof(inputs));
     inputs[0].data = lhs;
-    inputs[0].size_bytes = (size_t)elements_lhs * sizeof(float);
-    inputs[0].dtype = PYC_DTYPE_F32;
+    inputs[0].size_bytes = (size_t)elements_lhs * elem_bytes;
+    inputs[0].dtype = bench_dtype;
     inputs[0].shape.rank = 2;
     inputs[0].shape.dims[0] = strcmp(task, "gemm") == 0 ? m_dim : batch;
     inputs[0].shape.dims[1] = strcmp(task, "gemm") == 0 ? k_dim : hidden;
     inputs[1].data = rhs;
-    inputs[1].size_bytes = (size_t)elements_rhs * sizeof(float);
-    inputs[1].dtype = PYC_DTYPE_F32;
+    inputs[1].size_bytes = (size_t)elements_rhs * elem_bytes;
+    inputs[1].dtype = bench_dtype;
     inputs[1].shape.rank = 2;
     inputs[1].shape.dims[0] = strcmp(task, "gemm") == 0 ? k_dim : hidden;
     inputs[1].shape.dims[1] = strcmp(task, "gemm") == 0 ? n_dim : hidden;
 
     memset(outputs, 0, sizeof(outputs));
     outputs[0].data = out;
-    outputs[0].size_bytes = (size_t)elements_out * sizeof(float);
-    outputs[0].dtype = PYC_DTYPE_F32;
+    outputs[0].size_bytes = (size_t)elements_out * elem_bytes;
+    outputs[0].dtype = bench_dtype;
     outputs[0].shape.rank = 2;
     outputs[0].shape.dims[0] = strcmp(task, "gemm") == 0 ? m_dim : batch;
     outputs[0].shape.dims[1] = strcmp(task, "gemm") == 0 ? n_dim : hidden;
@@ -686,36 +840,32 @@ int main(int argc, char** argv) {
             sum_copy_out = 0.0;
             sum_sync = 0.0;
             memset(samples, 0, (size_t)iters * sizeof(double));
-            memset(out, 0, step_elements_out * sizeof(float));
-            fill_host_pattern(lhs, step_elements_lhs, (int)(sequence_index * 17), 0.1f);
-            fill_host_pattern(rhs, step_elements_rhs, (int)(sequence_index * 29), 0.05f);
+            memset(out, 0, step_elements_out * elem_bytes);
+            fill_host_pattern(lhs, step_elements_lhs, (int)(sequence_index * 17), 0.1f, bench_dtype);
+            fill_host_pattern(rhs, step_elements_rhs, (int)(sequence_index * 29), 0.05f, bench_dtype);
 
-            inputs[0].size_bytes = step_elements_lhs * sizeof(float);
+            inputs[0].size_bytes = step_elements_lhs * elem_bytes;
             inputs[0].shape.dims[0] = step->m;
             inputs[0].shape.dims[1] = step->k;
-            inputs[1].size_bytes = step_elements_rhs * sizeof(float);
+            inputs[1].size_bytes = step_elements_rhs * elem_bytes;
             inputs[1].shape.dims[0] = step->k;
             inputs[1].shape.dims[1] = step->n;
-            outputs[0].size_bytes = step_elements_out * sizeof(float);
+            outputs[0].size_bytes = step_elements_out * elem_bytes;
             outputs[0].shape.dims[0] = step->m;
             outputs[0].shape.dims[1] = step->n;
 
             total = warmup + iters;
             for (i = 0; i < total; ++i) {
                 run_a_ms = now_ms();
+                memset(&rs, 0, sizeof(rs));
                 s = pyc_run_model(model, inputs, 2, outputs, 1, &rs);
                 run_b_ms = now_ms();
                 if (s != PYC_STATUS_OK) {
-                    printf(
-                        "{\"status\":\"error\",\"error\":\"run failed\",\"sequence_index\":%zu,\"m\":%d,\"k\":%d,\"n\":%d}\n",
-                        sequence_index,
-                        step->m,
-                        step->k,
-                        step->n);
+                    print_error_json("run failed", s, &rs, model, step, sequence_index, 1);
                     pyc_destroy_model(model);
-                    free_host_f32(lhs, lhs_pinned);
-                    free_host_f32(rhs, rhs_pinned);
-                    free_host_f32(out, out_pinned);
+                    free_host_buffer(lhs, lhs_pinned);
+                    free_host_buffer(rhs, rhs_pinned);
+                    free_host_buffer(out, out_pinned);
                     free(samples);
                     return 1;
                 }
@@ -950,9 +1100,9 @@ int main(int argc, char** argv) {
         putchar('\n');
 
         pyc_destroy_model(model);
-        free_host_f32(lhs, lhs_pinned);
-        free_host_f32(rhs, rhs_pinned);
-        free_host_f32(out, out_pinned);
+        free_host_buffer(lhs, lhs_pinned);
+        free_host_buffer(rhs, rhs_pinned);
+        free_host_buffer(out, out_pinned);
         free(samples);
         return 0;
     }
@@ -960,14 +1110,19 @@ int main(int argc, char** argv) {
     total = warmup + iters;
     for (i = 0; i < total; ++i) {
         run_a_ms = now_ms();
+        memset(&rs, 0, sizeof(rs));
         s = pyc_run_model(model, inputs, 2, outputs, 1, &rs);
         run_b_ms = now_ms();
         if (s != PYC_STATUS_OK) {
-            printf("{\"status\":\"error\",\"error\":\"run failed\"}\n");
+            gemm_shape_step failure_step;
+            failure_step.m = m_dim;
+            failure_step.k = k_dim;
+            failure_step.n = n_dim;
+            print_error_json("run failed", s, &rs, model, &failure_step, 0, 0);
             pyc_destroy_model(model);
-            free_host_f32(lhs, lhs_pinned);
-            free_host_f32(rhs, rhs_pinned);
-            free_host_f32(out, out_pinned);
+            free_host_buffer(lhs, lhs_pinned);
+            free_host_buffer(rhs, rhs_pinned);
+            free_host_buffer(out, out_pinned);
             free(samples);
             return 1;
         }
@@ -1094,9 +1249,9 @@ int main(int argc, char** argv) {
     );
 
     pyc_destroy_model(model);
-    free_host_f32(lhs, lhs_pinned);
-    free_host_f32(rhs, rhs_pinned);
-    free_host_f32(out, out_pinned);
+    free_host_buffer(lhs, lhs_pinned);
+    free_host_buffer(rhs, rhs_pinned);
+    free_host_buffer(out, out_pinned);
     free(samples);
     return 0;
 }

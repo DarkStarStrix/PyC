@@ -18,6 +18,22 @@ typedef enum {
     PYC_BACKEND_CUDA = 1
 } pyc_backend;
 
+typedef enum {
+    PYC_KERNEL_WORKLOAD_ANY = 0,
+    PYC_KERNEL_WORKLOAD_SMALL = 1,
+    PYC_KERNEL_WORKLOAD_SQUARE = 2,
+    PYC_KERNEL_WORKLOAD_LARGE_SQUARE = 3,
+    PYC_KERNEL_WORKLOAD_TALL_SKINNY = 4,
+    PYC_KERNEL_WORKLOAD_WIDE_SKINNY = 5
+} pyc_kernel_workload_family;
+
+typedef enum {
+    PYC_KERNEL_HARDWARE_ANY = 0,
+    PYC_KERNEL_HARDWARE_GENERIC = 1,
+    PYC_KERNEL_HARDWARE_ADA = 2,
+    PYC_KERNEL_HARDWARE_HOPPER = 3
+} pyc_kernel_hardware_family;
+
 typedef struct {
     char op_key[PYC_KERNEL_OP_KEY_MAX];
     pyc_backend backend;
@@ -27,6 +43,8 @@ typedef struct {
     int tensor_core_eligible;
     size_t shared_mem_bytes;
     int reg_pressure_class;
+    pyc_kernel_workload_family preferred_workload_family;
+    pyc_kernel_hardware_family preferred_hardware_family;
 } pyc_kernel_desc;
 
 typedef struct {
@@ -52,7 +70,12 @@ typedef struct {
     size_t total_requested_bytes;
     size_t peak_bytes;
     size_t memory_budget_bytes;
+    pyc_kernel_workload_family workload_family;
+    pyc_kernel_hardware_family hardware_family;
 } pyc_kernel_coselect_context;
+
+const char* pyc_kernel_workload_family_name(pyc_kernel_workload_family family);
+const char* pyc_kernel_hardware_family_name(pyc_kernel_hardware_family family);
 
 void pyc_kernel_registry_reset(void);
 int pyc_kernel_register(const pyc_kernel_desc* desc);

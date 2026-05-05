@@ -7,6 +7,11 @@ import statistics
 import time
 
 
+def strict_native() -> bool:
+    raw = os.environ.get("BENCH_STRICT_NATIVE", "")
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def percentile(values: list[float], p: float) -> float:
     ordered = sorted(values)
     idx = int(round((p / 100.0) * (len(ordered) - 1)))
@@ -36,6 +41,11 @@ def run_jax_native(
         import jax.numpy as jnp
         import numpy as np
     except Exception:
+        if strict_native():
+            return {
+                "status": "unavailable",
+                "reason": "JAX/XLA is not installed and BENCH_STRICT_NATIVE=1",
+            }
         return None
 
     try:
@@ -240,6 +250,8 @@ def main() -> int:
     jax_payload = run_jax_native(device_req, task, batch, hidden, m, k, n, iters, warmup)
     if jax_payload is not None:
         return emit(jax_payload)
+    if strict_native():
+        return emit({"status": "unavailable", "reason": "Native XLA backend unavailable and BENCH_STRICT_NATIVE=1"})
 
     try:
         import torch
@@ -249,6 +261,8 @@ def main() -> int:
     try:
         import torch_xla.core.xla_model as xm
     except Exception:
+        if strict_native():
+            return emit({"status": "unavailable", "reason": "torch_xla unavailable and BENCH_STRICT_NATIVE=1"})
         return emit(run_torch_proxy(torch, device_req, task, batch, hidden, m, k, n, iters, warmup))
 
     torch.manual_seed(7)

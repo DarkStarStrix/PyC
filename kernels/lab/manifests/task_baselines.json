@@ -13,6 +13,15 @@
     {
       "task_kind": "gemm",
       "backend": "cuda",
+      "arch": "sm90",
+      "kernel": "hopper_tensor_core_bf16_async_square_k64",
+      "source": "task:hopper-sm90-gap-close",
+      "updated_utc": "2026-04-21T20:24:13.215097+00:00",
+      "notes": "Promote 128x128x64 async WMMA square lane after zero-diff 512^3 correctness and 148.394 TFLOPS steady-state on H100. This is the best cheap shave on the ~1 ms class, but it still sits far from the cuBLASLt ceiling, so the main gap-close path now belongs to the Hopper-native WGMMA/TMA lane."
+    },
+    {
+      "task_kind": "gemm",
+      "backend": "cuda",
       "arch": "generic",
       "kernel": "matrix_mult",
       "source": "seed",

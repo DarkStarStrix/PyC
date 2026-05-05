@@ -260,6 +260,8 @@ extern "C" void pyc_register_ada_async_gemm_kernel(void) {
     desc.tensor_core_eligible = 0;
     desc.shared_mem_bytes = (size_t)PYC_ADA_REG_SHARED_BYTES;
     desc.reg_pressure_class = 3;
+    desc.preferred_workload_family = PYC_KERNEL_WORKLOAD_LARGE_SQUARE;
+    desc.preferred_hardware_family = PYC_KERNEL_HARDWARE_ADA;
     pyc_kernel_register(&desc);
 }
 

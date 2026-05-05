@@ -577,7 +577,7 @@ def resolve_task_baseline(kernels: dict, baseline_manifest: dict, task_kind: str
     raise LabError("No baseline kernel could be resolved for task", EXIT_USER_ERROR)
 
 
-def benchmark_plan_for_task(task_name: str, task_kind: str, baseline_kernel: dict, hardware: dict, args):
+def benchmark_plan_for_task(task_name: str, task_kind: str, baseline_kernel: dict, hardware: dict, args, control_kernel: dict | None = None):
     baseline_phase = "run" if str(baseline_kernel.get("run_cmd", "")).strip() else "compile"
     progress_flag = " --progress" if getattr(args, "progress", False) else ""
     feature_profiles = resolve_feature_profiles(getattr(args, "pyc_feature_profile", []))
@@ -606,6 +606,16 @@ def benchmark_plan_for_task(task_name: str, task_kind: str, baseline_kernel: dic
         f"python3 kernels/lab/kernel_lab.py --nvcc {shlex.quote(args.nvcc)} bench {baseline_kernel['name']} --phase {baseline_phase} --repeats {args.repeats} --warmup {args.warmup}{progress_flag}"
     )
 
+    if control_kernel:
+        control_phase = "run" if str(control_kernel.get("run_cmd", "")).strip() else "compile"
+        if control_phase == "run":
+            plan["profile_protocol"].append(
+                f"python3 kernels/lab/kernel_lab.py --nvcc {shlex.quote(args.nvcc)} bench {control_kernel['name']} --phase compile --repeats 1 --warmup 0{progress_flag}"
+            )
+        plan["profile_protocol"].append(
+            f"python3 kernels/lab/kernel_lab.py --nvcc {shlex.quote(args.nvcc)} bench {control_kernel['name']} --phase {control_phase} --repeats {args.repeats} --warmup {args.warmup}{progress_flag}"
+        )
+
     if candidate_filters:
         plan["profile_protocol"].append(
             f"python3 kernels/lab/kernel_lab.py --nvcc {shlex.quote(args.nvcc)} bench-suite --phase compile --repeats 1 --warmup 0 --label {task_slug(task_name)}-candidates-compile{progress_flag}{candidate_filters}"
@@ -630,8 +640,18 @@ def benchmark_plan_for_task(task_name: str, task_kind: str, baseline_kernel: dic
     return plan
 
 
-def task_record(task_name: str, task_kind: str, objective: str, hardware: dict, baseline_kernel: dict, baseline_meta: dict, args):
+def task_success_criteria(args):
+    criteria = {}
+    if getattr(args, "target_tflops_min", None) is not None:
+        criteria["target_tflops_min"] = float(args.target_tflops_min)
+    if getattr(args, "target_tflops_max", None) is not None:
+        criteria["target_tflops_max"] = float(args.target_tflops_max)
+    return criteria
+
+
+def task_record(task_name: str, task_kind: str, objective: str, hardware: dict, baseline_kernel: dict, baseline_meta: dict, args, control_kernel: dict | None = None):
     feature_profiles = resolve_feature_profiles(getattr(args, "pyc_feature_profile", []))
+    success_criteria = task_success_criteria(args)
     return {
         "meta": {
             "name": task_name,
@@ -645,13 +665,16 @@ def task_record(task_name: str, task_kind: str, objective: str, hardware: dict, 
             "kind": task_kind,
             "objective": objective,
             "baseline_kernel": baseline_kernel["name"],
+            "control_kernel": control_kernel["name"] if control_kernel else "",
             "candidate_tags": list(args.candidate_tag or []),
             "candidate_names": list(args.candidate_name or []),
             "pyc_feature_profiles": [profile["name"] for profile in feature_profiles],
             "baseline_resolution": baseline_meta,
+            "success_criteria": success_criteria,
         },
         "baseline": kernel_profile(baseline_kernel),
-        "benchmark_plan": benchmark_plan_for_task(task_name, task_kind, baseline_kernel, hardware, args),
+        "control": kernel_profile(control_kernel) if control_kernel else None,
+        "benchmark_plan": benchmark_plan_for_task(task_name, task_kind, baseline_kernel, hardware, args, control_kernel),
         "result": {
             "winner_kernel": None,
             "result_json": None,
@@ -1286,6 +1309,11 @@ def cmd_task_create(args):
     baseline_manifest = ensure_baseline_manifest(Path(args.baseline_manifest))
     hardware = collect_hardware_profile(args.nvcc)
     objective = args.objective.strip() or "beat the current baseline on target hardware"
+    control_kernel = None
+    if args.control_kernel:
+        control_kernel = kernels.get(args.control_kernel)
+        if not control_kernel:
+            raise LabError(f"Control kernel not found: {args.control_kernel}", EXIT_USER_ERROR)
     baseline_kernel, baseline_meta = resolve_task_baseline(
         kernels,
         baseline_manifest,
@@ -1294,7 +1322,7 @@ def cmd_task_create(args):
         hardware.get("arch", "generic"),
         args.baseline,
     )
-    record = task_record(args.name, args.task_kind, objective, hardware, baseline_kernel, baseline_meta, args)
+    record = task_record(args.name, args.task_kind, objective, hardware, baseline_kernel, baseline_meta, args, control_kernel)
     out_path = task_path(Path(args.task_dir), args.name)
     write_json(out_path, record)
     print(f"wrote {out_path}")
@@ -1555,8 +1583,11 @@ def build_parser():
     p_task_create.add_argument("--task-kind", default="gemm")
     p_task_create.add_argument("--objective", default="")
     p_task_create.add_argument("--baseline", default="", help="Explicit baseline kernel override")
+    p_task_create.add_argument("--control-kernel", default="", help="Optional control/ceiling kernel to include in the task plan")
     p_task_create.add_argument("--candidate-tag", action="append", default=[], help="Candidate kernel tag filter")
     p_task_create.add_argument("--candidate-name", action="append", default=[], help="Candidate kernel name filter")
+    p_task_create.add_argument("--target-tflops-min", type=float, default=None, help="Minimum accepted TFLOPS for this task")
+    p_task_create.add_argument("--target-tflops-max", type=float, default=None, help="Upper target TFLOPS band for this task")
     p_task_create.add_argument(
         "--pyc-feature-profile",
         action="append",

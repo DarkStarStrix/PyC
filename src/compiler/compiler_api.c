@@ -576,6 +576,7 @@ static void sanitize_runtime_rails(pyc_runtime_rails* rails) {
 static size_t dtype_size_bytes(pyc_dtype dtype) {
     switch (dtype) {
         case PYC_DTYPE_F16:
+        case PYC_DTYPE_BF16:
             return 2;
         case PYC_DTYPE_I8:
             return 1;
@@ -926,6 +927,155 @@ static uint64_t runtime_input_shape_hash(const pyc_tensor* inputs, size_t input_
     return hash;
 }
 
+static int extract_module_matmul_dims(
+    const pyc_ir_module* module,
+    size_t* out_m,
+    size_t* out_n,
+    size_t* out_k) {
+    size_t i;
+
+    if (!module || !out_m || !out_n || !out_k) {
+        return -1;
+    }
+
+    for (i = 0; i < module->op_count; ++i) {
+        const pyc_ir_op* op = &module->ops[i];
+        const pyc_ir_op* lhs;
+        const pyc_ir_op* rhs;
+        if (op->kind != PYC_IR_OP_MATMUL ||
+            op->input_count < 2 ||
+            op->input_ids[0] < 0 ||
+            op->input_ids[1] < 0 ||
+            (size_t)op->input_ids[0] >= module->op_count ||
+            (size_t)op->input_ids[1] >= module->op_count) {
+            continue;
+        }
+        lhs = &module->ops[(size_t)op->input_ids[0]];
+        rhs = &module->ops[(size_t)op->input_ids[1]];
+        if (lhs->shape.rank != 2 || rhs->shape.rank != 2) {
+            return -1;
+        }
+        *out_m = (size_t)lhs->shape.dims[0];
+        *out_k = (size_t)lhs->shape.dims[1];
+        *out_n = (size_t)rhs->shape.dims[1];
+        return 0;
+    }
+
+    return -1;
+}
+
+static int extract_runtime_matmul_dims(
+    const pyc_ir_module* module,
+    const pyc_tensor* inputs,
+    size_t input_count,
+    size_t* out_m,
+    size_t* out_n,
+    size_t* out_k) {
+    int lhs_op_id = -1;
+    int rhs_op_id = -1;
+    size_t i;
+    size_t seen_inputs = 0;
+    size_t lhs_tensor_index = (size_t)-1;
+    size_t rhs_tensor_index = (size_t)-1;
+
+    if (!module || !inputs || !out_m || !out_n || !out_k) {
+        return -1;
+    }
+
+    for (i = 0; i < module->op_count; ++i) {
+        const pyc_ir_op* op = &module->ops[i];
+        if (op->kind != PYC_IR_OP_MATMUL || op->input_count < 2) {
+            continue;
+        }
+        lhs_op_id = op->input_ids[0];
+        rhs_op_id = op->input_ids[1];
+        break;
+    }
+    if (lhs_op_id < 0 || rhs_op_id < 0) {
+        return -1;
+    }
+
+    for (i = 0; i < module->op_count; ++i) {
+        const pyc_ir_op* op = &module->ops[i];
+        if (op->kind != PYC_IR_OP_INPUT) {
+            continue;
+        }
+        if ((int)i == lhs_op_id) {
+            lhs_tensor_index = seen_inputs;
+        }
+        if ((int)i == rhs_op_id) {
+            rhs_tensor_index = seen_inputs;
+        }
+        seen_inputs++;
+    }
+
+    if (lhs_tensor_index >= input_count || rhs_tensor_index >= input_count) {
+        return -1;
+    }
+    if (inputs[lhs_tensor_index].shape.rank != 2 || inputs[rhs_tensor_index].shape.rank != 2) {
+        return -1;
+    }
+
+    *out_m = (size_t)inputs[lhs_tensor_index].shape.dims[0];
+    *out_k = (size_t)inputs[lhs_tensor_index].shape.dims[1];
+    *out_n = (size_t)inputs[rhs_tensor_index].shape.dims[1];
+    return 0;
+}
+
+static pyc_kernel_workload_family classify_matmul_workload_family(
+    size_t m,
+    size_t n,
+    size_t k) {
+    size_t major_dim;
+    size_t minor_dim;
+    size_t flop_scale;
+
+    if (m == 0 || n == 0 || k == 0) {
+        return PYC_KERNEL_WORKLOAD_ANY;
+    }
+
+    major_dim = m > n ? m : n;
+    minor_dim = m < n ? m : n;
+    flop_scale = m * n * k;
+
+    if (major_dim <= 512 || flop_scale <= (size_t)512 * 512 * 512) {
+        return PYC_KERNEL_WORKLOAD_SMALL;
+    }
+    if (m >= (n * 3)) {
+        return PYC_KERNEL_WORKLOAD_TALL_SKINNY;
+    }
+    if (n >= (m * 3)) {
+        return PYC_KERNEL_WORKLOAD_WIDE_SKINNY;
+    }
+    if (minor_dim >= 1024 && major_dim <= (minor_dim * 2) && k >= 512) {
+        return PYC_KERNEL_WORKLOAD_LARGE_SQUARE;
+    }
+    return PYC_KERNEL_WORKLOAD_SQUARE;
+}
+
+static pyc_kernel_workload_family module_matmul_workload_family(const pyc_ir_module* module) {
+    size_t m;
+    size_t n;
+    size_t k;
+    if (extract_module_matmul_dims(module, &m, &n, &k) != 0) {
+        return PYC_KERNEL_WORKLOAD_ANY;
+    }
+    return classify_matmul_workload_family(m, n, k);
+}
+
+static pyc_kernel_workload_family runtime_matmul_workload_family(
+    const pyc_ir_module* module,
+    const pyc_tensor* inputs,
+    size_t input_count) {
+    size_t m;
+    size_t n;
+    size_t k;
+    if (extract_runtime_matmul_dims(module, inputs, input_count, &m, &n, &k) != 0) {
+        return PYC_KERNEL_WORKLOAD_ANY;
+    }
+    return classify_matmul_workload_family(m, n, k);
+}
+
 static int scale_positive_dim(int64_t dim, size_t scale_factor, int64_t* out_dim) {
     size_t scaled;
     if (!out_dim || dim <= 0 || scale_factor == 0) {
@@ -1140,6 +1290,8 @@ static int populate_alloc_requests_for_module(const pyc_ir_module* module, pyc_a
 static void populate_coselect_context_from_plan(
     const pyc_alloc_plan* plan,
     size_t memory_budget_bytes,
+    pyc_kernel_workload_family workload_family,
+    pyc_kernel_hardware_family hardware_family,
     pyc_kernel_coselect_context* out_context) {
     pyc_alloc_stats stats;
     if (!out_context) {
@@ -1157,11 +1309,15 @@ static void populate_coselect_context_from_plan(
     out_context->total_requested_bytes = stats.total_requested_bytes;
     out_context->peak_bytes = stats.peak_bytes;
     out_context->memory_budget_bytes = memory_budget_bytes;
+    out_context->workload_family = workload_family;
+    out_context->hardware_family = hardware_family;
 }
 
 static void populate_coselect_context_from_stats(
     const pyc_alloc_stats* stats,
     size_t memory_budget_bytes,
+    pyc_kernel_workload_family workload_family,
+    pyc_kernel_hardware_family hardware_family,
     pyc_kernel_coselect_context* out_context) {
     if (!out_context) {
         return;
@@ -1177,6 +1333,8 @@ static void populate_coselect_context_from_stats(
     out_context->total_requested_bytes = stats->total_requested_bytes;
     out_context->peak_bytes = stats->peak_bytes;
     out_context->memory_budget_bytes = memory_budget_bytes;
+    out_context->workload_family = workload_family;
+    out_context->hardware_family = hardware_family;
 }
 
 static int build_speculative_plan_variant(
@@ -1190,6 +1348,8 @@ static int build_speculative_plan_variant(
     pyc_speculative_plan* out_plan) {
     pyc_kernel_coselect_context context;
     pyc_kernel_desc selected;
+    pyc_kernel_workload_family workload_family;
+    pyc_kernel_hardware_family hardware_family;
     if (!module || !options || !out_plan) {
         return -1;
     }
@@ -1219,7 +1379,16 @@ static int build_speculative_plan_variant(
         }
     }
 
-    populate_coselect_context_from_plan(&out_plan->alloc_plan, options->memory_budget_bytes, &context);
+    workload_family = module_matmul_workload_family(module);
+    hardware_family = backend == PYC_BACKEND_CUDA ?
+        pyc_cuda_current_hardware_family() :
+        PYC_KERNEL_HARDWARE_GENERIC;
+    populate_coselect_context_from_plan(
+        &out_plan->alloc_plan,
+        options->memory_budget_bytes,
+        workload_family,
+        hardware_family,
+        &context);
     if (pyc_kernel_coselect_with_context(
             "matmul_fused",
             backend,
@@ -2391,7 +2560,10 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     double phantom_graph_score_this_run = 0.0;
     uint64_t runtime_shape_hash = 0;
     int runtime_shape_cached = 0;
+    int exact_runtime_repeat = 0;
     int stable_repeat_fastpath = 0;
+    pyc_kernel_workload_family workload_family = PYC_KERNEL_WORKLOAD_ANY;
+    pyc_kernel_hardware_family hardware_family = PYC_KERNEL_HARDWARE_GENERIC;
 
     if (!model || !inputs || !outputs || input_count == 0 || output_count == 0) {
         return PYC_STATUS_INVALID_ARGUMENT;
@@ -2403,7 +2575,34 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     memset(runtime_shape_signature, 0, sizeof(runtime_shape_signature));
     strcpy(contract_reason, "ok");
 
-    if (model->deterministic_contract_enforced) {
+    if (env_default_true("PYC_ENABLE_STABLE_REPEAT_FASTPATH") &&
+        model->backend == PYC_BACKEND_CUDA &&
+        !model->options.enable_speculative_plans &&
+        !model->options.enable_phantom_graph &&
+        !model->options.enable_autotune &&
+        model->last_runtime_shape_valid &&
+        input_count <= PYC_IR_MAX_INPUTS &&
+        output_count <= PYC_IR_MAX_INPUTS &&
+        tensor_descriptor_array_equal(
+            inputs,
+            input_count,
+            model->last_runtime_inputs,
+            model->last_runtime_input_count) &&
+        tensor_descriptor_array_equal(
+            outputs,
+            output_count,
+            model->last_runtime_outputs,
+            model->last_runtime_output_count)) {
+        exact_runtime_repeat = 1;
+        runtime_shape_cached = 1;
+        runtime_shape_hash = model->last_runtime_shape_hash;
+        strncpy(runtime_shape_bucket, model->last_runtime_shape_bucket, sizeof(runtime_shape_bucket) - 1);
+        runtime_shape_bucket[sizeof(runtime_shape_bucket) - 1] = '\0';
+        strncpy(runtime_shape_signature, model->last_runtime_shape_signature, sizeof(runtime_shape_signature) - 1);
+        runtime_shape_signature[sizeof(runtime_shape_signature) - 1] = '\0';
+    }
+
+    if (model->deterministic_contract_enforced && !exact_runtime_repeat) {
         if (module_fingerprint(&model->module, &run_fingerprint) != 0) {
             contract_ok = 0;
             runtime_error = 1;
@@ -2417,7 +2616,8 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         }
     }
 
-    if (!model->options.enable_speculative_plans &&
+    if (!runtime_shape_cached &&
+        !model->options.enable_speculative_plans &&
         !model->options.enable_phantom_graph &&
         model->last_runtime_shape_valid) {
         if (input_count <= PYC_IR_MAX_INPUTS &&
@@ -2457,6 +2657,10 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
             runtime_shape_hash = runtime_input_shape_hash(inputs, input_count);
         }
     }
+    workload_family = runtime_matmul_workload_family(&model->module, inputs, input_count);
+    hardware_family = model->backend == PYC_BACKEND_CUDA ?
+        pyc_cuda_current_hardware_family() :
+        PYC_KERNEL_HARDWARE_GENERIC;
     phantom_graph_match_this_run = phantom_graph_compare(
         &model->phantom_graph,
         runtime_shape_bucket,
@@ -2573,16 +2777,22 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     }
 
     stable_repeat_fastpath =
-        env_default_true("PYC_ENABLE_STABLE_REPEAT_FASTPATH") &&
+        exact_runtime_repeat ||
+        (env_default_true("PYC_ENABLE_STABLE_REPEAT_FASTPATH") &&
         runtime_shape_cached &&
         !runtime_error &&
         !model->options.enable_speculative_plans &&
         !model->options.enable_phantom_graph &&
         !model->options.enable_autotune &&
-        model->backend == PYC_BACKEND_CUDA;
+        model->backend == PYC_BACKEND_CUDA);
 
     if (!stable_repeat_fastpath) {
-        populate_coselect_context_from_stats(&stats, model->options.memory_budget_bytes, &kernel_context);
+        populate_coselect_context_from_stats(
+            &stats,
+            model->options.memory_budget_bytes,
+            workload_family,
+            hardware_family,
+            &kernel_context);
         memset(&metrics, 0, sizeof(metrics));
         metrics.baseline_p95_ms = model->baseline_p95_ms;
         metrics.observed_p95_ms = run_ms;
@@ -2735,6 +2945,18 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%.3f", model->kernel_trace.reuse_bonus);
         decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " kernel_candidates=");
         decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%zu", model->kernel_trace.candidates_considered);
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " workload=");
+        decision_log_used = decision_log_append_text(
+            model->decision_log,
+            sizeof(model->decision_log),
+            decision_log_used,
+            pyc_kernel_workload_family_name(workload_family));
+        decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " hw=");
+        decision_log_used = decision_log_append_text(
+            model->decision_log,
+            sizeof(model->decision_log),
+            decision_log_used,
+            pyc_kernel_hardware_family_name(hardware_family));
         decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " cuda_fallback=");
         decision_log_used = decision_log_appendf(model->decision_log, sizeof(model->decision_log), decision_log_used, "%d", model->cuda_trace.fallback_to_cpu);
         decision_log_used = decision_log_append_text(model->decision_log, sizeof(model->decision_log), decision_log_used, " cuda_reason=");
@@ -2828,6 +3050,16 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         out_stats->rollback_count = model->controller.rollback_count;
         out_stats->shadow_mode = model->controller.recommended_mode;
         out_stats->shadow_reason = model->controller.recommendation_reason;
+        strncpy(
+            out_stats->workload_family,
+            pyc_kernel_workload_family_name(workload_family),
+            sizeof(out_stats->workload_family) - 1);
+        out_stats->workload_family[sizeof(out_stats->workload_family) - 1] = '\0';
+        strncpy(
+            out_stats->hardware_family,
+            pyc_kernel_hardware_family_name(hardware_family),
+            sizeof(out_stats->hardware_family) - 1);
+        out_stats->hardware_family[sizeof(out_stats->hardware_family) - 1] = '\0';
         strncpy(out_stats->execution_path, model->cuda_trace.reason, sizeof(out_stats->execution_path) - 1);
         out_stats->execution_path[sizeof(out_stats->execution_path) - 1] = '\0';
         out_stats->dispatch_ms = dispatch_ms;

@@ -82,3 +82,13 @@ This starts a local Textual TUI that polls the remote host over SSH and renders 
 - recent benchmark completions for quick judgment
 
 For direct, human-readable PyC bench runs in the tmux pane, prefer `scripts/run_pyc_bench_pretty.sh`. It keeps the full JSON artifact but prints compact summary lines instead of flooding the terminal.
+
+## Tmux Keepalive
+
+To keep the remote tmux server and the `pyc-hopper:main` session alive across idle periods and reboots, install the keepalive service on the box:
+
+```bash
+bash scripts/install_tmux_keepalive_remote.sh
+```
+
+This installs a `systemd` service that runs `infra/tmux_keepalive.sh` and recreates the detached `pyc-hopper` session with a `main` window whenever the tmux server disappears.

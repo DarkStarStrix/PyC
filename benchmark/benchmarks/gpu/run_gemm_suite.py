@@ -17,13 +17,15 @@ try:
 except Exception:  # noqa: BLE001
     tqdm = None
 
+from arena import DEFAULT_ADAPTERS, resolve_adapter_plan
+
 ROOT = Path(__file__).resolve().parents[3]
 PROGRESS_STATE_DIR = ROOT / "infra" / "nexa_insight"
 if str(PROGRESS_STATE_DIR) not in sys.path:
     sys.path.insert(0, str(PROGRESS_STATE_DIR))
 from progress_state import write_progress_state
 
-from run_gpu_suite import ADAPTER_DIR, DEFAULT_ADAPTERS, git_dirty, git_head, read_gpu_info
+from run_gpu_suite import ADAPTER_DIR, git_dirty, git_head, read_gpu_info
 
 RESULTS_DIR = ROOT / "benchmark" / "benchmarks" / "results"
 DEFAULT_MATRIX_FILE = ROOT / "benchmark" / "benchmarks" / "gpu" / "configs" / "ada_fp32_gemm_shapes.json"
@@ -71,6 +73,10 @@ def percentile_jitter(p50: float, p95: float) -> tuple[float, float]:
 def slugify(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
     return slug or "shape"
+
+
+def artifact_prefix(value: str) -> str:
+    return slugify(value).replace("-", "_")
 
 
 def load_matrix(path: Path) -> dict:
@@ -218,8 +224,10 @@ def aggregate_runs(adapter: str, shape: dict, runs: list[dict]) -> dict:
 
 def emit_shape_markdown(results: dict) -> str:
     shape = results["shape"]
+    plan = results["meta"].get("adapter_plan", {})
+    suite_title = results["meta"].get("suite_title", "GPU GEMM Sweep")
     lines = [
-        "# Ada FP32 GEMM Sweep",
+        f"# {suite_title}",
         "",
         f"- Shape: `{shape['name']}`",
         f"- M/K/N: `{shape['m']} / {shape['k']} / {shape['n']}`",
@@ -227,6 +235,8 @@ def emit_shape_markdown(results: dict) -> str:
         f"- Tag: `{results['meta']['tag']}`",
         f"- Device: `{results['meta']['device']}`",
         f"- DType: `{results['meta']['dtype']}`",
+        f"- Adapter selection: `{plan.get('mode', 'unknown') if isinstance(plan, dict) else 'unknown'}`",
+        f"- Arena profile: `{plan.get('profile', 'legacy') if isinstance(plan, dict) else 'legacy'}`",
         "",
         "| Adapter | Mode | Mean ms | P50 ms | P95 ms | TFLOPS | Peak GiB | Status |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
@@ -246,8 +256,10 @@ def emit_shape_markdown(results: dict) -> str:
 
 
 def emit_run_markdown(results: dict) -> str:
+    plan = results["meta"].get("adapter_plan", {})
+    suite_title = results["meta"].get("suite_title", "GPU GEMM Sweep")
     lines = [
-        "# Ada FP32 GEMM Sweep Summary",
+        f"# {suite_title} Summary",
         "",
         f"- Run ID: `{results['meta']['run_id']}`",
         f"- Tag: `{results['meta']['tag']}`",
@@ -255,6 +267,8 @@ def emit_run_markdown(results: dict) -> str:
         f"- DType: `{results['meta']['dtype']}`",
         f"- Host: `{results['meta']['host']}`",
         f"- Git: `{results['meta']['git_head']}` dirty={results['meta']['git_dirty']}",
+        f"- Adapter selection: `{plan.get('mode', 'unknown') if isinstance(plan, dict) else 'unknown'}`",
+        f"- Arena profile: `{plan.get('profile', 'legacy') if isinstance(plan, dict) else 'legacy'}`",
         "",
         "| Shape | Best Adapter | Best TFLOPS | Fastest Adapter | Fastest Mean ms |",
         "| --- | --- | ---: | --- | ---: |",
@@ -272,6 +286,11 @@ def emit_run_markdown(results: dict) -> str:
             f"{to_float(best_tflops.get('throughput_tflops_per_sec')):.6f} | "
             f"{fastest.get('display_name', fastest.get('adapter', 'n/a'))} | {fastest['latency_ms']['mean']} |"
         )
+    tiers = plan.get("tiers", []) if isinstance(plan, dict) else []
+    if tiers:
+        lines.extend(["", "## Arena Tiers", ""])
+        for tier in tiers:
+            lines.append(f"- {tier.get('label', tier.get('id', 'tier'))}: {', '.join(tier.get('adapters', []))}")
     return "\n".join(lines) + "\n"
 
 
@@ -304,7 +323,7 @@ def render_shape_svg(results: dict, out_path: Path) -> None:
             f'<text x="{chart_x + bar_w + 12}" y="{y + 24}" font-family="Arial, sans-serif" font-size="16" fill="#111">{value:.6f} TFLOPS</text>'
         )
 
-    title = f"Ada FP32 GEMM: {shape['name']}"
+    title = f"{results['meta'].get('suite_title', 'GPU GEMM Sweep')}: {shape['name']}"
     subtitle = f"run_id={results['meta']['run_id']} | git={results['meta']['git_head']} | dirty={results['meta']['git_dirty']}"
     subtitle_2 = f"M={shape['m']} K={shape['k']} N={shape['n']} | dtype={results['meta']['dtype']} | adapters={len(ok_rows)}"
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
@@ -349,7 +368,7 @@ def render_run_svg(results: dict, out_path: Path) -> None:
             f'<text x="{chart_x + bar_w + 12}" y="{y + 24}" font-family="Arial, sans-serif" font-size="16" fill="#111">{value:.6f} TFLOPS</text>'
         )
 
-    title = "Ada FP32 GEMM Sweep Summary"
+    title = f"{results['meta'].get('suite_title', 'GPU GEMM Sweep')} Summary"
     subtitle = f"run_id={results['meta']['run_id']} | git={results['meta']['git_head']} | dirty={results['meta']['git_dirty']}"
     subtitle_2 = f"device={results['meta']['device']} | dtype={results['meta']['dtype']} | shapes={len(results['shapes'])}"
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
@@ -387,25 +406,72 @@ def summarize_artifact_write(scope: str, paths: list[Path]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the Ada FP32 GEMM benchmark matrix")
+    parser = argparse.ArgumentParser(description="Run a GPU GEMM benchmark matrix")
     parser.add_argument("--matrix-file", default=str(DEFAULT_MATRIX_FILE))
     parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
     parser.add_argument("--adapters", default="")
+    parser.add_argument(
+        "--arena-mode",
+        action="store_true",
+        help="Use arena ordering for the selected arena profile.",
+    )
+    parser.add_argument(
+        "--arena-tier",
+        default="",
+        help="Challenge one arena tier against prod(PyC). Accepts 1-4 or tier-1..tier-4.",
+    )
+    parser.add_argument(
+        "--arena-profile",
+        default="",
+        help="Arena profile to use (for example: legacy, hopper). Defaults to the matrix setting or legacy.",
+    )
     parser.add_argument("--iters", type=int, default=80)
     parser.add_argument("--warmup", type=int, default=20)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--dtype", default="float32", choices=["float16", "float32", "bfloat16"])
-    parser.add_argument("--tag", default="ada_fp32_gemm")
+    parser.add_argument("--tag", default="")
     parser.add_argument("--run-id", default="")
     parser.add_argument("--output-root", default=str(RESULTS_DIR))
     parser.add_argument("--progress", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--parity-strict",
+        action="store_true",
+        help="Fail if any adapter reports mode=proxy.",
+    )
+    parser.add_argument(
+        "--require-native-adapter",
+        default="",
+        help="Comma-separated adapter ids that must report mode=native when status=ok.",
+    )
     args = parser.parse_args()
     require_progress_support(args.progress)
 
     matrix_path = Path(args.matrix_file)
     matrix = load_matrix(matrix_path)
-    adapters = [a.strip() for a in (args.adapters or ",".join(matrix.get("adapters", DEFAULT_ADAPTERS))).split(",") if a.strip()]
+    matrix_name = str(matrix.get("name", "gpu_gemm")).strip() or "gpu_gemm"
+    suite_title = str(matrix.get("title", matrix_name.replace("_", " ").title())).strip() or "GPU GEMM Sweep"
+    latest_prefix = artifact_prefix(str(matrix.get("artifact_prefix", matrix_name)))
+    tag = args.tag.strip() or latest_prefix
+    effective_arena_profile = args.arena_profile.strip() or str(matrix.get("arena_profile", "")).strip()
+    matrix_required_native = [
+        str(item).strip()
+        for item in matrix.get("required_native_adapters", [])
+        if str(item).strip()
+    ] if isinstance(matrix.get("required_native_adapters"), list) else []
+    required_native_adapters = (
+        [item.strip() for item in args.require_native_adapter.split(",") if item.strip()]
+        if args.require_native_adapter.strip()
+        else matrix_required_native
+    )
+    adapter_plan = resolve_adapter_plan(
+        args.adapters,
+        matrix.get("adapters", DEFAULT_ADAPTERS),
+        arena_mode=args.arena_mode,
+        arena_tier=args.arena_tier,
+        arena_profile=effective_arena_profile,
+    )
+    adapters = list(adapter_plan["adapters"])
     defaults = matrix.get("defaults", {}) if isinstance(matrix.get("defaults"), dict) else {}
     base_iters = int(defaults.get("iters", args.iters))
     base_warmup = int(defaults.get("warmup", args.warmup))
@@ -415,8 +481,8 @@ def main() -> int:
     output_root = Path(args.output_root)
     for folder in (output_root / "json", output_root / "reports", output_root / "images"):
         folder.mkdir(parents=True, exist_ok=True)
-    progress_state_path = output_root / "json" / f"{run_id}__{args.tag}.progress.json"
-    latest_progress_state_path = output_root / "json" / "latest_ada_fp32_gemm.progress.json"
+    progress_state_path = output_root / "json" / f"{run_id}__{tag}.progress.json"
+    latest_progress_state_path = output_root / "json" / f"latest_{latest_prefix}.progress.json"
 
     shapes = []
     for shape in matrix["shapes"]:
@@ -442,15 +508,21 @@ def main() -> int:
                 "note": str(shape.get("note", "")).strip(),
             }
         )
+    matrix_dtypes = sorted({shape["dtype"] for shape in shapes})
+    reported_dtype = matrix_dtypes[0] if len(matrix_dtypes) == 1 else args.dtype
 
     if args.dry_run:
         plan = {
             "status": "dry-run",
             "matrix_file": str(matrix_path),
             "run_id": run_id,
-            "tag": args.tag,
+            "tag": tag,
             "device": args.device,
             "adapters": adapters,
+            "adapter_plan": adapter_plan,
+            "required_native_adapters": required_native_adapters,
+            "suite_title": suite_title,
+            "latest_prefix": latest_prefix,
             "shapes": shapes,
             "output_root": str(output_root),
             "outputs": {
@@ -469,15 +541,19 @@ def main() -> int:
             "os": platform.platform(),
             "python": platform.python_version(),
             "device": args.device,
-            "tag": args.tag,
+            "tag": tag,
             "run_id": run_id,
             "git_head": git_head(),
             "git_dirty": git_dirty(),
             "matrix_file": str(matrix_path),
-            "matrix_name": matrix.get("name", "ada_fp32_gemm"),
+            "matrix_name": matrix_name,
             "task": matrix.get("task", "gemm"),
             "adapters": adapters,
-            "dtype": args.dtype,
+            "adapter_plan": adapter_plan,
+            "dtype": reported_dtype,
+            "suite_title": suite_title,
+            "required_native_adapters": required_native_adapters,
+            "latest_prefix": latest_prefix,
         },
         "gpu": read_gpu_info(),
         "matrix": matrix,
@@ -489,9 +565,9 @@ def main() -> int:
     progress_state = {
         "meta": {
             "run_id": run_id,
-            "tag": args.tag,
+            "tag": tag,
             "device": args.device,
-            "dtype": args.dtype,
+            "dtype": reported_dtype,
             "host": results["meta"]["host"],
             "started_utc": results["meta"]["timestamp_utc"],
             "status": "running",
@@ -513,7 +589,8 @@ def main() -> int:
     write_progress_state(progress_state_path, progress_state)
     write_progress_state(latest_progress_state_path, progress_state)
     progress_write(
-        f"[gemm-suite] run_id={run_id} device={args.device} dtype={args.dtype} adapters={','.join(adapters)} shapes={len(shapes)}"
+        f"[gemm-suite] run_id={run_id} device={args.device} dtype={args.dtype} "
+        f"adapter_mode={adapter_plan['mode']} adapters={','.join(adapters)} shapes={len(shapes)}"
     )
     for index, shape in enumerate(shapes, start=1):
         progress_state["progress"].update(
@@ -541,14 +618,16 @@ def main() -> int:
                 "os": results["meta"]["os"],
                 "python": results["meta"]["python"],
                 "device": results["meta"]["device"],
-                "tag": args.tag,
+                "tag": tag,
                 "run_id": run_id,
                 "git_head": results["meta"]["git_head"],
                 "git_dirty": results["meta"]["git_dirty"],
                 "matrix_name": results["meta"]["matrix_name"],
                 "task": results["meta"]["task"],
                 "adapters": adapters,
+                "adapter_plan": adapter_plan,
                 "dtype": shape["dtype"],
+                "suite_title": suite_title,
             },
             "gpu": results["gpu"],
             "adapters": {},
@@ -609,7 +688,7 @@ def main() -> int:
                     f"status={aggregated.get('status')} reason={aggregated.get('reason') or aggregated.get('error', 'n/a')}"
                 )
 
-        stamp = f"{run_id}__{args.tag}__{shape['slug']}"
+        stamp = f"{run_id}__{tag}__{shape['slug']}"
         json_path = output_root / "json" / f"{stamp}.json"
         md_path = output_root / "reports" / f"{stamp}.md"
         svg_path = output_root / "images" / f"{stamp}.svg"
@@ -621,7 +700,7 @@ def main() -> int:
             json.dumps(
                 {
                     "run_id": run_id,
-                    "tag": args.tag,
+                    "tag": tag,
                     "shape": shape_results["shape"],
                     "matrix_file": str(matrix_path),
                     "created_utc": results["meta"]["timestamp_utc"],
@@ -633,6 +712,8 @@ def main() -> int:
                     "device": results["meta"]["device"],
                     "dtype": shape["dtype"],
                     "adapters": adapters,
+                    "adapter_plan": adapter_plan,
+                    "required_native_adapters": required_native_adapters,
                 },
                 indent=2,
             )
@@ -660,7 +741,7 @@ def main() -> int:
             }
         )
 
-    run_stamp = f"{run_id}__{args.tag}"
+    run_stamp = f"{run_id}__{tag}"
     run_json = output_root / "json" / f"{run_stamp}.json"
     run_md = output_root / "reports" / f"{run_stamp}.md"
     run_svg = output_root / "images" / f"{run_stamp}.svg"
@@ -672,7 +753,7 @@ def main() -> int:
         json.dumps(
             {
                 "run_id": run_id,
-                "tag": args.tag,
+                "tag": tag,
                 "matrix_file": str(matrix_path),
                 "created_utc": results["meta"]["timestamp_utc"],
                 "host": results["meta"]["host"],
@@ -683,6 +764,8 @@ def main() -> int:
                 "device": results["meta"]["device"],
                 "dtype": results["meta"]["dtype"],
                 "adapters": adapters,
+                "adapter_plan": adapter_plan,
+                "required_native_adapters": required_native_adapters,
                 "shape_count": len(results["shapes"]),
             },
             indent=2,
@@ -690,10 +773,10 @@ def main() -> int:
         + "\n",
         encoding="utf-8",
     )
-    latest_json = output_root / "json" / "latest_ada_fp32_gemm.json"
-    latest_md = output_root / "reports" / "latest_ada_fp32_gemm.md"
-    latest_svg = output_root / "images" / "latest_ada_fp32_gemm.svg"
-    latest_meta = output_root / "json" / "latest_ada_fp32_gemm.metadata.json"
+    latest_json = output_root / "json" / f"latest_{latest_prefix}.json"
+    latest_md = output_root / "reports" / f"latest_{latest_prefix}.md"
+    latest_svg = output_root / "images" / f"latest_{latest_prefix}.svg"
+    latest_meta = output_root / "json" / f"latest_{latest_prefix}.metadata.json"
     latest_json.write_text(run_json.read_text(encoding="utf-8"), encoding="utf-8")
     latest_md.write_text(run_md.read_text(encoding="utf-8"), encoding="utf-8")
     latest_svg.write_text(run_svg.read_text(encoding="utf-8"), encoding="utf-8")
@@ -712,6 +795,37 @@ def main() -> int:
     progress_write(summarize_artifact_write("run", [run_json, run_md, run_svg, run_meta]))
     progress_write(summarize_artifact_write("latest", [latest_json, latest_md, latest_svg, latest_meta]))
     progress_write(f"[gemm-suite] complete run_id={run_id}")
+    if args.parity_strict:
+        proxy_adapters = sorted(
+            {
+                payload.get("adapter", name)
+                for shape in results["shapes"]
+                for name, payload in shape["adapters"].items()
+                if payload.get("status") == "ok" and payload.get("mode") == "proxy"
+            }
+        )
+        if proxy_adapters:
+            print(f"parity-strict failed: proxy adapters present: {','.join(proxy_adapters)}")
+            return 2
+
+    if required_native_adapters:
+        violations = []
+        for shape in results["shapes"]:
+            for name in required_native_adapters:
+                payload = shape["adapters"].get(name)
+                if not payload:
+                    violations.append((shape["shape"]["name"], name, "missing"))
+                    continue
+                if payload.get("status") != "ok":
+                    violations.append((shape["shape"]["name"], name, f"status={payload.get('status', 'unknown')}"))
+                    continue
+                if payload.get("mode") != "native":
+                    violations.append((shape["shape"]["name"], name, f"mode={payload.get('mode', 'unknown')}"))
+        if violations:
+            print("require-native-adapter failed:")
+            for shape_name, name, reason in violations:
+                print(f"  - {shape_name}: {name}: {reason}")
+            return 3
     return 0
 
 

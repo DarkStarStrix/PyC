@@ -19,6 +19,16 @@ def env_flag(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return int(raw.strip())
+    except ValueError:
+        return default
+
+
 def run(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=str(cwd) if cwd else None, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
@@ -53,6 +63,7 @@ def main() -> int:
     target = os.environ.get("PYC_GPU_BENCH_TARGET", "pyc_compiler_next_bench")
     force_rebuild = env_flag("PYC_GPU_BENCH_FORCE_REBUILD", default=False)
     skip_build_if_present = env_flag("PYC_GPU_BENCH_SKIP_BUILD_IF_PRESENT", default=True)
+    timeout_sec = env_int("PYC_GPU_BENCH_TIMEOUT_SEC", 120)
     reused_existing_executable = False
 
     device = os.environ.get("BENCH_DEVICE", "cuda")
@@ -111,9 +122,39 @@ def main() -> int:
     if not exe.exists():
         return emit({"status": "error", "error": f"missing benchmark executable: {exe}"})
 
-    proc = run(
-        [str(exe), device, str(batch), str(hidden), str(iters), str(warmup)],
-    )
+    cmd = [str(exe), device, str(batch), str(hidden), str(iters), str(warmup)]
+    try:
+        proc = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=max(1, timeout_sec),
+        )
+    except subprocess.TimeoutExpired as exc:
+        return emit(
+            {
+                "status": "error",
+                "error": f"pyc_compiler_next_bench timed out after {max(1, timeout_sec)}s",
+                "task": os.environ.get("BENCH_TASK", "mlp"),
+                "device": device,
+                "dtype": dtype,
+                "shape": {
+                    "m": int(os.environ.get("BENCH_M", str(batch))),
+                    "k": int(os.environ.get("BENCH_K", str(hidden))),
+                    "n": int(os.environ.get("BENCH_N", str(hidden))),
+                }
+                if os.environ.get("BENCH_TASK", "mlp").strip().lower() == "gemm"
+                else {
+                    "batch": batch,
+                    "hidden": hidden,
+                },
+                "timeout_sec": max(1, timeout_sec),
+                "command": cmd,
+                "stdout": exc.stdout or "",
+                "stderr": exc.stderr or "",
+            }
+        )
     if proc.returncode != 0 and not proc.stdout.strip():
         return emit({"status": "error", "error": proc.stderr.strip() or "pyc compiler-next bench failed"})
     try:

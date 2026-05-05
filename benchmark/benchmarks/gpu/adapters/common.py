@@ -17,6 +17,13 @@ def emit(payload: dict) -> int:
     return 0 if payload.get("status") in {"ok", "unavailable"} else 1
 
 
+def current_python() -> str:
+    override = os.environ.get("PYC_BENCH_PYTHON", "").strip()
+    if override:
+        return override
+    return sys.executable or "python3"
+
+
 def run_standard_workload(backend: str, device: str, batch: int, hidden: int, iters: int, warmup: int) -> dict:
     task = os.environ.get("BENCH_TASK", "mlp").strip() or "mlp"
     m = os.environ.get("BENCH_M", "").strip()
@@ -24,7 +31,7 @@ def run_standard_workload(backend: str, device: str, batch: int, hidden: int, it
     n = os.environ.get("BENCH_N", "").strip()
     dtype = os.environ.get("BENCH_DTYPE", "").strip()
     cmd = [
-        "python3",
+        current_python(),
         str(WORKLOAD),
         "--backend",
         backend,

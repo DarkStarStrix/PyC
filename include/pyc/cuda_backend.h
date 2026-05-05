@@ -59,6 +59,7 @@ typedef struct {
  * Must be called before passing a trace to pyc_cuda_dispatch().
  * ---------------------------------------------------------------- */
 void pyc_cuda_dispatch_trace_init(pyc_cuda_dispatch_trace* trace);
+pyc_kernel_hardware_family pyc_cuda_current_hardware_family(void);
 
 /* ----------------------------------------------------------------
  * CPU fallback function pointer type.

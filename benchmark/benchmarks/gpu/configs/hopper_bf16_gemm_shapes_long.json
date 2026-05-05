@@ -1,0 +1,107 @@
+{
+  "name": "hopper_bf16_gemm_long",
+  "title": "Hopper BF16 GEMM Arena Long Run",
+  "artifact_prefix": "hopper_bf16_gemm_long",
+  "task": "gemm",
+  "arena_profile": "hopper",
+  "description": "Longer Hopper H100 BF16 GEMM arena intended for more stable adapter comparisons, better latency variance reads, and richer artifact collection across control, square, and transformer-style shapes.",
+  "device": "cuda",
+  "defaults": {
+    "iters": 120,
+    "warmup": 30,
+    "repeats": 5
+  },
+  "required_native_adapters": [
+    "torch_compile",
+    "torch_eager",
+    "pyc"
+  ],
+  "adapters": [
+    "torch_compile",
+    "torch_eager",
+    "cutlass",
+    "tensorrt",
+    "tvm",
+    "xla",
+    "pyc"
+  ],
+  "shapes": [
+    {
+      "name": "control-square-512",
+      "m": 512,
+      "k": 512,
+      "n": 512,
+      "dtype": "bfloat16",
+      "iters": 400,
+      "warmup": 80,
+      "repeats": 8,
+      "note": "Long control shape to expose orchestration tax and variance instead of hiding it behind only large GEMMs."
+    },
+    {
+      "name": "square-1024",
+      "m": 1024,
+      "k": 1024,
+      "n": 1024,
+      "dtype": "bfloat16",
+      "iters": 240,
+      "warmup": 48,
+      "repeats": 6,
+      "note": "Long medium square GEMM for a cleaner transition from launch-bound behavior into sustained compute."
+    },
+    {
+      "name": "square-2048",
+      "m": 2048,
+      "k": 2048,
+      "n": 2048,
+      "dtype": "bfloat16",
+      "iters": 160,
+      "warmup": 32,
+      "repeats": 5,
+      "note": "Long sustained square throughput checkpoint with more repetitions for ranking confidence."
+    },
+    {
+      "name": "square-4096",
+      "m": 4096,
+      "k": 4096,
+      "n": 4096,
+      "dtype": "bfloat16",
+      "iters": 80,
+      "warmup": 16,
+      "repeats": 5,
+      "note": "Primary long Hopper square throughput read for vendor and custom tensor-core lanes."
+    },
+    {
+      "name": "prefill-proj-8192x4096x4096",
+      "m": 8192,
+      "k": 4096,
+      "n": 4096,
+      "dtype": "bfloat16",
+      "iters": 60,
+      "warmup": 12,
+      "repeats": 5,
+      "note": "Long prefill-style projection to stress sustained feed and scheduling over a larger evidence window."
+    },
+    {
+      "name": "ff-up-4096x4096x16384",
+      "m": 4096,
+      "k": 4096,
+      "n": 16384,
+      "dtype": "bfloat16",
+      "iters": 48,
+      "warmup": 12,
+      "repeats": 5,
+      "note": "Long transformer MLP expansion GEMM to catch adapters that only look good on neat square shapes."
+    },
+    {
+      "name": "ff-down-4096x16384x4096",
+      "m": 4096,
+      "k": 16384,
+      "n": 4096,
+      "dtype": "bfloat16",
+      "iters": 48,
+      "warmup": 12,
+      "repeats": 5,
+      "note": "Long transformer MLP contraction GEMM to expose memory-feed and scheduling weaknesses over more samples."
+    }
+  ]
+}

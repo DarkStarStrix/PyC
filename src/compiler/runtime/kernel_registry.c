@@ -12,6 +12,38 @@ typedef struct {
 
 static kernel_slot g_registry[PYC_KERNEL_MAX];
 
+const char* pyc_kernel_workload_family_name(pyc_kernel_workload_family family) {
+    switch (family) {
+        case PYC_KERNEL_WORKLOAD_SMALL:
+            return "small";
+        case PYC_KERNEL_WORKLOAD_SQUARE:
+            return "square";
+        case PYC_KERNEL_WORKLOAD_LARGE_SQUARE:
+            return "large_square";
+        case PYC_KERNEL_WORKLOAD_TALL_SKINNY:
+            return "tall_skinny";
+        case PYC_KERNEL_WORKLOAD_WIDE_SKINNY:
+            return "wide_skinny";
+        case PYC_KERNEL_WORKLOAD_ANY:
+        default:
+            return "any";
+    }
+}
+
+const char* pyc_kernel_hardware_family_name(pyc_kernel_hardware_family family) {
+    switch (family) {
+        case PYC_KERNEL_HARDWARE_GENERIC:
+            return "generic";
+        case PYC_KERNEL_HARDWARE_ADA:
+            return "ada";
+        case PYC_KERNEL_HARDWARE_HOPPER:
+            return "hopper";
+        case PYC_KERNEL_HARDWARE_ANY:
+        default:
+            return "any";
+    }
+}
+
 static double kernel_time_component(double best_time_ms) {
     if (best_time_ms <= 0.0 || best_time_ms == DBL_MAX) {
         return 0.0;
@@ -91,6 +123,41 @@ static double kernel_reuse_bonus(
     return reuse_ratio * friendliness * mode_weight;
 }
 
+static double kernel_workload_affinity_adjustment(
+    const pyc_kernel_desc* desc,
+    const pyc_kernel_coselect_context* context) {
+    if (!desc || !context ||
+        desc->preferred_workload_family == PYC_KERNEL_WORKLOAD_ANY ||
+        context->workload_family == PYC_KERNEL_WORKLOAD_ANY) {
+        return 0.0;
+    }
+    if (desc->preferred_workload_family == context->workload_family) {
+        return 36.0;
+    }
+    return -18.0;
+}
+
+static double kernel_hardware_affinity_adjustment(
+    const pyc_kernel_desc* desc,
+    const pyc_kernel_coselect_context* context) {
+    if (!desc || !context ||
+        desc->preferred_hardware_family == PYC_KERNEL_HARDWARE_ANY ||
+        context->hardware_family == PYC_KERNEL_HARDWARE_ANY) {
+        return 0.0;
+    }
+    if (desc->preferred_hardware_family == context->hardware_family) {
+        return 48.0;
+    }
+    if (context->hardware_family == PYC_KERNEL_HARDWARE_GENERIC &&
+        desc->preferred_hardware_family != PYC_KERNEL_HARDWARE_GENERIC) {
+        return -8.0;
+    }
+    if (desc->preferred_hardware_family == PYC_KERNEL_HARDWARE_GENERIC) {
+        return 10.0;
+    }
+    return -24.0;
+}
+
 static double kernel_score(const kernel_slot* slot, pyc_objective_mode mode, double pressure_score, double* out_penalty) {
     double base = (double)slot->desc.priority * 100.0;
     double occ_weight = mode == PYC_MODE_UTILIZATION_FIRST ? 12.0 : 6.0;
@@ -115,6 +182,8 @@ static double kernel_joint_score(
     double base_score;
     double allocator_penalty = kernel_allocator_penalty(&slot->desc, mode, context);
     double reuse_bonus = kernel_reuse_bonus(&slot->desc, mode, context);
+    double workload_adjustment = kernel_workload_affinity_adjustment(&slot->desc, context);
+    double hardware_adjustment = kernel_hardware_affinity_adjustment(&slot->desc, context);
     double pressure_score = context ? context->pressure_score : 0.0;
     base_score = kernel_score(slot, mode, pressure_score, &pressure_penalty);
     if (out_pressure_penalty) {
@@ -126,7 +195,7 @@ static double kernel_joint_score(
     if (out_reuse_bonus) {
         *out_reuse_bonus = reuse_bonus;
     }
-    return base_score - allocator_penalty + reuse_bonus;
+    return base_score - allocator_penalty + reuse_bonus + workload_adjustment + hardware_adjustment;
 }
 
 void pyc_kernel_registry_reset(void) {

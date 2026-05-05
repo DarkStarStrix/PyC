@@ -47,6 +47,110 @@
       "tags": ["cuda", "matmul", "ada", "sm89", "prototype", "tensor-core", "bf16"],
       "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_ADA_TENSOR_CORE_USE_BF16=1 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_89,code=compute_89 {source} -o {build_dir}/{name}",
       "run_cmd": "{build_dir}/{name} 1024 1024 1024 10 50"
+    },
+    {
+      "name": "hopper_tensor_core_fp16",
+      "source": "kernels/prototypes/hopper/tensor_core/kernel.cu",
+      "description": "Hopper Tensor Core FP16 GEMM prototype with a 64x64x16 WMMA tile and larger per-block warpgroup-style work.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "fp16"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=0 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 1024 1024 1024 5 20"
+    },
+    {
+      "name": "hopper_tensor_core_bf16",
+      "source": "kernels/prototypes/hopper/tensor_core/kernel.cu",
+      "description": "Hopper Tensor Core BF16 GEMM prototype with a 64x64x16 WMMA tile and larger per-block warpgroup-style work.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 1024 1024 1024 5 20"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_perf",
+      "source": "kernels/prototypes/hopper/tensor_core/kernel.cu",
+      "description": "Hopper BF16 baseline perf lane at 4096^3 with reference disabled to isolate steady-state Tensor Core throughput.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "perf", "next-loop"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_warp2n",
+      "source": "kernels/prototypes/hopper/tensor_core/kernel.cu",
+      "description": "Hopper BF16 perf lane with 8 warps per CTA and each warp computing two N fragments to increase work per warp.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "perf", "next-loop", "warp2n"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_WARP_COL_TILES=2 -DPYC_HOPPER_TC_WARP_ROW_GROUPS=4 -DPYC_HOPPER_TC_WARP_COL_GROUPS=2 -DPYC_HOPPER_TC_SHARED_PAD_A=8 -DPYC_HOPPER_TC_SHARED_PAD_B=8 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_k32",
+      "source": "kernels/prototypes/hopper/tensor_core/kernel.cu",
+      "description": "Hopper BF16 perf lane with a 64x64x32 shared-memory stage to cut synchronization frequency across K.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "perf", "next-loop", "k32"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_TILE_K=32 -DPYC_HOPPER_TC_SHARED_PAD_A=8 -DPYC_HOPPER_TC_SHARED_PAD_B=8 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_warp2n_k32",
+      "source": "kernels/prototypes/hopper/tensor_core/kernel.cu",
+      "description": "Hopper BF16 perf lane combining 8-warp CTAs, two N fragments per warp, padded shared-memory strides, and 32-wide K staging.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "perf", "next-loop", "warp2n", "k32"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_WARP_COL_TILES=2 -DPYC_HOPPER_TC_WARP_ROW_GROUPS=4 -DPYC_HOPPER_TC_WARP_COL_GROUPS=2 -DPYC_HOPPER_TC_TILE_K=32 -DPYC_HOPPER_TC_SHARED_PAD_A=8 -DPYC_HOPPER_TC_SHARED_PAD_B=8 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_cublaslt_bf16",
+      "source": "kernels/prototypes/hopper/cublaslt_bf16/kernel.cu",
+      "description": "Hopper cuBLASLt BF16 GEMM control lane for measuring the hardware-native library ceiling before a custom TMA/WGMMA implementation lands.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "cublaslt", "bf16", "control", "ceiling"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -lcublasLt -lcublas -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_cublaslt_bf16_check",
+      "source": "kernels/prototypes/hopper/cublaslt_bf16/kernel.cu",
+      "description": "Smaller Hopper cuBLASLt BF16 correctness lane with reference enabled.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "cublaslt", "bf16", "correctness"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -lcublasLt -lcublas -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 512 512 512 2 10 0"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_async",
+      "source": "kernels/prototypes/hopper/tensor_core_async/kernel.cu",
+      "description": "Hopper BF16 async WMMA lane with cp.async double-buffered staging, 64x64x32 tiles, and four fragments per warp to cut exposed feed bubbles.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "async", "cpasync", "double-buffered"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_async_wide",
+      "source": "kernels/prototypes/hopper/tensor_core_async/kernel.cu",
+      "description": "Hopper BF16 async WMMA lane widened to a 64x128x32 CTA so each stage amortizes more scheduling overhead before the WGMMA/TMA path lands.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "async", "cpasync", "double-buffered", "wide"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_WARP_COL_GROUPS=4 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_async_wide_k64",
+      "source": "kernels/prototypes/hopper/tensor_core_async/kernel.cu",
+      "description": "Hopper BF16 async WMMA lane keeping the 64x128 CTA but doubling stage depth to 64 so each stage amortizes more feed and loop overhead.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "async", "cpasync", "double-buffered", "wide", "k64", "gap-close"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_WARP_COL_GROUPS=4 -DPYC_HOPPER_TC_TILE_K=64 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_async_square",
+      "source": "kernels/prototypes/hopper/tensor_core_async/kernel.cu",
+      "description": "Hopper BF16 async WMMA lane widened into a 128x128x32 CTA so the square 4096^3 regime gets more work per CTA before switching stages.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "async", "cpasync", "double-buffered", "square", "gap-close"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_WARP_ROW_GROUPS=4 -DPYC_HOPPER_TC_WARP_COL_GROUPS=4 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
+    },
+    {
+      "name": "hopper_tensor_core_bf16_async_square_k64",
+      "source": "kernels/prototypes/hopper/tensor_core_async/kernel.cu",
+      "description": "Hopper BF16 async WMMA square lane with a 128x128x64 CTA to test the last cheap work-per-stage lever before the WGMMA/TMA path takes over.",
+      "tags": ["cuda", "matmul", "hopper", "sm90", "prototype", "tensor-core", "bf16", "async", "cpasync", "double-buffered", "square", "k64", "gap-close"],
+      "compile_cmd": "{nvcc} -O3 -std=c++17 -lineinfo -DPYC_HOPPER_TENSOR_CORE_USE_BF16=1 -DPYC_HOPPER_TC_WARP_ROW_GROUPS=4 -DPYC_HOPPER_TC_WARP_COL_GROUPS=4 -DPYC_HOPPER_TC_TILE_K=64 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90,code=compute_90 {source} -o {build_dir}/{name}",
+      "run_cmd": "{build_dir}/{name} 4096 4096 4096 3 30 1"
     }
   ]
 }

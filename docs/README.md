@@ -32,6 +32,7 @@ If you are new to the project, read these in order:
 - `docs/plans/`
   - Repo-level cleanup and migration plans, including structure and feature-delivery sequencing.
   - Includes the active compiler-next execution order in `docs/plans/compiler-next-feature-buildout.md`.
+  - Includes the Hopper bring-up order in `docs/plans/hopper-ops-kernel-blueprint.md`.
 - `docs/reference/project-overview.md`
   - Product and technical overview, scope, terminology, and current constraints.
 - `docs/reference/build-and-ci.md`

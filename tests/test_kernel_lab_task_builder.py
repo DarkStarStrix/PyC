@@ -83,6 +83,9 @@ def test_task_record_embeds_baseline_and_benchmark_plan():
         candidate_tag = ["ada"]
         candidate_name = ["ada_gemm"]
         pyc_feature_profile = ["pyc-fp32-speculative"]
+        control_kernel = "hopper_cublaslt_bf16"
+        target_tflops_min = 80.0
+        target_tflops_max = 120.0
         matrix_file = "benchmark/benchmarks/gpu/configs/ada_fp32_gemm_shapes.json"
         repeats = 7
         warmup = 3
@@ -101,6 +104,14 @@ def test_task_record_embeds_baseline_and_benchmark_plan():
         "compile_cmd": "nvcc ...",
         "run_cmd": "run ...",
     }
+    control_kernel = {
+        "name": "hopper_cublaslt_bf16",
+        "source": "kernels/prototypes/hopper/cublaslt_bf16/kernel.cu",
+        "description": "",
+        "tags": ["hopper", "control"],
+        "compile_cmd": "nvcc ...",
+        "run_cmd": "run ...",
+    }
 
     record = kernel_lab.task_record(
         "Ada GEMM Loop",
@@ -110,13 +121,18 @@ def test_task_record_embeds_baseline_and_benchmark_plan():
         baseline_kernel,
         {"resolution": "manifest"},
         Args(),
+        control_kernel,
     )
 
     assert record["task"]["baseline_kernel"] == "ada_gemm"
+    assert record["task"]["control_kernel"] == "hopper_cublaslt_bf16"
     assert record["hardware"]["arch"] == "sm89"
     assert record["task"]["pyc_feature_profiles"] == ["pyc-fp32-speculative"]
+    assert record["task"]["success_criteria"]["target_tflops_min"] == 80.0
+    assert record["task"]["success_criteria"]["target_tflops_max"] == 120.0
     assert record["benchmark_plan"]["hardware_constraints"]["capacity_tier"] == "large"
     assert any("run_gemm_suite.py" in cmd for cmd in record["benchmark_plan"]["profile_protocol"])
+    assert any("hopper_cublaslt_bf16" in cmd for cmd in record["benchmark_plan"]["profile_protocol"])
     assert any("PYC_BENCH_ENABLE_SPECULATIVE_PLANS=1" in cmd for cmd in record["benchmark_plan"]["profile_protocol"])
 
 

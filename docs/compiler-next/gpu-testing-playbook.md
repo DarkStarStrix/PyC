@@ -70,6 +70,26 @@ Run all adapters:
 python3 benchmark/benchmarks/gpu/run_gpu_suite.py --device cuda --tag gpu_compare_all
 ```
 
+Arena mode keeps the comparison surface ordered by judgment tier:
+
+```bash
+python3 benchmark/benchmarks/gpu/run_gpu_suite.py --device cuda --arena-mode --tag gpu_arena
+python3 benchmark/benchmarks/gpu/run_gemm_suite.py --device cuda --matrix-file benchmark/benchmarks/gpu/configs/ada_fp32_gemm_shapes.json --arena-mode --tag gemm_arena --progress
+```
+
+To attack one layer at a time, run a tier challenge. This compares the selected tier against `prod`, which maps to the `pyc` adapter:
+
+```bash
+python3 benchmark/benchmarks/gpu/run_gemm_suite.py --device cuda --matrix-file benchmark/benchmarks/gpu/configs/ada_fp32_gemm_shapes.json --arena-tier 1 --tag gemm_tier1_vs_prod --progress
+```
+
+Arena tiers are:
+
+- Tier 1: `torch_compile`, `torch_eager`
+- Tier 2: `glow`
+- Tier 3: `tvm`, `xla`
+- Tier 4: `prod` which maps to the `pyc` adapter
+
 ### External adapter commands (TVM/XLA/TensorRT/PyC)
 
 For non-PyTorch stacks, set the adapter command env vars so each tool can run your standardized command and emit JSON.

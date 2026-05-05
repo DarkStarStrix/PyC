@@ -6,6 +6,7 @@
 static size_t dtype_size_bytes(pyc_dtype dtype) {
     switch (dtype) {
         case PYC_DTYPE_F16:
+        case PYC_DTYPE_BF16:
             return 2;
         case PYC_DTYPE_I8:
             return 1;

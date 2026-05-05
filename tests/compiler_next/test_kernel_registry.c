@@ -78,6 +78,40 @@ int main(void) {
     if (trace.allocator_penalty <= 0.0) return 19;
     if (trace.candidates_considered < 4) return 20;
 
+    memset(&a, 0, sizeof(a));
+    strcpy(a.op_key, "matmul_fused");
+    a.backend = PYC_BACKEND_CPU;
+    strcpy(a.symbol, "kernel_square_hopper");
+    a.priority = 14;
+    a.estimated_occupancy = 0.70;
+    a.shared_mem_bytes = 8 * 1024;
+    a.reg_pressure_class = 1;
+    a.preferred_workload_family = PYC_KERNEL_WORKLOAD_LARGE_SQUARE;
+    a.preferred_hardware_family = PYC_KERNEL_HARDWARE_HOPPER;
+    if (pyc_kernel_register(&a) != 0) return 21;
+
+    memset(&b, 0, sizeof(b));
+    strcpy(b.op_key, "matmul_fused");
+    b.backend = PYC_BACKEND_CPU;
+    strcpy(b.symbol, "kernel_tall_generic");
+    b.priority = 14;
+    b.estimated_occupancy = 0.70;
+    b.shared_mem_bytes = 8 * 1024;
+    b.reg_pressure_class = 1;
+    b.preferred_workload_family = PYC_KERNEL_WORKLOAD_TALL_SKINNY;
+    b.preferred_hardware_family = PYC_KERNEL_HARDWARE_GENERIC;
+    if (pyc_kernel_register(&b) != 0) return 22;
+
+    context.workload_family = PYC_KERNEL_WORKLOAD_LARGE_SQUARE;
+    context.hardware_family = PYC_KERNEL_HARDWARE_HOPPER;
+    if (pyc_kernel_coselect_with_context("matmul_fused", PYC_BACKEND_CPU, PYC_MODE_BALANCED, &context, &out, &trace) != 0) return 23;
+    if (strcmp(out.symbol, "kernel_square_hopper") != 0) return 24;
+
+    context.workload_family = PYC_KERNEL_WORKLOAD_TALL_SKINNY;
+    context.hardware_family = PYC_KERNEL_HARDWARE_GENERIC;
+    if (pyc_kernel_coselect_with_context("matmul_fused", PYC_BACKEND_CPU, PYC_MODE_BALANCED, &context, &out, &trace) != 0) return 25;
+    if (strcmp(out.symbol, "kernel_tall_generic") != 0) return 26;
+
     pyc_kernel_benchmark_read("matmul_fused", PYC_BACKEND_CPU, &bench);
     if (bench.considered < 2) return 10;
     if (bench.selected < 1) return 11;

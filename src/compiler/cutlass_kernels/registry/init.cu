@@ -18,7 +18,7 @@
 
 /* Forward declarations of per-file registration functions */
 extern "C" void pyc_cutlass_register_gemm_kernels(void);
-#if defined(PYC_CUTLASS_FULL_KERNELS)
+#if defined(PYC_CUTLASS_ENABLE_EXTRA_KERNELS)
 extern "C" void pyc_cutlass_register_conv2d_kernels(void);
 extern "C" void pyc_cutlass_register_attention_kernels(void);
 #endif
@@ -42,7 +42,7 @@ extern "C" void pyc_cutlass_registry_init(void) {
 
     /* Register all CUTLASS kernel families */
     pyc_cutlass_register_gemm_kernels();
-#if defined(PYC_CUTLASS_FULL_KERNELS)
+#if defined(PYC_CUTLASS_ENABLE_EXTRA_KERNELS)
     pyc_cutlass_register_conv2d_kernels();
     pyc_cutlass_register_attention_kernels();
 #endif
@@ -63,10 +63,13 @@ extern "C" void pyc_cutlass_registry_init(void) {
     }
 
 #ifdef PYC_CUTLASS_VERBOSE_INIT
-#if defined(PYC_CUTLASS_FULL_KERNELS)
+#if defined(PYC_CUTLASS_ENABLE_EXTRA_KERNELS)
     fprintf(stderr,
         "[PyC CUTLASS] Registered GEMM (FP16/BF16/FP32), "
         "Conv2d (FP16/BF16), Attention (FP16/BF16) kernels.\n");
+#elif defined(PYC_CUTLASS_FULL_KERNELS)
+    fprintf(stderr,
+        "[PyC CUTLASS] Registered GEMM (FP16/BF16/FP32) kernels.\n");
 #else
     fprintf(stderr,
         "[PyC CUTLASS] Registered minimal CUDA GEMM kernel registry.\n");

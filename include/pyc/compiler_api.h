@@ -106,6 +106,8 @@ typedef struct {
     size_t rollback_count;
     pyc_objective_mode shadow_mode;
     pyc_rollback_reason shadow_reason;
+    char workload_family[32];
+    char hardware_family[32];
     int selected_kernel_count;
     size_t selected_kernel_candidates;
     char selected_kernel_symbol[PYC_KERNEL_SYMBOL_MAX];

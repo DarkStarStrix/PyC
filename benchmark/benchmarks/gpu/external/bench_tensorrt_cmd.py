@@ -7,6 +7,11 @@ import statistics
 import time
 
 
+def strict_native() -> bool:
+    raw = os.environ.get("BENCH_STRICT_NATIVE", "")
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def percentile(values: list[float], p: float) -> float:
     ordered = sorted(values)
     idx = int(round((p / 100.0) * (len(ordered) - 1)))
@@ -29,6 +34,8 @@ def main() -> int:
             import torch  # type: ignore[no-redef]
         except Exception:
             return emit({"status": "unavailable", "reason": "PyTorch is not installed"})
+        if strict_native():
+            return emit({"status": "unavailable", "reason": "torch_tensorrt is not installed and BENCH_STRICT_NATIVE=1"})
         torch_tensorrt = None
 
     device = os.environ.get("BENCH_DEVICE", "cuda")
@@ -41,6 +48,8 @@ def main() -> int:
     iters = int(os.environ.get("BENCH_ITERS", "80"))
     warmup = int(os.environ.get("BENCH_WARMUP", "20"))
     if device != "cuda":
+        if strict_native():
+            return emit({"status": "unavailable", "reason": "TensorRT native benchmarking requires BENCH_DEVICE=cuda when BENCH_STRICT_NATIVE=1"})
         dtype = torch.float32
         if task == "gemm":
             model = torch.nn.Linear(k, n, bias=False).eval().to("cpu", dtype=dtype)
@@ -114,6 +123,8 @@ def main() -> int:
         ).eval().to("cuda", dtype=torch.float16)
         x = torch.randn(batch, hidden, device="cuda", dtype=torch.float16)
     if torch_tensorrt is None:
+        if strict_native():
+            return emit({"status": "unavailable", "reason": "torch_tensorrt unavailable and BENCH_STRICT_NATIVE=1"})
         trt_mod = torch.compile(model, backend="inductor")
         backend_name = "tensorrt_proxy_torch_compile"
         note = "torch_tensorrt unavailable; executed torch.compile proxy workload."
@@ -127,6 +138,8 @@ def main() -> int:
             backend_name = "tensorrt"
             note = ""
         except Exception as exc:
+            if strict_native():
+                return emit({"status": "unavailable", "reason": f"TensorRT compile failed under BENCH_STRICT_NATIVE=1: {exc}"})
             trt_mod = torch.compile(model, backend="inductor")
             backend_name = "tensorrt_proxy_torch_compile"
             note = f"TensorRT compile failed ({exc}); executed torch.compile proxy workload."

@@ -108,6 +108,17 @@ That writes one analysis directory with:
 
 The canonical operator flow for judgment is: run the remote Ada sweep or kernel-lab task, pull it with `scripts/pull_and_analyze_ada_artifacts.sh`, then inspect `raw/`, `graphs/`, `sheets/`, and `rankings/` together.
 
+Autonomous Hopper loop on a remote H100 box:
+
+```bash
+python3 scripts/run_hopper_optimization_loop.py \
+  --host 31.22.104.38 \
+  --identity ~/.ssh/prime_next \
+  --enable-cutlass-profiler
+```
+
+That loop syncs the benchmark slice, optionally provisions native harnesses on the box, runs the Hopper BF16 arena in tmux, kills stalled runs, pulls partial or complete artifacts back under `results/remote_results/`, and builds a Hopper analysis bundle with ranked next actions.
+
 Require true native CUDA mode for PyC only:
 
 ```bash

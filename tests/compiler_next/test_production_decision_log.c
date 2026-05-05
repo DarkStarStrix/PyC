@@ -104,6 +104,10 @@ int main(void) {
         pyc_destroy_model(model);
         return 18;
     }
+    if (!must_contain(log, "workload=") || !must_contain(log, "hw=")) {
+        pyc_destroy_model(model);
+        return 31;
+    }
     if (!must_contain(log, "cuda_reason=")) {
         pyc_destroy_model(model);
         return 6;
@@ -180,6 +184,10 @@ int main(void) {
     if (stats.selected_kernel_symbol[0] == '\0') {
         pyc_destroy_model(model);
         return 23;
+    }
+    if (stats.workload_family[0] == '\0' || stats.hardware_family[0] == '\0') {
+        pyc_destroy_model(model);
+        return 32;
     }
     if (stats.speculative_plan_hit != 1) {
         pyc_destroy_model(model);
