@@ -15,6 +15,39 @@ PyC is split into two contracts:
 
 The primary design rule is isolation: compiler-next can evolve quickly without destabilizing stable core artifacts.
 
+## Layered View
+
+PyC is a polyglot stack. A thin Python/Rust surface sits over a deterministic C engine, which dispatches to CUDA/CUTLASS kernels when a GPU is present and falls back to a CPU executor otherwise.
+
+```mermaid
+flowchart TD
+    subgraph Surface["Surface — Python / Rust"]
+        PY["pyc package: CLI + runtime control plane"]
+        API["FastAPI inference portal"]
+        RS["vortex_core (Rust) + PyO3 bindings"]
+    end
+    subgraph Engine["Compiler-next engine — C11"]
+        CAPI["compiler_api.c"]
+        IR["ir.c"]
+        PASS["pass_manager.c"]
+        ALLOC["runtime_allocator.c"]
+        KREG["kernel_registry.c"]
+        CTRL["runtime_control.c"]
+    end
+    subgraph Backends["Backends"]
+        CUDA["cuda_backend.c"]
+        CUTLASS["CUTLASS kernels"]
+        CPU["CPU executor"]
+        COMM["collective comm: MPI/NCCL/RCCL/stub"]
+    end
+    PY --> RS --> CAPI
+    API --> CAPI
+    CAPI --> IR --> PASS --> ALLOC --> KREG --> CTRL
+    CTRL --> CUDA --> CUTLASS
+    CUDA -. reason-coded fallback .-> CPU
+    CTRL --> COMM
+```
+
 ## Repository Layout and Ownership
 
 ```mermaid
@@ -418,6 +451,24 @@ PyC is lightweight as a binary/library footprint, but production inference still
 1. CUDA toolkit + compatible NVIDIA driver/GPU for native CUDA acceleration
 2. host toolchain and math libraries required by selected backend path
 3. deterministic CI and test gates to prevent fallback/regression drift
+
+## Concurrency Model and Thread Safety
+
+The engine keeps a small amount of process-global state. Each piece is guarded by a portable mutex defined in `include/pyc/pyc_mutex.h` (a thin wrapper over `pthread_mutex_t` on POSIX and `SRWLOCK` on Windows, statically initializable so file-scope globals need no runtime init step).
+
+| Shared state | Location | Guard |
+|---|---|---|
+| Compile cache (`g_compile_cache`) | `compiler_api.c` | Mutex; lookups copy the matched entry out under the lock so a concurrent store cannot overwrite a slot mid-read |
+| Kernel symbol table | `core/symbol_table.c` | Mutex with an internal unlocked helper so `symbol_define` does not self-deadlock on `symbol_exists` |
+| Comm-backend loader registry | `comm_backend_loader.c` | Mutex around list mutation; unload unlinks under the lock, then runs `destroy`/`dlclose` outside it |
+| CUDA hardware-family cache | `cuda_backend.c` | Mutex around cache read and insert |
+| CUDA GPU workspace (`g_cuda_workspace`) | `cuda_backend.c` | `pyc_cuda_dispatch` is a thin locking wrapper over the implementation — dispatch is serialized because device buffers, cuBLAS handles, and the captured graph are a single shared context |
+
+Practical implications:
+
+1. Multiple threads may compile and run distinct models concurrently; cache and registry access is safe.
+2. GPU dispatch is serialized by design — there is one shared workspace, so concurrent dispatches do not overlap on the device.
+3. Timing telemetry (`compile_ms`, `dispatch_ms`, `run_ms`, `controller_ms`, `kernel_select_ms`) is measured with a monotonic wall-clock source, not process CPU time, so figures stay meaningful under multithreading and GPU-async execution.
 
 ## Observability and Deterministic Contracts
 

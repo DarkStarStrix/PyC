@@ -2148,48 +2148,6 @@ static void resolve_autotune_db_path(
     out_path[out_path_size - 1] = '\0';
 }
 
-static int autotune_load_into_registry(
-    const char* path,
-    const char* op_key,
-    pyc_backend backend) {
-    FILE* f;
-    char line[512];
-    int loaded = 0;
-    if (!path || !op_key || path[0] == '\0') {
-        return 0;
-    }
-    f = fopen(path, "r");
-    if (!f) {
-        return 0;
-    }
-    while (fgets(line, sizeof(line), f)) {
-        char file_op[PYC_KERNEL_OP_KEY_MAX];
-        char file_symbol[PYC_KERNEL_SYMBOL_MAX];
-        int file_backend = -1;
-        double best_ms = 0.0;
-        if (sscanf(
-                line,
-                "%63[^|]|%d|%127[^|]|%lf",
-                file_op,
-                &file_backend,
-                file_symbol,
-                &best_ms) != 4) {
-            continue;
-        }
-        if (strcmp(file_op, op_key) != 0 || file_backend != (int)backend) {
-            continue;
-        }
-        if (best_ms <= 0.0) {
-            continue;
-        }
-        if (pyc_kernel_benchmark_update_symbol(op_key, backend, file_symbol, best_ms) == 0) {
-            loaded = 1;
-        }
-    }
-    fclose(f);
-    return loaded;
-}
-
 typedef struct {
     char op_key[PYC_KERNEL_OP_KEY_MAX];
     int backend;
@@ -2197,6 +2155,9 @@ typedef struct {
     double best_ms;
 } pyc_autotune_db_entry;
 
+/* Parses one "op|backend|symbol|best_ms" autotune DB line. Returns 0 on a
+ * well-formed positive-timing record, -1 otherwise. Single source of truth for
+ * the DB line format. */
 static int parse_autotune_line(const char* line, pyc_autotune_db_entry* out) {
     if (!line || !out) {
         return -1;
@@ -2214,6 +2175,36 @@ static int parse_autotune_line(const char* line, pyc_autotune_db_entry* out) {
         return -1;
     }
     return 0;
+}
+
+static int autotune_load_into_registry(
+    const char* path,
+    const char* op_key,
+    pyc_backend backend) {
+    FILE* f;
+    char line[512];
+    int loaded = 0;
+    if (!path || !op_key || path[0] == '\0') {
+        return 0;
+    }
+    f = fopen(path, "r");
+    if (!f) {
+        return 0;
+    }
+    while (fgets(line, sizeof(line), f)) {
+        pyc_autotune_db_entry entry;
+        if (parse_autotune_line(line, &entry) != 0) {
+            continue;
+        }
+        if (strcmp(entry.op_key, op_key) != 0 || entry.backend != (int)backend) {
+            continue;
+        }
+        if (pyc_kernel_benchmark_update_symbol(op_key, backend, entry.symbol, entry.best_ms) == 0) {
+            loaded = 1;
+        }
+    }
+    fclose(f);
+    return loaded;
 }
 
 static int autotune_compact_db(const char* path) {
