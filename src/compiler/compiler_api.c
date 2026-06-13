@@ -318,26 +318,20 @@ static uint64_t build_compile_cache_key(
     return key;
 }
 
-/* Copies the matching cache entry into *out under the cache lock and returns 1,
- * or returns 0 if not found. Copying (rather than returning a pointer into the
- * shared array) keeps the caller safe from a concurrent store overwriting the
- * slot while its fields are being read. */
-static int compile_cache_lookup(uint64_t key, pyc_compile_cache_entry* out) {
+/* Returns a pointer to the matching cache entry, or NULL. The caller MUST hold
+ * g_compile_cache_mutex for the duration it reads the returned entry, since the
+ * pointer aliases the shared cache array (a concurrent store could otherwise
+ * overwrite the slot mid-read). The entry is large — it embeds several IR
+ * modules — so callers read fields directly under the lock rather than copying
+ * it to a local, which would risk overflowing small (e.g. 1 MB) thread stacks. */
+static const pyc_compile_cache_entry* compile_cache_find_locked(uint64_t key) {
     size_t i;
-    int found = 0;
-    if (!out) {
-        return 0;
-    }
-    pyc_mutex_lock(&g_compile_cache_mutex);
     for (i = 0; i < PYC_COMPILE_CACHE_MAX; ++i) {
         if (g_compile_cache[i].valid && g_compile_cache[i].key == key) {
-            *out = g_compile_cache[i];
-            found = 1;
-            break;
+            return &g_compile_cache[i];
         }
     }
-    pyc_mutex_unlock(&g_compile_cache_mutex);
-    return found;
+    return NULL;
 }
 
 static void compile_cache_store(
@@ -2327,7 +2321,6 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
     pyc_pass_report report;
     pyc_compiled_model* model;
     const pyc_compile_cache_entry* cache_entry = NULL;
-    pyc_compile_cache_entry cache_copy;
     double start;
     double end;
     uint64_t source_fingerprint = 0;
@@ -2433,8 +2426,13 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
 
     start = pyc_monotonic_ms();
 
-    if (use_compile_cache && compile_cache_lookup(cache_key, &cache_copy)) {
-        cache_entry = &cache_copy;
+    /* Hold the cache lock across the entire read of the matched entry: the
+     * entry aliases the shared cache array and is too large to safely copy onto
+     * the stack. The compile (miss) path runs outside the lock and stores via
+     * compile_cache_store, which takes the lock itself. */
+    pyc_mutex_lock(&g_compile_cache_mutex);
+    if (use_compile_cache) {
+        cache_entry = compile_cache_find_locked(cache_key);
     }
 
     if (cache_entry) {
@@ -2477,7 +2475,10 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
             model->speculative_plans[i] = cache_entry->speculative_plans[i];
         }
         model->compile_cache_hit = 1;
-    } else {
+    }
+    pyc_mutex_unlock(&g_compile_cache_mutex);
+
+    if (!model->compile_cache_hit) {
         maybe_inject_compile_delay();
         pyc_pass_pipeline_default(&pipeline);
         if (!model->options.enable_fusion || model->backend == PYC_BACKEND_CUDA) {
