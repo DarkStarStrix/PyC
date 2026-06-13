@@ -46,6 +46,9 @@ Thumbs.db
 # Local IDE state
 .idea/
 
+# Generated PyInstaller build output (keep the source .py/.spec, not the bundle)
+artifacts/generated/*/hello/
+
 # Local benchmark artifacts and synced remote outputs
 benchmark/remote_results/
 benchmark/benchmarks/results/

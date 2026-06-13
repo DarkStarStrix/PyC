@@ -11,6 +11,8 @@
 #include <dlfcn.h>
 #endif
 
+#include "pyc/pyc_mutex.h"
+
 typedef struct pyc_comm_loader_entry {
     pyc_collective_comm* comm;
     pyc_comm_backend_destroy_fn destroy_fn;
@@ -24,6 +26,8 @@ typedef struct pyc_comm_loader_entry {
 
 static pyc_comm_loader_entry* g_loader_entries;
 static char g_loader_error[256];
+/* Guards the g_loader_entries registry against concurrent load/unload. */
+static pyc_mutex g_loader_mutex = PYC_MUTEX_INIT;
 
 static void set_loader_error(const char* fmt, ...) {
     va_list args;
@@ -127,38 +131,52 @@ pyc_collective_comm* pyc_load_comm_backend(const char* backend_path, const char*
     entry->comm = comm;
     entry->destroy_fn = destroy_fn;
     entry->module = module;
+    pyc_mutex_lock(&g_loader_mutex);
     entry->next = g_loader_entries;
     g_loader_entries = entry;
+    pyc_mutex_unlock(&g_loader_mutex);
     return comm;
 }
 
 void pyc_unload_comm_backend(pyc_collective_comm* comm) {
     pyc_comm_loader_entry* prev = NULL;
-    pyc_comm_loader_entry* cur = g_loader_entries;
+    pyc_comm_loader_entry* cur;
+    pyc_comm_loader_entry* target = NULL;
 
+    /* Find and unlink the entry under the lock, then run the (potentially slow)
+     * destroy/unload outside it so we never hold the lock across user code. */
+    pyc_mutex_lock(&g_loader_mutex);
+    cur = g_loader_entries;
     while (cur) {
         if (cur->comm == comm) {
-            if (cur->destroy_fn) {
-                cur->destroy_fn(comm);
-            }
-#if defined(_WIN32)
-            if (cur->module) {
-                FreeLibrary(cur->module);
-            }
-#else
-            if (cur->module) {
-                dlclose(cur->module);
-            }
-#endif
             if (prev) {
                 prev->next = cur->next;
             } else {
                 g_loader_entries = cur->next;
             }
-            free(cur);
-            return;
+            target = cur;
+            break;
         }
         prev = cur;
         cur = cur->next;
     }
+    pyc_mutex_unlock(&g_loader_mutex);
+
+    if (!target) {
+        return;
+    }
+
+    if (target->destroy_fn) {
+        target->destroy_fn(comm);
+    }
+#if defined(_WIN32)
+    if (target->module) {
+        FreeLibrary(target->module);
+    }
+#else
+    if (target->module) {
+        dlclose(target->module);
+    }
+#endif
+    free(target);
 }

@@ -1,6 +1,6 @@
 # PyC
 
-Lightweight compiler/toolchain project with a canonical cross-platform CMake build and stable core targets for deterministic CI.
+Unified HPC toolchain — a compiler-next stack, async runtime, CUTLASS kernels, and SciML inference — built on a canonical cross-platform CMake build with stable core targets for deterministic CI.
 
 [![CI](https://github.com/DarkStarStrix/PyC/actions/workflows/cmake-multi-platform.yml/badge.svg)](https://github.com/DarkStarStrix/PyC/actions/workflows/cmake-multi-platform.yml)
 ![Release](https://img.shields.io/badge/Release-Alpha-orange)

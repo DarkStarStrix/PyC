@@ -5,6 +5,13 @@
 #include <string.h>
 #include <time.h>
 
+#include "pyc/pyc_mutex.h"
+
+/* Serializes pyc_cuda_dispatch(): the engine keeps a single process-global GPU
+ * workspace (device buffers, cuBLAS handles, captured graph), so concurrent
+ * dispatches must not run at once. */
+static pyc_mutex g_cuda_dispatch_mutex = PYC_MUTEX_INIT;
+
 #if defined(PYC_HAVE_CUDA_RUNTIME)
 #include <cuda_runtime_api.h>
 #include <cublasLt.h>
@@ -172,6 +179,8 @@ typedef struct {
 
 static pyc_cuda_workspace g_cuda_workspace;
 static pyc_cuda_hardware_family_cache_entry g_cuda_hardware_family_cache[16];
+/* Guards the hardware-family memoization cache. */
+static pyc_mutex g_cuda_hw_family_mutex = PYC_MUTEX_INIT;
 
 static int env_true(const char* name);
 static int env_default_true(const char* name);
@@ -239,40 +248,53 @@ pyc_kernel_hardware_family pyc_cuda_current_hardware_family(void) {
 #if defined(PYC_HAVE_CUDA_RUNTIME)
     {
         size_t i;
+        const size_t cache_len =
+            sizeof(g_cuda_hardware_family_cache) / sizeof(g_cuda_hardware_family_cache[0]);
         int device = 0;
         struct cudaDeviceProp prop;
+        pyc_kernel_hardware_family family = PYC_KERNEL_HARDWARE_GENERIC;
+        int resolved = 0;
+
         if (cudaGetDevice(&device) != cudaSuccess) {
             return PYC_KERNEL_HARDWARE_GENERIC;
         }
-        for (i = 0; i < (sizeof(g_cuda_hardware_family_cache) / sizeof(g_cuda_hardware_family_cache[0])); ++i) {
+
+        pyc_mutex_lock(&g_cuda_hw_family_mutex);
+        for (i = 0; i < cache_len; ++i) {
             if (g_cuda_hardware_family_cache[i].valid &&
                 g_cuda_hardware_family_cache[i].device == device) {
-                return g_cuda_hardware_family_cache[i].family;
+                family = g_cuda_hardware_family_cache[i].family;
+                resolved = 1;
+                break;
             }
         }
+        pyc_mutex_unlock(&g_cuda_hw_family_mutex);
+        if (resolved) {
+            return family;
+        }
+
         if (cudaGetDeviceProperties(&prop, device) != cudaSuccess) {
             return PYC_KERNEL_HARDWARE_GENERIC;
         }
-        for (i = 0; i < (sizeof(g_cuda_hardware_family_cache) / sizeof(g_cuda_hardware_family_cache[0])); ++i) {
+        if (prop.major >= 9) {
+            family = PYC_KERNEL_HARDWARE_HOPPER;
+        } else if (prop.major == 8 && prop.minor >= 9) {
+            family = PYC_KERNEL_HARDWARE_ADA;
+        } else {
+            family = PYC_KERNEL_HARDWARE_GENERIC;
+        }
+
+        pyc_mutex_lock(&g_cuda_hw_family_mutex);
+        for (i = 0; i < cache_len; ++i) {
             if (!g_cuda_hardware_family_cache[i].valid) {
                 g_cuda_hardware_family_cache[i].valid = 1;
                 g_cuda_hardware_family_cache[i].device = device;
-                if (prop.major >= 9) {
-                    g_cuda_hardware_family_cache[i].family = PYC_KERNEL_HARDWARE_HOPPER;
-                } else if (prop.major == 8 && prop.minor >= 9) {
-                    g_cuda_hardware_family_cache[i].family = PYC_KERNEL_HARDWARE_ADA;
-                } else {
-                    g_cuda_hardware_family_cache[i].family = PYC_KERNEL_HARDWARE_GENERIC;
-                }
-                return g_cuda_hardware_family_cache[i].family;
+                g_cuda_hardware_family_cache[i].family = family;
+                break;
             }
         }
-        if (prop.major >= 9) {
-            return PYC_KERNEL_HARDWARE_HOPPER;
-        }
-        if (prop.major == 8 && prop.minor >= 9) {
-            return PYC_KERNEL_HARDWARE_ADA;
-        }
+        pyc_mutex_unlock(&g_cuda_hw_family_mutex);
+        return family;
     }
 #endif
     return PYC_KERNEL_HARDWARE_GENERIC;
@@ -2783,7 +2805,7 @@ cleanup:
 }
 #endif
 
-pyc_cuda_dispatch_status pyc_cuda_dispatch(
+static pyc_cuda_dispatch_status pyc_cuda_dispatch_impl(
     const pyc_ir_module* module,
     const pyc_tensor* inputs,
     size_t input_count,
@@ -2884,4 +2906,23 @@ pyc_cuda_dispatch_status pyc_cuda_dispatch(
         }
     }
     return PYC_CUDA_DISPATCH_FALLBACK;
+}
+
+pyc_cuda_dispatch_status pyc_cuda_dispatch(
+    const pyc_ir_module* module,
+    const pyc_tensor* inputs,
+    size_t input_count,
+    pyc_tensor* outputs,
+    size_t output_count,
+    pyc_cpu_executor_fn cpu_executor,
+    void* executor_ctx,
+    pyc_cuda_dispatch_trace* trace) {
+    pyc_cuda_dispatch_status status;
+    /* Serialize access to the shared GPU workspace across threads. */
+    pyc_mutex_lock(&g_cuda_dispatch_mutex);
+    status = pyc_cuda_dispatch_impl(
+        module, inputs, input_count, outputs, output_count,
+        cpu_executor, executor_ctx, trace);
+    pyc_mutex_unlock(&g_cuda_dispatch_mutex);
+    return status;
 }

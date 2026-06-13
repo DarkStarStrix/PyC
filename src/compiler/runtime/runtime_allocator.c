@@ -138,30 +138,50 @@ int pyc_alloc_plan_build_with_mode(pyc_alloc_plan* plan, pyc_objective_mode mode
     plan->pressure_score = 0.0;
 
     for (i = 0; i < plan->request_count; ++i) {
+        const pyc_alloc_request* cur = &plan->requests[i];
         size_t chosen = (size_t)-1;
         size_t j;
 
+        /* Telemetry: count every overlapping (live-at-the-same-time) pair. */
         for (j = 0; j < i; ++j) {
-            const pyc_alloc_request* prev = &plan->requests[j];
-            const pyc_alloc_request* cur = &plan->requests[i];
-            if (intervals_overlap(prev, cur)) {
+            if (intervals_overlap(&plan->requests[j], cur)) {
                 plan->overlap_pairs_observed++;
             }
-            if (!intervals_overlap(prev, cur) && prev->size_bytes >= cur->size_bytes) {
-                chosen = plan->offsets[j];
+        }
+
+        /* Try to reuse a prior request's offset. A slot is only safe to reuse
+         * if NONE of the already-placed requests sharing that offset are live
+         * at the same time as the current request (otherwise two live tensors
+         * would alias the same memory), and the slot is large enough. */
+        for (j = 0; j < i; ++j) {
+            size_t candidate = plan->offsets[j];
+            size_t k;
+            int conflict = 0;
+            if (plan->requests[j].size_bytes < cur->size_bytes) {
+                continue;
+            }
+            for (k = 0; k < i; ++k) {
+                if (plan->offsets[k] == candidate &&
+                    intervals_overlap(&plan->requests[k], cur)) {
+                    conflict = 1;
+                    break;
+                }
+            }
+            if (!conflict) {
+                chosen = candidate;
                 plan->reused_allocations++;
                 break;
             }
         }
 
         if (chosen == (size_t)-1) {
-            chosen = align_up(plan->peak_bytes, plan->requests[i].alignment);
-            plan->peak_bytes = chosen + plan->requests[i].size_bytes;
+            chosen = align_up(plan->peak_bytes, cur->alignment);
+            plan->peak_bytes = chosen + cur->size_bytes;
             plan->allocation_events++;
         }
 
-        if (plan->requests[i].size_bytes > plan->largest_allocation_bytes) {
-            plan->largest_allocation_bytes = plan->requests[i].size_bytes;
+        if (cur->size_bytes > plan->largest_allocation_bytes) {
+            plan->largest_allocation_bytes = cur->size_bytes;
         }
         plan->offsets[i] = chosen;
     }

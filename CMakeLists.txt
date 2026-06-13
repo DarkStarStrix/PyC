@@ -18,6 +18,9 @@ endif()
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/src/core/C_Files")
 set(HEADER_DIR "${CMAKE_SOURCE_DIR}/src/core/Header_Files")
 
+# Threads back the portable mutex (pyc/pyc_mutex.h) used by the symbol table.
+find_package(Threads)
+
 set(PYC_CORE_SOURCES
     "${SRC_DIR}/adapter.c"
     "${SRC_DIR}/semantic.c"
@@ -26,17 +29,23 @@ set(PYC_CORE_SOURCES
 )
 
 add_library(pyc_core_obj OBJECT ${PYC_CORE_SOURCES})
-target_include_directories(pyc_core_obj PUBLIC "${HEADER_DIR}")
+target_include_directories(pyc_core_obj PUBLIC "${HEADER_DIR}" "${CMAKE_SOURCE_DIR}/include")
 target_compile_features(pyc_core_obj PUBLIC c_std_11)
 
 add_library(pyc_core STATIC $<TARGET_OBJECTS:pyc_core_obj>)
-target_include_directories(pyc_core PUBLIC "${HEADER_DIR}")
+target_include_directories(pyc_core PUBLIC "${HEADER_DIR}" "${CMAKE_SOURCE_DIR}/include")
 target_compile_features(pyc_core PUBLIC c_std_11)
+if(Threads_FOUND)
+  target_link_libraries(pyc_core PUBLIC Threads::Threads)
+endif()
 
 # Compatibility target kept for downstream consumers that still reference pyc_foundation.
 add_library(pyc_foundation STATIC $<TARGET_OBJECTS:pyc_core_obj>)
-target_include_directories(pyc_foundation PUBLIC "${HEADER_DIR}")
+target_include_directories(pyc_foundation PUBLIC "${HEADER_DIR}" "${CMAKE_SOURCE_DIR}/include")
 target_compile_features(pyc_foundation PUBLIC c_std_11)
+if(Threads_FOUND)
+  target_link_libraries(pyc_foundation PUBLIC Threads::Threads)
+endif()
 
 add_executable(pyc "${SRC_DIR}/ci_main.c")
 target_link_libraries(pyc PRIVATE pyc_core)

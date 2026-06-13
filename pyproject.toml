@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "PyC — Unified HPC Toolchain: compiler, async runtime, CUTLASS kernels, SciML inference"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT OR Apache-2.0" }
+license = { text = "Apache-2.0" }
 keywords = ["hpc", "cuda", "cutlass", "compiler", "machine-learning", "sciml"]
 classifiers = [
     "Programming Language :: Rust",

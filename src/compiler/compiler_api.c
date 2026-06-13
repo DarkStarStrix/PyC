@@ -5,14 +5,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#if !defined(_WIN32)
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <fcntl.h>
 #include <pthread.h>
+#include <sys/file.h>
+#include <time.h>
+#include <unistd.h>
 #endif
 
 #include "pyc/cuda_backend.h"
 #include "pyc/kernel_registry.h"
 #include "pyc/pass_manager.h"
 #include "pyc/runtime_allocator.h"
+#include "pyc/pyc_mutex.h"
 #include "pyc/runtime_control.h"
 
 #define PYC_AUTOTUNE_CANDIDATE_MAX 16
@@ -210,16 +217,25 @@ static size_t decision_log_appendf(char* dst, size_t dst_size, size_t used, cons
 }
 
 static int module_fingerprint(const pyc_ir_module* module, uint64_t* out_hash) {
-    char buffer[262144];
+    /* Heap-allocate the serialization scratch: at 256 KiB it must not live on
+     * the stack, which can be small on pooled/HPC worker threads. */
+    enum { PYC_FINGERPRINT_BUFFER_SIZE = 262144 };
+    char* buffer;
     size_t len;
     if (!module || !out_hash) {
         return -1;
     }
-    if (pyc_ir_serialize(module, buffer, sizeof(buffer)) != 0) {
+    buffer = (char*)malloc(PYC_FINGERPRINT_BUFFER_SIZE);
+    if (!buffer) {
+        return -1;
+    }
+    if (pyc_ir_serialize(module, buffer, PYC_FINGERPRINT_BUFFER_SIZE) != 0) {
+        free(buffer);
         return -1;
     }
     len = strlen(buffer);
     *out_hash = fnv1a64(buffer, len);
+    free(buffer);
     return 0;
 }
 
@@ -254,6 +270,8 @@ typedef struct {
 
 static pyc_compile_cache_entry g_compile_cache[PYC_COMPILE_CACHE_MAX];
 static size_t g_compile_cache_next;
+/* Guards g_compile_cache and g_compile_cache_next against concurrent compiles. */
+static pyc_mutex g_compile_cache_mutex = PYC_MUTEX_INIT;
 
 static uint64_t hash_u64(uint64_t seed, uint64_t v) {
     uint64_t combined = seed ^ v;
@@ -300,14 +318,26 @@ static uint64_t build_compile_cache_key(
     return key;
 }
 
-static const pyc_compile_cache_entry* compile_cache_find(uint64_t key) {
+/* Copies the matching cache entry into *out under the cache lock and returns 1,
+ * or returns 0 if not found. Copying (rather than returning a pointer into the
+ * shared array) keeps the caller safe from a concurrent store overwriting the
+ * slot while its fields are being read. */
+static int compile_cache_lookup(uint64_t key, pyc_compile_cache_entry* out) {
     size_t i;
+    int found = 0;
+    if (!out) {
+        return 0;
+    }
+    pyc_mutex_lock(&g_compile_cache_mutex);
     for (i = 0; i < PYC_COMPILE_CACHE_MAX; ++i) {
         if (g_compile_cache[i].valid && g_compile_cache[i].key == key) {
-            return &g_compile_cache[i];
+            *out = g_compile_cache[i];
+            found = 1;
+            break;
         }
     }
-    return NULL;
+    pyc_mutex_unlock(&g_compile_cache_mutex);
+    return found;
 }
 
 static void compile_cache_store(
@@ -338,6 +368,7 @@ static void compile_cache_store(
     if (!module || !plan || !kernel_trace) {
         return;
     }
+    pyc_mutex_lock(&g_compile_cache_mutex);
     entry = &g_compile_cache[g_compile_cache_next % PYC_COMPILE_CACHE_MAX];
     memset(entry, 0, sizeof(*entry));
     entry->valid = 1;
@@ -398,20 +429,114 @@ static void compile_cache_store(
         entry->phantom_graph = *phantom_graph;
     }
     g_compile_cache_next++;
+    pyc_mutex_unlock(&g_compile_cache_mutex);
 }
 
-static double elapsed_ms(clock_t start, clock_t end) {
-    return ((double)(end - start) * 1000.0) / (double)CLOCKS_PER_SEC;
+/* Monotonic wall-clock time in milliseconds. Unlike clock(), which reports
+ * process CPU time (summed across threads and meaningless while the GPU is
+ * busy), this measures real elapsed time and is the basis for all latency
+ * telemetry reported by the engine. */
+static double pyc_monotonic_ms(void) {
+#if defined(_WIN32)
+    LARGE_INTEGER freq;
+    LARGE_INTEGER counter;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&counter);
+    if (freq.QuadPart == 0) {
+        return 0.0;
+    }
+    return ((double)counter.QuadPart * 1000.0) / (double)freq.QuadPart;
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
+#endif
 }
 
-static void spin_sleep_ms(int delay_ms) {
-    clock_t start;
+static double elapsed_ms(double start_ms, double end_ms) {
+    return end_ms - start_ms;
+}
+
+/* Yield the CPU for the requested duration instead of busy-spinning. */
+static void pyc_sleep_ms(int delay_ms) {
     if (delay_ms <= 0) {
         return;
     }
-    start = clock();
-    while (elapsed_ms(start, clock()) < (double)delay_ms) {
+#if defined(_WIN32)
+    Sleep((DWORD)delay_ms);
+#else
+    {
+        struct timespec req;
+        req.tv_sec = delay_ms / 1000;
+        req.tv_nsec = (long)(delay_ms % 1000) * 1000000L;
+        nanosleep(&req, NULL);
     }
+#endif
+}
+
+/* Cross-process exclusive lock around the autotune DB. Multiple ranks may
+ * persist results to a shared DB file concurrently; without this, the
+ * append-then-rewrite (compact) sequence races and can lose updates or
+ * truncate the file. The lock is taken on a sidecar ".lock" file so the
+ * DB itself is never left open by the lock holder. */
+typedef struct {
+    int active;
+#if defined(_WIN32)
+    HANDLE handle;
+#else
+    int fd;
+#endif
+} pyc_db_lock;
+
+static int pyc_db_lock_acquire(pyc_db_lock* lock, const char* db_path) {
+    char lock_path[512];
+    if (!lock || !db_path) {
+        return -1;
+    }
+    lock->active = 0;
+    snprintf(lock_path, sizeof(lock_path), "%s.lock", db_path);
+#if defined(_WIN32)
+    {
+        int attempt;
+        for (attempt = 0; attempt < 64; ++attempt) {
+            lock->handle = CreateFileA(
+                lock_path, GENERIC_WRITE, 0 /* no sharing */, NULL,
+                OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (lock->handle != INVALID_HANDLE_VALUE) {
+                lock->active = 1;
+                return 0;
+            }
+            pyc_sleep_ms(4);
+        }
+        return -1;
+    }
+#else
+    lock->fd = open(lock_path, O_CREAT | O_RDWR, 0644);
+    if (lock->fd < 0) {
+        return -1;
+    }
+    if (flock(lock->fd, LOCK_EX) != 0) {
+        close(lock->fd);
+        lock->fd = -1;
+        return -1;
+    }
+    lock->active = 1;
+    return 0;
+#endif
+}
+
+static void pyc_db_lock_release(pyc_db_lock* lock) {
+    if (!lock || !lock->active) {
+        return;
+    }
+#if defined(_WIN32)
+    CloseHandle(lock->handle);
+#else
+    flock(lock->fd, LOCK_UN);
+    close(lock->fd);
+    lock->fd = -1;
+#endif
+    lock->active = 0;
 }
 
 static FILE* fopen_with_retries(const char* path, const char* mode) {
@@ -422,7 +547,7 @@ static FILE* fopen_with_retries(const char* path, const char* mode) {
         if (f) {
             return f;
         }
-        spin_sleep_ms(2);
+        pyc_sleep_ms(2);
     }
     return NULL;
 }
@@ -430,7 +555,6 @@ static FILE* fopen_with_retries(const char* path, const char* mode) {
 static void maybe_inject_compile_delay(void) {
     const char* env_delay = getenv("PYC_COMPILE_DELAY_MS");
     long delay_ms = 0;
-    clock_t start;
     if (!env_delay || env_delay[0] == '\0') {
         return;
     }
@@ -438,9 +562,7 @@ static void maybe_inject_compile_delay(void) {
     if (delay_ms <= 0) {
         return;
     }
-    start = clock();
-    while (elapsed_ms(start, clock()) < (double)delay_ms) {
-    }
+    pyc_sleep_ms((int)delay_ms);
 }
 
 static double autotune_estimate_candidate_ms(
@@ -2168,21 +2290,33 @@ static int autotune_persist_result(
     const char* symbol,
     double best_ms) {
     FILE* f;
+    pyc_db_lock lock;
+    int rc;
     if (!path || !op_key || !symbol || best_ms <= 0.0) {
+        return -1;
+    }
+    /* Hold the lock across both the append and the compact (read+rewrite) so
+     * concurrent writers cannot interleave and corrupt the DB. */
+    if (pyc_db_lock_acquire(&lock, path) != 0) {
         return -1;
     }
     f = fopen_with_retries(path, "a");
     if (!f) {
+        pyc_db_lock_release(&lock);
         return -1;
     }
     if (fprintf(f, "%s|%d|%s|%.6f\n", op_key, (int)backend, symbol, best_ms) < 0) {
         fclose(f);
+        pyc_db_lock_release(&lock);
         return -1;
     }
     if (fclose(f) != 0) {
+        pyc_db_lock_release(&lock);
         return -1;
     }
-    return autotune_compact_db(path);
+    rc = autotune_compact_db(path);
+    pyc_db_lock_release(&lock);
+    return rc;
 }
 
 const char* pyc_status_string(pyc_status status) {
@@ -2202,8 +2336,9 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
     pyc_pass_report report;
     pyc_compiled_model* model;
     const pyc_compile_cache_entry* cache_entry = NULL;
-    clock_t start;
-    clock_t end;
+    pyc_compile_cache_entry cache_copy;
+    double start;
+    double end;
     uint64_t source_fingerprint = 0;
     uint64_t cache_key = 0;
     int use_compile_cache = 0;
@@ -2305,10 +2440,10 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
     model->compile_cache_key = cache_key;
     use_compile_cache = model->options.cache_mode == PYC_COMPILE_CACHE_IN_MEMORY;
 
-    start = clock();
+    start = pyc_monotonic_ms();
 
-    if (use_compile_cache) {
-        cache_entry = compile_cache_find(cache_key);
+    if (use_compile_cache && compile_cache_lookup(cache_key, &cache_copy)) {
+        cache_entry = &cache_copy;
     }
 
     if (cache_entry) {
@@ -2462,7 +2597,7 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
         return PYC_STATUS_COMPILE_FAILED;
     }
 
-    end = clock();
+    end = pyc_monotonic_ms();
     model->compile_ms = elapsed_ms(start, end);
     if (model->options.compile_budget_ms > 0.0 &&
         model->compile_ms > model->options.compile_budget_ms) {
@@ -2530,10 +2665,10 @@ pyc_status pyc_compile_model(const pyc_model_desc* desc, const pyc_compile_optio
 }
 
 pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, size_t input_count, pyc_tensor* outputs, size_t output_count, pyc_run_stats* out_stats) {
-    clock_t start;
-    clock_t end;
-    clock_t stage_start;
-    clock_t stage_end;
+    double start;
+    double end;
+    double stage_start;
+    double stage_end;
     pyc_alloc_stats stats;
     pyc_kernel_coselect_context kernel_context;
     pyc_runtime_window_metrics metrics;
@@ -2569,7 +2704,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         return PYC_STATUS_INVALID_ARGUMENT;
     }
 
-    start = clock();
+    start = pyc_monotonic_ms();
     memset(contract_reason, 0, sizeof(contract_reason));
     memset(runtime_shape_bucket, 0, sizeof(runtime_shape_bucket));
     memset(runtime_shape_signature, 0, sizeof(runtime_shape_signature));
@@ -2702,7 +2837,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
     }
 
     pyc_cuda_dispatch_trace_init(&model->cuda_trace);
-    stage_start = clock();
+    stage_start = pyc_monotonic_ms();
     if (!runtime_error) {
         if (model->backend == PYC_BACKEND_CPU) {
             if (execute_cpu_graph(execution_module, inputs, input_count, outputs, output_count, model) != 0) {
@@ -2727,7 +2862,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
             runtime_error = 1;
         }
     }
-    stage_end = clock();
+    stage_end = pyc_monotonic_ms();
     dispatch_ms = elapsed_ms(stage_start, stage_end);
     graph_exec_ms = dispatch_ms;
     if (!runtime_error &&
@@ -2763,7 +2898,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         runtime_shape_signature,
         runtime_error);
 
-    end = clock();
+    end = pyc_monotonic_ms();
     run_ms = elapsed_ms(start, end);
     throughput = run_ms > 0.0 ? 1000.0 / run_ms : 0.0;
     model->run_count++;
@@ -2803,7 +2938,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
         metrics.rematerialized_tensors = stats.rematerialized_tensors;
         metrics.runtime_error = runtime_error;
 
-        stage_start = clock();
+        stage_start = pyc_monotonic_ms();
         if (pyc_runtime_controller_observe(
             &model->controller,
             &model->options.rails,
@@ -2812,14 +2947,14 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
             &rollback_reason) != 0) {
             return PYC_STATUS_RUNTIME_FAILED;
         }
-        stage_end = clock();
+        stage_end = pyc_monotonic_ms();
         controller_ms = elapsed_ms(stage_start, stage_end);
 
         model->options.objective_mode = active_mode;
         model->kernel_trace.selected_score = 0.0;
         model->kernel_trace.selected_estimated_utilization = 0.0;
         model->has_selected_kernel = 0;
-        stage_start = clock();
+        stage_start = pyc_monotonic_ms();
         if (model->speculative_plan_count > 0) {
             const pyc_speculative_plan* next_plan = find_speculative_plan(
                 model,
@@ -2853,7 +2988,7 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
                 model->has_selected_kernel = 1;
             }
         }
-        stage_end = clock();
+        stage_end = pyc_monotonic_ms();
         kernel_select_ms = elapsed_ms(stage_start, stage_end);
     } else {
         active_mode = model->options.objective_mode;
@@ -3127,7 +3262,11 @@ pyc_status pyc_run_model(pyc_compiled_model* model, const pyc_tensor* inputs, si
             sizeof(out_stats->phantom_graph_observed_signature) - 1);
         out_stats->phantom_graph_observed_signature[sizeof(out_stats->phantom_graph_observed_signature) - 1] = '\0';
         if (model->has_selected_kernel) {
-            strcpy(out_stats->selected_kernel_symbol, model->selected_kernel.symbol);
+            strncpy(
+                out_stats->selected_kernel_symbol,
+                model->selected_kernel.symbol,
+                sizeof(out_stats->selected_kernel_symbol) - 1);
+            out_stats->selected_kernel_symbol[sizeof(out_stats->selected_kernel_symbol) - 1] = '\0';
         }
     }
 

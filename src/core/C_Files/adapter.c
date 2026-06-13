@@ -17,8 +17,17 @@ int adapter_read_file(const char* path, char** out_source, size_t* out_size, cha
         snprintf(err, err_size, "failed to open '%s': %s", path, strerror(errno));
         return -1;
     }
-    fseek(f, 0, SEEK_END);
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        snprintf(err, err_size, "failed to seek '%s': %s", path, strerror(errno));
+        return -1;
+    }
     long n = ftell(f);
+    if (n < 0) {
+        fclose(f);
+        snprintf(err, err_size, "failed to determine size of '%s': %s", path, strerror(errno));
+        return -1;
+    }
     rewind(f);
     *out_source = (char*)malloc((size_t)n + 1);
     if (!*out_source) {
